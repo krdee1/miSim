@@ -1,1 +1,1 @@
-addpath("validators");
+open("miSim.prj");
