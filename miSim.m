@@ -3,20 +3,20 @@ classdef miSim
 
     % Simulation parameters
     properties (SetAccess = private, GetAccess = public)
-        domain = rectangularPrismConstraint;
+        domain = rectangularPrism;
         objective = sensingObjective;
-        constraintGeometries = cell(0, 1); % geometries that define constraints within the domain
+        obstacles = cell(0, 1); % geometries that define obstacles within the domain
         agents = cell(0, 1); % agents that move within the domain
     end
 
     methods (Access = public)
-        function obj = initialize(obj, domain, objective, agents, constraintGeometries)
+        function obj = initialize(obj, domain, objective, agents, obstacles)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
-                domain (1, 1) {mustBeConstraintGeometries};
+                domain (1, 1) {mustBeGeometry};
                 objective (1, 1) {mustBeA(objective, 'sensingObjective')};
                 agents (:, 1) cell {mustBeAgents};
-                constraintGeometries (:, 1) cell {mustBeConstraintGeometries} = cell(0, 1);
+                obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
             end
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
@@ -25,8 +25,8 @@ classdef miSim
             %% Define domain
             obj.domain = domain;
 
-            %% Add constraint geometries against the domain
-            obj.constraintGeometries = constraintGeometries;
+            %% Add geometries representing obstacles within the domain
+            obj.obstacles = obstacles;
 
             %% Define objective
             obj.objective = objective;

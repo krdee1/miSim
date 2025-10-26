@@ -23,7 +23,7 @@ classdef agent
                 pos (1, 3) double;
                 vel (1, 3) double;
                 cBfromC (3, 3) double {mustBeDcm};
-                collisionGeometry (1, 1) {mustBeConstraintGeometries};
+                collisionGeometry (1, 1) {mustBeGeometry};
                 index (1, 1) double = NaN;
                 label (1, 1) string = "";
             end
