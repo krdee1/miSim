@@ -6,6 +6,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Obstacles
         constraintGeometries = cell(1, 0);
+        minObstacleDimension = 1;
         
         % Objective
         objective = sensingObjective;
@@ -32,14 +33,14 @@ classdef test_miSim < matlab.unittest.TestCase
         function tc = setDomain(tc)
             % random integer-sized domain within [-10, 10] in all dimensions
             L = ceil(5 + rand * 10 + rand * 10);
-            tc.domain = tc.domain.initialize(([0, L; 0, L; 0, L]), REGION_TYPE.DOMAIN, "Domain");
+            tc.domain = tc.domain.initialize([zeros(1, 3); L * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
         end
         % Generate a random sensing objective within that domain
         function tc = setSensingObjective(tc)
             mu = tc.domain.random();
             sig = [3, 1; 1, 4];
             tc.objectiveFunction = @(x, y) mvnpdf([x(:), y(:)], mu(1, 1:2), sig);
-            tc.objective = tc.objective.initialize(tc.objectiveFunction, tc.domain.footprint, tc.domain.minCorner(3, 1), tc.objectiveDiscretizationStep);
+            tc.objective = tc.objective.initialize(tc.objectiveFunction, tc.domain.footprint, tc.domain.minCorner(3), tc.objectiveDiscretizationStep);
         end
         % Instantiate agents, they will be initialized under different
         % parameters in individual test cases
@@ -64,29 +65,39 @@ classdef test_miSim < matlab.unittest.TestCase
 
                 % Randomly come up with constraint geometries until they
                 % fit within the domain
-                candidateMinCorner = -Inf(3, 1);
-                candidateMaxCorner = Inf(3, 1);
+                candidateMinCorner = [-Inf(1, 2), 0];
+                candidateMaxCorner = Inf(1, 3);
 
-                % make sure the obstacles don't contain the sensing objective
-                obstructs = true;
-                while obstructs
-
-                    % Make sure the obstacle is in the domain
-                    while any(candidateMinCorner(1:2, 1) < tc.domain.minCorner(1:2, 1)) 
-                        candidateMinCorner = tc.domain.minCorner(1:3, 1) + [(tc.domain.maxCorner(1:2, 1) - tc.domain.minCorner(1:2, 1)) .* rand(2, 1); -Inf]; % random spots on the ground
+                % make sure obstacles are not too small in any dimension
+                tooSmall = true;
+                while tooSmall
+                    % make sure the obstacles don't contain the sensing objective
+                    obstructs = true;
+                    while obstructs
+    
+                        % Make sure the obstacle is in the domain
+                        while any(candidateMinCorner < tc.domain.minCorner) 
+                            candidateMinCorner = tc.domain.minCorner(1:3) + [(tc.domain.maxCorner(1:2) - tc.domain.minCorner(1:2)) .* rand(1, 2), 0]; % random spots on the ground
+                        end
+                        while any(candidateMaxCorner > tc.domain.maxCorner)
+                            candidateMaxCorner = [candidateMinCorner(1:2), 0] + ((tc.domain.maxCorner(1:3) - tc.domain.minCorner(1:3)) .* rand(1, 3) ./ 2); % halved to keep from being excessively large
+                        end
+    
+                        % once a domain-valid obstacle has been found, make
+                        % sure it doesn't obstruct the sensing target
+                        if all(candidateMinCorner(1:2) <= tc.objective.groundPos) && all(candidateMaxCorner(1:2) >= tc.objective.groundPos)
+                            % reset to try again
+                            candidateMinCorner = [-Inf(1, 2), 0];
+                            candidateMaxCorner = Inf(1, 3);
+                        else
+                            obstructs = false;
+                        end
                     end
-                    while any(candidateMaxCorner(1:3, 1) > tc.domain.maxCorner(1:3, 1))
-                        candidateMaxCorner = [candidateMinCorner(1:2, 1); 0] + ((tc.domain.maxCorner(1:3, 1) - tc.domain.minCorner(1:3, 1)) .* rand(3, 1) ./ 2); % halved to keep from being excessively large
-                    end
-
-                    % once a domain-valid obstacle has been found, make
-                    % sure it doesn't obstruct the sensing target
-                    if all(candidateMinCorner(1:2, 1)' <= tc.objective.groundPos) && all(candidateMaxCorner(1:2, 1)' >= tc.objective.groundPos)
-                        % reset to try again
-                        candidateMinCorner = -Inf(3, 1);
-                        candidateMaxCorner = Inf(3, 1);
+                    if min(candidateMaxCorner - candidateMinCorner) >= tc.minObstacleDimension
+                        tooSmall = false;
                     else
-                        obstructs = false;
+                        candidateMinCorner = [-Inf(1, 2), 0];
+                        candidateMaxCorner = Inf(1, 3);
                     end
                 end
 
@@ -95,7 +106,7 @@ classdef test_miSim < matlab.unittest.TestCase
                 candidateMaxCorner(isinf(candidateMaxCorner)) = tc.domain.maxCorner(isinf(candidateMaxCorner));
 
                 % Initialize constraint geometry
-                tc.constraintGeometries{ii, 1} = tc.constraintGeometries{ii, 1}.initialize([candidateMinCorner, candidateMaxCorner], REGION_TYPE.OBSTACLE, sprintf("Column obstacle %d", ii));
+                tc.constraintGeometries{ii} = tc.constraintGeometries{ii}.initialize([candidateMinCorner; candidateMaxCorner], REGION_TYPE.OBSTACLE, sprintf("Column obstacle %d", ii));
             end
             
             % Repeat this until a connected set of agent initial conditions
@@ -106,10 +117,18 @@ classdef test_miSim < matlab.unittest.TestCase
                 for ii = 1:size(tc.agents, 1)
                     posInvalid = true;
                     while posInvalid
-                        % Initialize the agent into a random spot in the domain
-                        candidatePos = tc.domain.random();
+                        % Initialize the agent into a random spot in the
+                        % domain (that is not too close to the sensing
+                        % objective)
+                        boringInit = true;
+                        while boringInit
+                            candidatePos = tc.domain.random();
+                            if norm(candidatePos(1:2) - tc.objective.groundPos) >= norm(tc.domain.footprint(4, :) - tc.domain.footprint(1, :))/2
+                                boringInit = false;
+                            end
+                        end
                         candidateGeometry = rectangularPrismConstraint;
-                        tc.agents{ii, 1} = tc.agents{ii, 1}.initialize(candidatePos, zeros(1, 3), eye(3), candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii, 1) * ones(1, 3); candidatePos + tc.collisionRanges(ii, 1) * ones(1, 3)]', REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), ii, sprintf("Agent %d", ii));
+                        tc.agents{ii} = tc.agents{ii}.initialize(candidatePos, zeros(1, 3), eye(3), candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), ii, sprintf("Agent %d", ii));
     
                         % Check obstacles to confirm that none are violated
                         for jj = 1:size(tc.constraintGeometries, 1)
@@ -128,7 +147,7 @@ classdef test_miSim < matlab.unittest.TestCase
     
                         % Create a collision geometry for this agent
                         candidateGeometry = rectangularPrismConstraint;
-                        candidateGeometry = candidateGeometry.initialize([tc.agents{ii, 1}.pos - 0.1 * ones(1, 3); tc.agents{ii, 1}.pos + 0.1 * ones(1, 3)]', REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
+                        candidateGeometry = candidateGeometry.initialize([tc.agents{ii}.pos - 0.1 * ones(1, 3); tc.agents{ii}.pos + 0.1 * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
     
                         % Check previously placed agents for collisions
                         for jj = 1:(ii - 1)
