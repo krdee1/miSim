@@ -31,7 +31,8 @@ classdef test_miSim < matlab.unittest.TestCase
         % Generate a random domain
         function tc = setDomain(tc)
             % random integer-sized domain within [-10, 10] in all dimensions
-            tc.domain = tc.domain.initialize(ceil([rand * -10, rand * 10; rand * -10, rand * 10; rand * -10, rand * 10]), REGION_TYPE.DOMAIN, "Domain");
+            L = ceil(5 + rand * 10 + rand * 10);
+            tc.domain = tc.domain.initialize(([0, L; 0, L; 0, L]), REGION_TYPE.DOMAIN, "Domain");
         end
         % Generate a random sensing objective within that domain
         function tc = setSensingObjective(tc)
@@ -74,8 +75,8 @@ classdef test_miSim < matlab.unittest.TestCase
                     while any(candidateMinCorner(1:2, 1) < tc.domain.minCorner(1:2, 1)) 
                         candidateMinCorner = tc.domain.minCorner(1:3, 1) + [(tc.domain.maxCorner(1:2, 1) - tc.domain.minCorner(1:2, 1)) .* rand(2, 1); -Inf]; % random spots on the ground
                     end
-                    while any(candidateMaxCorner(1:2, 1) > tc.domain.maxCorner(1:2, 1))
-                        candidateMaxCorner = [candidateMinCorner(1:2, 1); 0] + [(tc.domain.maxCorner(1:2, 1) - tc.domain.minCorner(1:2, 1)) .* rand(2, 1) ./ 2; Inf]; % halved to keep from being excessively large
+                    while any(candidateMaxCorner(1:3, 1) > tc.domain.maxCorner(1:3, 1))
+                        candidateMaxCorner = [candidateMinCorner(1:2, 1); 0] + ((tc.domain.maxCorner(1:3, 1) - tc.domain.minCorner(1:3, 1)) .* rand(3, 1) ./ 2); % halved to keep from being excessively large
                     end
 
                     % once a domain-valid obstacle has been found, make
