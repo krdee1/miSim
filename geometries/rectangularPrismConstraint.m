@@ -4,23 +4,23 @@ classdef rectangularPrismConstraint
         tag = REGION_TYPE.INVALID;
         label = "";
 
-        minCorner = NaN(3, 1);
-        maxCorner = NaN(3, 1);
+        minCorner = NaN(1, 3);
+        maxCorner = NaN(1, 3);
 
-        dimensions = NaN(3, 1);
+        dimensions = NaN(1, 3);
 
         center = NaN;
 
         vertices = NaN(8, 3);
 
-        footprint = NaN(2, 4);
+        footprint = NaN(4, 2);
     end
 
     methods (Access = public)
         function obj = initialize(obj, bounds, tag, label)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'rectangularPrismConstraint')};
-                bounds (3, 2) double;
+                bounds (2, 3) double;
                 tag (1, 1) REGION_TYPE = REGION_TYPE.INVALID;
                 label (1, 1) string = "";
             end
@@ -32,8 +32,8 @@ classdef rectangularPrismConstraint
             obj.label = label;
 
             %% Define geometry bounds by LL corner and UR corner
-            obj.minCorner = bounds(:, 1);
-            obj.maxCorner = bounds(:, 2);
+            obj.minCorner = bounds(1, 1:3);
+            obj.maxCorner = bounds(2, 1:3);
 
             % Compute L, W, H
             obj.dimensions = [obj.maxCorner(1) - obj.minCorner(1), obj.maxCorner(2) - obj.minCorner(2), obj.maxCorner(3) - obj.minCorner(3)];
@@ -42,20 +42,20 @@ classdef rectangularPrismConstraint
             obj.center = obj.minCorner + obj.dimensions ./ 2;
 
             % Compute vertices
-            obj.vertices = [obj.minCorner';
-                            obj.maxCorner(1), obj.minCorner(2:3)';
-                            obj.maxCorner(1:2)', obj.minCorner(3);
+            obj.vertices = [obj.minCorner;
+                            obj.maxCorner(1), obj.minCorner(2:3);
+                            obj.maxCorner(1:2), obj.minCorner(3);
                             obj.minCorner(1), obj.maxCorner(2), obj.minCorner(3);
-                            obj.minCorner(1:2)', obj.maxCorner(3);
+                            obj.minCorner(1:2), obj.maxCorner(3);
                             obj.maxCorner(1), obj.minCorner(2), obj.maxCorner(3);
-                            obj.minCorner(1), obj.maxCorner(2:3)'
-                            obj.maxCorner';];
+                            obj.minCorner(1), obj.maxCorner(2:3)
+                            obj.maxCorner;];
 
             % Compute footprint
-            obj.footprint = [obj.minCorner(1:2, 1), ...
-                             [obj.minCorner(1, 1); obj.maxCorner(2, 1)], ...
-                             [obj.maxCorner(1, 1); obj.minCorner(2, 1)], ...
-                             obj.maxCorner(1:2, 1)];
+            obj.footprint = [obj.minCorner(1:2); ...
+                             [obj.minCorner(1), obj.maxCorner(2)]; ...
+                             [obj.maxCorner(1), obj.minCorner(2)]; ...
+                             obj.maxCorner(1:2)];
         end
         function r = random(obj)
             arguments (Input)
@@ -72,9 +72,9 @@ classdef rectangularPrismConstraint
                 pos (:, 3) double;
             end
             arguments (Output)
-                c (1, 1) logical
+                c (:, 1) logical
             end
-            c = all(pos >= repmat(obj.minCorner', size(pos, 1), 1), 2) & all(pos <= repmat(obj.maxCorner', size(pos, 1), 1), 2);
+            c = all(pos >= repmat(obj.minCorner, size(pos, 2), 1), 2) & all(pos <= repmat(obj.maxCorner, size(pos, 2), 1), 2);
         end
         function f = plotWireframe(obj, f)
             arguments (Input)
