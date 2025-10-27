@@ -238,9 +238,9 @@ classdef test_miSim < matlab.unittest.TestCase
             f = tc.testClass.domain.plotWireframe;
 
             % Set plotting limits to focus on the domain
-            xlim([tc.testClass.domain.minCorner(1) - 0.5, tc.testClass.domain.maxCorner(1) + 0.5]);
-            ylim([tc.testClass.domain.minCorner(2) - 0.5, tc.testClass.domain.maxCorner(2) + 0.5]);
-            zlim([tc.testClass.domain.minCorner(3) - 0.5, tc.testClass.domain.maxCorner(3) + 0.5]);
+            xlim([tc.testClass.domain.minCorner(1), tc.testClass.domain.maxCorner(1)]);
+            ylim([tc.testClass.domain.minCorner(2), tc.testClass.domain.maxCorner(2)]);
+            zlim([tc.testClass.domain.minCorner(3), tc.testClass.domain.maxCorner(3)]);
 
             % Plot obstacles
             for ii = 1:size(tc.testClass.obstacles, 1)

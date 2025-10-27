@@ -52,8 +52,16 @@ classdef agent
 
             % Plot points representing the agent position
             hold(f.CurrentAxes, "on");
-            scatter3(obj.pos(1), obj.pos(2), obj.pos(3), 'filled', 'ko', 'SizeData', 50);
+            o = scatter3(obj.pos(1), obj.pos(2), obj.pos(3), 'filled', 'ko', 'SizeData', 25);
             hold(f.CurrentAxes, "off");
+
+            % Check if this is a tiled layout figure
+            if strcmp(f.Children(1).Type, 'tiledlayout')
+                % Add to other perspectives
+                copyobj(o, f.Children(1).Children(2));
+                copyobj(o, f.Children(1).Children(3));
+                copyobj(o, f.Children(1).Children(5));
+            end
         end
     end
 end

@@ -180,8 +180,16 @@ classdef rectangularPrism
 
             % Plot the boundaries of the geometry
             hold(f.CurrentAxes, "on");
-            plot3(X, Y, Z, '-', 'Color', obj.tag.color, 'LineWidth', 2);
+            o = plot3(X, Y, Z, '-', 'Color', obj.tag.color, 'LineWidth', 2);
             hold(f.CurrentAxes, "off");
+
+            % Check if this is a tiled layout figure
+            if strcmp(f.Children(1).Type, 'tiledlayout')
+                % Add to other perspectives
+                copyobj(o, f.Children(1).Children(2));
+                copyobj(o, f.Children(1).Children(3));
+                copyobj(o, f.Children(1).Children(5));
+            end
         end
     end
 end
