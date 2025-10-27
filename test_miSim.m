@@ -96,6 +96,19 @@ classdef test_miSim < matlab.unittest.TestCase
                     % Initialize obstacle
                     tc.obstacles{ii} = tc.obstacles{ii}.initialize([candidateMinCorner; candidateMaxCorner], REGION_TYPE.OBSTACLE, sprintf("Column obstacle %d", ii));
 
+                    % Check if the obstacle intersects with any existing
+                    % obstacles
+                    violation = false;
+                    for kk = 1:(ii - 1)
+                        if geometryIntersects(tc.obstacles{kk}, tc.obstacles{ii})
+                            violation = true;
+                            break;
+                        end
+                    end
+                    if violation
+                        continue;
+                    end
+
                     % Make sure that the obstacles are fully contained by 
                     % the domain
                     if ~domainContainsObstacle(tc.domain, tc.obstacles{ii})
@@ -174,7 +187,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), ii, sprintf("Agent %d", ii));
                     
                     % Make sure candidate agent doesn't collide with
-                    % domain, obstacles, or any existing agents
+                    % domain
                     violation = false;
                     for jj = 1:size(newAgent.collisionGeometry.vertices, 1)
                         % Check if collision geometry exits domain
@@ -182,22 +195,30 @@ classdef test_miSim < matlab.unittest.TestCase
                             violation = true;
                             break;
                         end
+                    end
+                    if violation
+                        continue;
+                    end
 
-                        % Check if collision geometry enters obstacle
-                        for kk = 1:size(tc.obstacles, 1)
-                            if tc.obstacles{kk}.contains(newAgent.collisionGeometry.vertices(jj, 1:3))
-                                violation = true;
-                                break;
-                            end
+                    % Make sure candidate doesn't collide with obstacles
+                    violation = false;
+                    for kk = 1:size(tc.obstacles, 1)
+                        if geometryIntersects(tc.obstacles{kk}, newAgent.collisionGeometry)
+                            violation = true;
+                            break;
                         end
-                        
-                        % Check if collision geometry enters other
-                        % collision geometry
-                        for kk = 1:(ii - 1)
-                            if tc.agents{kk}.collisionGeometry.contains(newAgent.collisionGeometry.vertices(jj, 1:3))
-                                violation = true;
-                                break;
-                            end
+                    end
+                    if violation
+                        continue;
+                    end
+
+                    % Make sure candidate doesn't collide with existing
+                    % agents
+                    violation = false;
+                    for kk = 1:(ii - 1)
+                        if geometryIntersects(tc.agents{kk}.collisionGeometry, newAgent.collisionGeometry)
+                            violation = true;
+                            break;
                         end
                     end
                     if violation

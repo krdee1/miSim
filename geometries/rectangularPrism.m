@@ -13,6 +13,10 @@ classdef rectangularPrism
 
         vertices = NaN(8, 3);
 
+        edges = [1 2; 2 3; 3 4; 4 1;  % bottom square
+            5 6; 6 8; 8 7; 7 5;  % top square
+            1 5; 2 6; 3 8; 4 7]; % vertical edges
+
         footprint = NaN(4, 2);
     end
 
@@ -169,14 +173,10 @@ classdef rectangularPrism
             % Create axes if they don't already exist
             f = firstPlotSetup(f);
 
-            edges = [1 2; 2 3; 3 4; 4 1;  % bottom square
-                5 6; 6 8; 8 7; 7 5;  % top square
-                1 5; 2 6; 3 8; 4 7]; % vertical edges
-
             % Create plotting inputs from vertices and edges
-            X = [obj.vertices(edges(:,1),1), obj.vertices(edges(:,2),1)]';
-            Y = [obj.vertices(edges(:,1),2), obj.vertices(edges(:,2),2)]';
-            Z = [obj.vertices(edges(:,1),3), obj.vertices(edges(:,2),3)]';
+            X = [obj.vertices(obj.edges(:,1),1), obj.vertices(obj.edges(:,2),1)]';
+            Y = [obj.vertices(obj.edges(:,1),2), obj.vertices(obj.edges(:,2),2)]';
+            Z = [obj.vertices(obj.edges(:,1),3), obj.vertices(obj.edges(:,2),3)]';
 
             % Plot the boundaries of the geometry
             hold(f.CurrentAxes, "on");
