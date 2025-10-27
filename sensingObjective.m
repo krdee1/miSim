@@ -58,12 +58,25 @@ classdef sensingObjective
             % Create axes if they don't already exist
             f = firstPlotSetup(f);
 
-            % Plot gradient on the "floor" of the domain
-            hold(f.CurrentAxes, "on");
-            s = surf(obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
-            s.HitTest = 'off';
-            s.PickableParts = 'none';
-            hold(f.CurrentAxes, "off");
+            % Check if this is a tiled layout figure
+            if strcmp(f.Children(1).Type, 'tiledlayout')
+                % Plot gradient on the "floor" of the domain
+                hold(f.Children(1).Children(3), "on");
+                o = surf(f.Children(1).Children(3), obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
+                o.HitTest = 'off';
+                o.PickableParts = 'none';
+                hold(f.Children(1).Children(3), "off");
+
+                % Add to other perspectives
+                copyobj(o, f.Children(1).Children(5));
+            else
+                % Plot gradient on the "floor" of the domain
+                hold(f.CurrentAxes, "on");
+                o = surf(obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
+                o.HitTest = 'off';
+                o.PickableParts = 'none';
+                hold(f.CurrentAxes, "off");
+            end
         end
     end
 end
