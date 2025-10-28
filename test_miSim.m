@@ -184,7 +184,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Initialize candidate agent
                     candidateGeometry = rectangularPrism;
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), ii, sprintf("Agent %d", ii));
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), tc.comRange, ii, sprintf("Agent %d", ii));
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -255,6 +255,9 @@ classdef test_miSim < matlab.unittest.TestCase
                 f = tc.testClass.agents{ii}.plot(f);
                 f = tc.testClass.agents{ii}.collisionGeometry.plotWireframe(f);
             end
+
+            % Plot communication links
+            f = tc.testClass.plotNetwork(f);
         end
     end
 end
