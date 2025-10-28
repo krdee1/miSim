@@ -22,6 +22,7 @@ classdef test_miSim < matlab.unittest.TestCase
         % Agents
         minAgents = 3; % Minimum number of agents to be randomly generated
         maxAgents = 9; % Maximum number of agents to be randomly generated
+        sensingLength = 0.05; % length parameter used by sensing function
         agents = cell(0, 1);
         
         % Collision
@@ -186,7 +187,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Initialize candidate agent
                     candidateGeometry = rectangularPrism;
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), @(r) 0.5, tc.comRange, ii, sprintf("Agent %d", ii));
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), @(r) 0.5, tc.sensingLength, tc.comRange, ii, sprintf("Agent %d", ii));
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -375,7 +376,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Initialize candidate agent
                     candidateGeometry = rectangularPrism;
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), @(r) 0.5, tc.comRange, ii, sprintf("Agent %d", ii));
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), @basicGradientAscent, tc.sensingLength, tc.comRange, ii, sprintf("Agent %d", ii));
                     
                     % Make sure candidate agent doesn't collide with
                     % domain

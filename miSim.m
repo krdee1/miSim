@@ -54,17 +54,25 @@ classdef miSim
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
             end
-            keyboard
-            % Iterate over agents to simulate their motion
-            for ii = 1:size(obj.agents, 1)
-                obj.agents{ii}
+
+            % Set up times to iterate over
+            times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
+
+            for ii = 1:size(times, 1)
+                % Get current sim time
+                t = times(ii);
+
+                % Iterate over agents to simulate their motion
+                for jj = 1:size(obj.agents, 1)
+                    obj.agents{jj} = obj.agents{jj}.run(obj.objective.objectiveFunction);
+                end
+    
+                % Update adjacency matrix
+                obj = obj.updateAdjacency;
+    
+                % Update plots
+
             end
-
-            % Update adjacency matrix
-            obj = obj.updateAdjacency;
-
-            % Update plots
-
         end
         function obj = updateAdjacency(obj)
             arguments (Input)
