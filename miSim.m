@@ -13,7 +13,7 @@ classdef miSim
     end
 
     methods (Access = public)
-        function obj = initialize(obj, domain, objective, agents, timestep, maxIter, obstacles)
+        function [obj, f] = initialize(obj, domain, objective, agents, timestep, maxIter, obstacles)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 domain (1, 1) {mustBeGeometry};
@@ -25,6 +25,7 @@ classdef miSim
             end
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
             end
 
             % Define simulation time parameters
@@ -46,33 +47,87 @@ classdef miSim
             % Compute adjacency matrix
             obj = obj.updateAdjacency();
 
+            % Set up initial plot
+            % Set up axes arrangement
+            % Plot domain
+            [obj.domain, f] = obj.domain.plotWireframe();
+
+            % Set plotting limits to focus on the domain
+            xlim([obj.domain.minCorner(1), obj.domain.maxCorner(1)]);
+            ylim([obj.domain.minCorner(2), obj.domain.maxCorner(2)]);
+            zlim([obj.domain.minCorner(3), obj.domain.maxCorner(3)]);
+
+            % Plot obstacles
+            for ii = 1:size(obj.obstacles, 1)
+                [obj.obstacles{ii}, f] = obj.obstacles{ii}.plotWireframe(f);
+            end
+
+            % Plot objective gradient
+            f = obj.objective.plot(f);
+
+            % Plot agents and their collision geometries
+            for ii = 1:size(obj.agents, 1)
+                [obj.agents{ii}, f] = obj.agents{ii}.plot(f);
+            end
+
+            % Plot communication links
+            f = obj.plotNetwork(f);
+
+            % Plot abstract network graph
+            f = obj.plotGraph(f);
         end
-        function obj = run(obj)
+        function [obj, f] = run(obj, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
             end
+
+            % Create axes if they don't already exist
+            f = firstPlotSetup(f);
 
             % Set up times to iterate over
             times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
 
             for ii = 1:size(times, 1)
-                % Get current sim time
+                % Display current sim time
                 t = times(ii);
+                fprintf("Sim Time: %4.2f (%d/%d)\n", t, ii, obj.maxIter)
 
                 % Iterate over agents to simulate their motion
                 for jj = 1:size(obj.agents, 1)
-                    obj.agents{jj} = obj.agents{jj}.run(obj.objective.objectiveFunction);
+                    obj.agents{jj} = obj.agents{jj}.run(obj.objective.objectiveFunction, obj.domain);
                 end
     
                 % Update adjacency matrix
                 obj = obj.updateAdjacency;
     
                 % Update plots
-
+                f = obj.updatePlots(f);
             end
+
+        end
+        function f = updatePlots(obj, f)
+            arguments (Input)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
+            end
+            arguments (Output)
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
+            end
+
+            % Update agent positions, collision geometries, connections
+            for ii = 1:size(obj.agents, 1)
+                obj.agents{ii}.updatePlots();
+            end
+
+            % Update network graph plot
+
+            drawnow;
+
         end
         function obj = updateAdjacency(obj)
             arguments (Input)

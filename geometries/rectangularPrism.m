@@ -1,23 +1,25 @@
 classdef rectangularPrism
     % Rectangular prism geometry
     properties (SetAccess = private, GetAccess = public)
+        % Meta
         tag = REGION_TYPE.INVALID;
         label = "";
 
+        % Spatial
         minCorner = NaN(1, 3);
         maxCorner = NaN(1, 3);
-
         dimensions = NaN(1, 3);
-
         center = NaN;
+        footprint = NaN(4, 2);
 
+        % Graph
         vertices = NaN(8, 3);
-
         edges = [1 2; 2 3; 3 4; 4 1;  % bottom square
             5 6; 6 8; 8 7; 7 5;  % top square
             1 5; 2 6; 3 8; 4 7]; % vertical edges
 
-        footprint = NaN(4, 2);
+        % Plotting
+        lines;
     end
 
     methods (Access = public)
@@ -161,12 +163,13 @@ classdef rectangularPrism
 
             c = (tmax >= 0) && (tmin <= 1);
         end
-        function f = plotWireframe(obj, f)
+        function [obj, f] = plotWireframe(obj, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
             end
 
@@ -186,10 +189,12 @@ classdef rectangularPrism
             % Check if this is a tiled layout figure
             if strcmp(f.Children(1).Type, 'tiledlayout')
                 % Add to other perspectives
-                copyobj(o, f.Children(1).Children(2));
-                copyobj(o, f.Children(1).Children(3));
-                copyobj(o, f.Children(1).Children(5));
+                o = [o, copyobj(o(:, 1), f.Children(1).Children(2))];
+                o = [o, copyobj(o(:, 1), f.Children(1).Children(3))];
+                o = [o, copyobj(o(:, 1), f.Children(1).Children(5))];
             end
+
+            obj.lines = o;
         end
     end
 end

@@ -1,6 +1,7 @@
-function nextPos = basicGradientAscent(objectiveFunction, pos, r)
+function nextPos = basicGradientAscent(objectiveFunction, domain, pos, r)
     arguments (Input)
         objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
+        domain (1, 1) {mustBeGeometry};
         pos (1, 3) double;
         r (1, 1) double;
     end
@@ -39,5 +40,5 @@ function nextPos = basicGradientAscent(objectiveFunction, pos, r)
     
     % Select next position by maximum sensed value
     nextPos = neighborPos(neighborValues == max(neighborValues), :);
-    nextPos = nextPos(1, 1:3); % just in case two get selected, simply pick one
+    nextPos = [nextPos(1, 1:2), pos(3)]; % just in case two get selected, simply pick one
 end
