@@ -12,6 +12,12 @@ classdef miSim
         adjacency = NaN; % Adjacency matrix representing communications network graph
     end
 
+    properties (Access = private)
+        v = VideoWriter(fullfile('sandbox', strcat(string(datetime('now'), 'yyyy_MM_dd_HH_mm_ss'), '_miSimHist.mp4')));
+        connectionsPlot; % objects for lines connecting agents in spatial plots
+        graphPlot; % objects for abstract network graph plot
+    end
+
     methods (Access = public)
         function [obj, f] = initialize(obj, domain, objective, agents, timestep, maxIter, obstacles)
             arguments (Input)
@@ -71,10 +77,10 @@ classdef miSim
             end
 
             % Plot communication links
-            f = obj.plotNetwork(f);
+            [obj, f] = obj.plotConnections(f);
 
             % Plot abstract network graph
-            f = obj.plotGraph(f);
+            [obj, f] = obj.plotGraph(f);
         end
         function [obj, f] = run(obj, f)
             arguments (Input)
@@ -92,6 +98,11 @@ classdef miSim
             % Set up times to iterate over
             times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
 
+            % Start video writer
+            obj.v.FrameRate = 1/obj.timestep;
+            obj.v.Quality = 90;
+            obj.v.open();
+
             for ii = 1:size(times, 1)
                 % Display current sim time
                 t = times(ii);
@@ -106,28 +117,44 @@ classdef miSim
                 obj = obj.updateAdjacency;
     
                 % Update plots
-                f = obj.updatePlots(f);
+                [obj, f] = obj.updatePlots(f);
+
+                % Write frame in to video
+                I = getframe(f);
+                obj.v.writeVideo(I);
             end
 
+            % Close video file
+            obj.v.close();
         end
-        function f = updatePlots(obj, f)
+        function [obj, f] = updatePlots(obj, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
             end
 
-            % Update agent positions, collision geometries, connections
+            % Update agent positions, collision geometries
             for ii = 1:size(obj.agents, 1)
                 obj.agents{ii}.updatePlots();
             end
 
+            % The remaining updates might be possible to do in a clever way
+            % that moves existing lines instead of clearing and 
+            % re-plotting, which is much better for performance boost
+
+            % Update agent connections plot
+            delete(obj.connectionsPlot);
+            [obj, f] = obj.plotConnections(f);
+
             % Update network graph plot
+            delete(obj.graphPlot);
+            [obj, f] = obj.plotGraph(f);
 
             drawnow;
-
         end
         function obj = updateAdjacency(obj)
             arguments (Input)
@@ -157,12 +184,13 @@ classdef miSim
 
             obj.adjacency = A | A';
         end
-        function f = plotNetwork(obj, f)
+        function [obj, f] = plotConnections(obj, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
             end
 
@@ -188,29 +216,28 @@ classdef miSim
             % Check if this is a tiled layout figure
             if strcmp(f.Children(1).Type, 'tiledlayout')
                 % Add to other plots
-                copyobj(o, f.Children(1).Children(2));
-                copyobj(o, f.Children(1).Children(3));
-                copyobj(o, f.Children(1).Children(5));
+                o = [o, copyobj(o(:, 1), f.Children(1).Children(2))];
+                o = [o, copyobj(o(:, 1), f.Children(1).Children(3))];
+                o = [o, copyobj(o(:, 1), f.Children(1).Children(5))];
             end
+
+            obj.connectionsPlot = o;
         end
-        function f = plotGraph(obj, f)
+        function [obj, f] = plotGraph(obj, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
             end
 
             % Form graph from adjacency matrix
             G = graph(obj.adjacency, 'omitselfloops');
 
-            % Check if this is a tiled layout figure
-            if strcmp(f.Children(1).Type, 'tiledlayout')
-                o = plot(f.Children(1).Children(4), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
-            else
-                o = plot(f.CurrentAxes, G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
-            end
+            % Plot graph object
+            obj.graphPlot = plot(f.Children(1).Children(4), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
         end
     end
 
