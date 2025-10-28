@@ -20,13 +20,14 @@ classdef agent
     end
 
     methods (Access = public)
-        function obj = initialize(obj, pos, vel, cBfromC, collisionGeometry, comRange, index, label)
+        function obj = initialize(obj, pos, vel, cBfromC, collisionGeometry, sensingFunction, comRange, index, label)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'agent')};
                 pos (1, 3) double;
                 vel (1, 3) double;
                 cBfromC (3, 3) double {mustBeDcm};
                 collisionGeometry (1, 1) {mustBeGeometry};
+                sensingFunction (1, 1) {mustBeA(sensingFunction, 'function_handle')}
                 comRange (1, 1) double = NaN;
                 index (1, 1) double = NaN;
                 label (1, 1) string = "";
