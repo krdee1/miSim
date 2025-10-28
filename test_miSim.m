@@ -258,6 +258,9 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Plot communication links
             f = tc.testClass.plotNetwork(f);
+
+            % Plot abstract network graph
+            f = tc.testClass.plotGraph(f);
         end
     end
 end
