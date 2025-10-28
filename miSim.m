@@ -59,7 +59,7 @@ classdef miSim
                 end
             end
 
-            obj.adjacency = A;
+            obj.adjacency = A | A';
         end
         function f = plotNetwork(obj, f)
             arguments (Input)
@@ -96,6 +96,26 @@ classdef miSim
                 copyobj(o, f.Children(1).Children(3));
                 copyobj(o, f.Children(1).Children(5));
             end
+        end
+        function f = plotGraph(obj, f)
+            arguments (Input)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
+            end
+            arguments (Output)
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
+            end
+
+            % Form graph from adjacency matrix
+            G = graph(obj.adjacency, 'omitselfloops');
+
+            % Check if this is a tiled layout figure
+            if strcmp(f.Children(1).Type, 'tiledlayout')
+                o = plot(f.Children(1).Children(4), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k');
+            else
+                o = plot(f.CurrentAxes, G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k');
+            end
+
         end
     end
 
