@@ -13,7 +13,7 @@ classdef miSim
     end
 
     properties (Access = private)
-        v = VideoWriter(fullfile('sandbox', strcat(string(datetime('now'), 'yyyy_MM_dd_HH_mm_ss'), '_miSimHist.mp4')));
+        v = VideoWriter(fullfile('sandbox', strcat(string(datetime('now'), 'yyyy_MM_dd_HH_mm_ss'), '_miSimHist')));
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot
     end
