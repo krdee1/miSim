@@ -3,6 +3,8 @@ classdef miSim
 
     % Simulation parameters
     properties (SetAccess = private, GetAccess = public)
+        timestep = NaN; % delta time interval for simulation iterations
+        maxIter = NaN; % maximum number of simulation iterations
         domain = rectangularPrism;
         objective = sensingObjective;
         obstacles = cell(0, 1); % geometries that define obstacles within the domain
@@ -11,32 +13,57 @@ classdef miSim
     end
 
     methods (Access = public)
-        function obj = initialize(obj, domain, objective, agents, obstacles)
+        function obj = initialize(obj, domain, objective, agents, timestep, maxIter, obstacles)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 domain (1, 1) {mustBeGeometry};
                 objective (1, 1) {mustBeA(objective, 'sensingObjective')};
                 agents (:, 1) cell {mustBeAgents};
+                timestep (:, 1) double = 0.05;
+                maxIter (:, 1) double = 1000;
                 obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
             end
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
             end
 
-            %% Define domain
+            % Define simulation time parameters
+            obj.timestep = timestep;
+            obj.maxIter = maxIter;
+
+            % Define domain
             obj.domain = domain;
 
-            %% Add geometries representing obstacles within the domain
+            % Add geometries representing obstacles within the domain
             obj.obstacles = obstacles;
 
-            %% Define objective
+            % Define objective
             obj.objective = objective;
 
-            %% Define agents
+            % Define agents
             obj.agents = agents;
 
-            %% Compute adjacency matrix
+            % Compute adjacency matrix
             obj = obj.updateAdjacency();
+
+        end
+        function obj = run(obj)
+            arguments (Input)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+            end
+            arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+            end
+            keyboard
+            % Iterate over agents to simulate their motion
+            for ii = 1:size(obj.agents, 1)
+                obj.agents{ii}
+            end
+
+            % Update adjacency matrix
+            obj = obj.updateAdjacency;
+
+            % Update plots
 
         end
         function obj = updateAdjacency(obj)
@@ -54,7 +81,13 @@ classdef miSim
             for ii = 2:size(A, 1)
                 for jj = 1:(ii - 1)
                     if norm(obj.agents{ii}.pos - obj.agents{jj}.pos) <= min([obj.agents{ii}.comRange, obj.agents{jj}.comRange])
-                        A(ii, jj) = true;
+                        % Make sure that obstacles don't obstruct the line
+                        % of sight, breaking the connection
+                        for kk = 1:size(obj.obstacles, 1)
+                            if ~obj.obstacles{kk}.containsLine(obj.agents{ii}.pos, obj.agents{jj}.pos)
+                                A(ii, jj) = true;
+                            end
+                        end
                     end
                 end
             end
@@ -86,7 +119,7 @@ classdef miSim
 
             % Plot the connections
             hold(f.CurrentAxes, "on");
-            o = plot3(X, Y, Z, 'Color', 'g', 'LineWidth', 1, 'LineStyle', '--');
+            o = plot3(X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
             hold(f.CurrentAxes, "off");
 
             % Check if this is a tiled layout figure
@@ -111,11 +144,10 @@ classdef miSim
 
             % Check if this is a tiled layout figure
             if strcmp(f.Children(1).Type, 'tiledlayout')
-                o = plot(f.Children(1).Children(4), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k');
+                o = plot(f.Children(1).Children(4), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
             else
-                o = plot(f.CurrentAxes, G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k');
+                o = plot(f.CurrentAxes, G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
             end
-
         end
     end
 
