@@ -235,35 +235,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter, tc.obstacles);
-
-            % Plot domain
-            f = tc.testClass.domain.plotWireframe;
-
-            % Set plotting limits to focus on the domain
-            xlim([tc.testClass.domain.minCorner(1), tc.testClass.domain.maxCorner(1)]);
-            ylim([tc.testClass.domain.minCorner(2), tc.testClass.domain.maxCorner(2)]);
-            zlim([tc.testClass.domain.minCorner(3), tc.testClass.domain.maxCorner(3)]);
-
-            % Plot obstacles
-            for ii = 1:size(tc.testClass.obstacles, 1)
-                tc.testClass.obstacles{ii}.plotWireframe(f);
-            end
-
-            % Plot objective gradient
-            f = tc.testClass.objective.plot(f);
-
-            % Plot agents and their collision geometries
-            for ii = 1:size(tc.testClass.agents, 1)
-                f = tc.testClass.agents{ii}.plot(f);
-                f = tc.testClass.agents{ii}.collisionGeometry.plotWireframe(f);
-            end
-
-            % Plot communication links
-            f = tc.testClass.plotNetwork(f);
-
-            % Plot abstract network graph
-            f = tc.testClass.plotGraph(f);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter, tc.obstacles);
         end
         function misim_run(tc)
             % randomly create obstacles
@@ -424,39 +396,10 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter, tc.obstacles);
-
-            % Plot domain
-            f = tc.testClass.domain.plotWireframe;
-
-            % Set plotting limits to focus on the domain
-            xlim([tc.testClass.domain.minCorner(1), tc.testClass.domain.maxCorner(1)]);
-            ylim([tc.testClass.domain.minCorner(2), tc.testClass.domain.maxCorner(2)]);
-            zlim([tc.testClass.domain.minCorner(3), tc.testClass.domain.maxCorner(3)]);
-
-            % Plot obstacles
-            for ii = 1:size(tc.testClass.obstacles, 1)
-                tc.testClass.obstacles{ii}.plotWireframe(f);
-            end
-
-            % Plot objective gradient
-            f = tc.testClass.objective.plot(f);
-
-            % Plot agents and their collision geometries
-            for ii = 1:size(tc.testClass.agents, 1)
-                f = tc.testClass.agents{ii}.plot(f);
-                f = tc.testClass.agents{ii}.collisionGeometry.plotWireframe(f);
-            end
-
-            % Plot communication links
-            f = tc.testClass.plotNetwork(f);
-
-            % Plot abstract network graph
-            f = tc.testClass.plotGraph(f);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter, tc.obstacles);
 
             % Run simulation loop
-            tc.testClass.run();
-            
+            [tc.testClass, f] = tc.testClass.run(f);
         end
     end
 end

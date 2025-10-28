@@ -9,15 +9,19 @@ classdef agent
         sensingLength = 0.05; % length parameter used by sensing function
 
         % State
-        pos = NaN(1, 3);
-        vel = NaN(1, 3);
-        cBfromC = NaN(3); % DCM body from sim cartesian (assume fixed for now)
+        lastPos = NaN(1, 3); % position from previous timestep
+        pos = NaN(1, 3); % current position
+        vel = NaN(1, 3); % current velocity
+        cBfromC = NaN(3); % current DCM body from sim cartesian (assume fixed for now)
 
         % Collision
         collisionGeometry;
 
         % Communication
         comRange = NaN;
+
+        % Plotting
+        scatterPoints;
     end
 
     methods (Access = public)
@@ -48,29 +52,66 @@ classdef agent
             obj.index = index;
             obj.label = label;
         end
-        function obj = run(obj, objectiveFunction)
+        function obj = run(obj, objectiveFunction, domain)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'agent')};
                 objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
+                domain (1, 1) {mustBeGeometry};
             end
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'agent')};
             end
 
             % Do sensing to determine target position
-            nextPos = obj.sensingFunction(objectiveFunction, obj.pos, obj.sensingLength);
+            nextPos = obj.sensingFunction(objectiveFunction, domain, obj.pos, obj.sensingLength);
 
             % Move to next position
             % (dynamics not modeled at this time)
+            obj.lastPos = obj.pos;
             obj.pos = nextPos;
 
+            % Calculate movement
+            d = obj.pos - obj.collisionGeometry.center;
+
+            % Reinitialize collision geometry in the new position
+            obj.collisionGeometry = obj.collisionGeometry.initialize([obj.collisionGeometry.minCorner; obj.collisionGeometry.maxCorner] + d, obj.collisionGeometry.tag, obj.collisionGeometry.label);
         end
-        function f = plot(obj, f)
+        function updatePlots(obj)
+            arguments (Input)
+                obj (1, 1) {mustBeA(obj, 'agent')};
+            end
+            arguments (Output)
+            end
+
+            % Scatterplot point positions
+            for ii = 1:size(obj.scatterPoints, 1)
+                obj.scatterPoints(ii).XData = obj.pos(1);
+                obj.scatterPoints(ii).YData = obj.pos(2);
+                obj.scatterPoints(ii).ZData = obj.pos(3);
+            end
+
+            % Find change in agent position since last timestep
+            deltaPos = obj.pos - obj.lastPos;
+
+            % Collision geometry edges
+            for jj = 1:size(obj.collisionGeometry.lines, 2)
+                % Update plotting
+                for ii = 1:size(obj.collisionGeometry.lines(:, jj), 1)
+                    obj.collisionGeometry.lines(ii, jj).XData = obj.collisionGeometry.lines(ii, jj).XData + deltaPos(1);
+                    obj.collisionGeometry.lines(ii, jj).YData = obj.collisionGeometry.lines(ii, jj).YData + deltaPos(2);
+                    obj.collisionGeometry.lines(ii, jj).ZData = obj.collisionGeometry.lines(ii, jj).ZData + deltaPos(3);
+                end
+            end
+
+            % Network connections
+        end
+        function [obj, f] = plot(obj, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'agent')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'agent')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
             end
 
@@ -85,10 +126,15 @@ classdef agent
             % Check if this is a tiled layout figure
             if strcmp(f.Children(1).Type, 'tiledlayout')
                 % Add to other perspectives
-                copyobj(o, f.Children(1).Children(2));
-                copyobj(o, f.Children(1).Children(3));
-                copyobj(o, f.Children(1).Children(5));
+                o = [o; copyobj(o(1), f.Children(1).Children(2))];
+                o = [o; copyobj(o(1), f.Children(1).Children(3))];
+                o = [o; copyobj(o(1), f.Children(1).Children(5))];
             end
+
+            obj.scatterPoints = o;
+
+            % Plot collision geometry
+            [obj.collisionGeometry, f] = obj.collisionGeometry.plotWireframe(f);
         end
     end
 end
