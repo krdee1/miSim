@@ -58,11 +58,6 @@ classdef miSim
             % Plot domain
             [obj.domain, f] = obj.domain.plotWireframe();
 
-            % Set plotting limits to focus on the domain
-            xlim([obj.domain.minCorner(1), obj.domain.maxCorner(1)]);
-            ylim([obj.domain.minCorner(2), obj.domain.maxCorner(2)]);
-            zlim([obj.domain.minCorner(3), obj.domain.maxCorner(3)]);
-
             % Plot obstacles
             for ii = 1:size(obj.obstacles, 1)
                 [obj.obstacles{ii}, f] = obj.obstacles{ii}.plotWireframe(f);
@@ -237,7 +232,9 @@ classdef miSim
             G = graph(obj.adjacency, 'omitselfloops');
 
             % Plot graph object
+            hold(f.Children(1).Children(4), 'on');
             obj.graphPlot = plot(f.Children(1).Children(4), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
+            hold(f.Children(1).Children(4), 'off');
         end
     end
 
