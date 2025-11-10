@@ -194,7 +194,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     sensor = sensor.initialize(tc.sensingLength);
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3), candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii)); 
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii)); 
 
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -362,7 +362,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     sensor.initialize(tc.sensingLength);
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3), candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii));
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii));
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
