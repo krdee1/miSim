@@ -24,7 +24,7 @@ classdef miSim
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 domain (1, 1) {mustBeGeometry};
                 objective (1, 1) {mustBeA(objective, 'sensingObjective')};
-                agents (:, 1) cell {mustBeAgents};
+                agents (:, 1) cell;
                 timestep (:, 1) double = 0.05;
                 maxIter (:, 1) double = 1000;
                 obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
@@ -94,8 +94,8 @@ classdef miSim
             times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
 
             % Start video writer
-            obj.v.FrameRate = 1/obj.timestep;
-            obj.v.Quality = 90;
+            % obj.v.FrameRate = 1/obj.timestep;
+            % obj.v.Quality = 90;
             obj.v.open();
 
             for ii = 1:size(times, 1)

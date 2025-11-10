@@ -185,10 +185,17 @@ classdef test_miSim < matlab.unittest.TestCase
                         continue;
                     end
 
-                    % Initialize candidate agent
+                    % Initialize candidate agent collision geometry
                     candidateGeometry = rectangularPrism;
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), @(r) 0.5, tc.sensingLength, tc.comRange, ii, sprintf("Agent %d", ii));
-                    
+                    candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
+
+                    % Initialize candidate agent sensor model
+                    sensor = fixedCardinalSensor;
+                    sensor = sensor.initialize(tc.sensingLength);
+
+                    % Initialize candidate agent
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3), candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii)); 
+
                     % Make sure candidate agent doesn't collide with
                     % domain
                     violation = false;
@@ -346,9 +353,16 @@ classdef test_miSim < matlab.unittest.TestCase
                         continue;
                     end
 
-                    % Initialize candidate agent
+                    % Initialize candidate agent collision geometry
                     candidateGeometry = rectangularPrism;
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3),candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii)), @basicGradientAscent, tc.sensingLength, tc.comRange, ii, sprintf("Agent %d", ii));
+                    candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
+                    
+                    % Initialize candidate agent sensor model
+                    sensor = fixedCardinalSensor;
+                    sensor.initialize(tc.sensingLength);
+
+                    % Initialize candidate agent
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), eye(3), candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii));
                     
                     % Make sure candidate agent doesn't collide with
                     % domain

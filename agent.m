@@ -5,8 +5,11 @@ classdef agent
         label = "";
 
         % Sensor
-        sensingFunction = @(r) 0.5; % probability of detection as a function of range
+        sensorModel;
         sensingLength = 0.05; % length parameter used by sensing function
+
+        % Guidance
+        guidanceModel;
 
         % State
         lastPos = NaN(1, 3); % position from previous timestep
@@ -25,15 +28,15 @@ classdef agent
     end
 
     methods (Access = public)
-        function obj = initialize(obj, pos, vel, cBfromC, collisionGeometry, sensingFunction, sensingLength, comRange, index, label)
+        function obj = initialize(obj, pos, vel, cBfromC, collisionGeometry, sensorModel, guidanceModel, comRange, index, label)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'agent')};
                 pos (1, 3) double;
                 vel (1, 3) double;
                 cBfromC (3, 3) double {mustBeDcm};
                 collisionGeometry (1, 1) {mustBeGeometry};
-                sensingFunction (1, 1) {mustBeA(sensingFunction, 'function_handle')} = @(r) 0.5;
-                sensingLength (1, 1) double = NaN;
+                sensorModel (1, 1) {mustBeSensor}
+                guidanceModel (1, 1) {mustBeA(guidanceModel, 'function_handle')};
                 comRange (1, 1) double = NaN;
                 index (1, 1) double = NaN;
                 label (1, 1) string = "";
@@ -46,8 +49,8 @@ classdef agent
             obj.vel = vel;
             obj.cBfromC = cBfromC;
             obj.collisionGeometry = collisionGeometry;
-            obj.sensingFunction = sensingFunction;
-            obj.sensingLength = sensingLength;
+            obj.sensorModel = sensorModel;
+            obj.guidanceModel = guidanceModel;
             obj.comRange = comRange;
             obj.index = index;
             obj.label = label;
@@ -62,8 +65,11 @@ classdef agent
                 obj (1, 1) {mustBeA(obj, 'agent')};
             end
 
-            % Do sensing to determine target position
-            nextPos = obj.sensingFunction(objectiveFunction, domain, obj.pos, obj.sensingLength);
+            % Do sensing
+            [sensedValues, sensedPositions] = obj.sensorModel.sense(objectiveFunction, domain, obj.pos);
+
+            % Determine next planned position
+            nextPos = obj.guidanceModel(sensedValues, sensedPositions, obj.pos);
 
             % Move to next position
             % (dynamics not modeled at this time)
