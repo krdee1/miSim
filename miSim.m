@@ -13,7 +13,6 @@ classdef miSim
     end
 
     properties (Access = private)
-        v = VideoWriter(fullfile('sandbox', strcat(string(datetime('now'), 'yyyy_MM_dd_HH_mm_ss'), '_miSimHist')));
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot
     end
@@ -94,9 +93,8 @@ classdef miSim
             times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
 
             % Start video writer
-            % obj.v.FrameRate = 1/obj.timestep;
-            % obj.v.Quality = 90;
-            obj.v.open();
+            v = setupVideoWriter(obj.timestep);
+            v.open();
 
             for ii = 1:size(times, 1)
                 % Display current sim time
@@ -116,11 +114,11 @@ classdef miSim
 
                 % Write frame in to video
                 I = getframe(f);
-                obj.v.writeVideo(I);
+                v.writeVideo(I);
             end
 
             % Close video file
-            obj.v.close();
+            v.close();
         end
         function [obj, f] = updatePlots(obj, f)
             arguments (Input)

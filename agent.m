@@ -15,7 +15,8 @@ classdef agent
         lastPos = NaN(1, 3); % position from previous timestep
         pos = NaN(1, 3); % current position
         vel = NaN(1, 3); % current velocity
-        cBfromC = NaN(3); % current DCM body from sim cartesian (assume fixed for now)
+        pan = NaN; % pan angle
+        tilt = NaN; % tilt angle
 
         % Collision
         collisionGeometry;
@@ -28,12 +29,13 @@ classdef agent
     end
 
     methods (Access = public)
-        function obj = initialize(obj, pos, vel, cBfromC, collisionGeometry, sensorModel, guidanceModel, comRange, index, label)
+        function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'agent')};
                 pos (1, 3) double;
                 vel (1, 3) double;
-                cBfromC (3, 3) double {mustBeDcm};
+                pan (1, 1) double;
+                tilt (1, 1) double;
                 collisionGeometry (1, 1) {mustBeGeometry};
                 sensorModel (1, 1) {mustBeSensor}
                 guidanceModel (1, 1) {mustBeA(guidanceModel, 'function_handle')};
@@ -47,7 +49,8 @@ classdef agent
 
             obj.pos = pos;
             obj.vel = vel;
-            obj.cBfromC = cBfromC;
+            obj.pan = pan;
+            obj.tilt = tilt;
             obj.collisionGeometry = collisionGeometry;
             obj.sensorModel = sensorModel;
             obj.guidanceModel = guidanceModel;
