@@ -163,9 +163,10 @@ classdef rectangularPrism
 
             c = (tmax >= 0) && (tmin <= 1);
         end
-        function [obj, f] = plotWireframe(obj, f)
+        function [obj, f] = plotWireframe(obj, ind, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
+                ind (1, :) double = NaN;
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
@@ -181,17 +182,20 @@ classdef rectangularPrism
             Y = [obj.vertices(obj.edges(:,1),2), obj.vertices(obj.edges(:,2),2)]';
             Z = [obj.vertices(obj.edges(:,1),3), obj.vertices(obj.edges(:,2),3)]';
 
-            % Plot the boundaries of the geometry
-            hold(f.CurrentAxes, "on");
-            o = plot3(X, Y, Z, '-', 'Color', obj.tag.color, 'LineWidth', 2);
-            hold(f.CurrentAxes, "off");
+            % Plot the boundaries of the geometry into 3D view
+            if isnan(ind)
+                o = plot3(f.CurrentAxes, X, Y, Z, '-', 'Color', obj.tag.color, 'LineWidth', 2);
+            else
+                hold(f.Children(1).Children(ind(1)), "on");
+                o = plot3(f.Children(1).Children(ind(1)), X, Y, Z, '-', 'Color', obj.tag.color, 'LineWidth', 2);
+                hold(f.Children(1).Children(ind(1)), "off");
+            end
 
-            % Check if this is a tiled layout figure
-            if strcmp(f.Children(1).Type, 'tiledlayout')
-                % Add to other perspectives
-                o = [o, copyobj(o(:, 1), f.Children(1).Children(2))];
-                o = [o, copyobj(o(:, 1), f.Children(1).Children(3))];
-                o = [o, copyobj(o(:, 1), f.Children(1).Children(5))];
+            % Copy to other requested tiles
+            if numel(ind) > 1
+                for ii = 2:size(ind, 2)
+                    o = [o, copyobj(o(:, 1), f.Children(1).Children(ind(ii)))];
+                end
             end
 
             obj.lines = o;

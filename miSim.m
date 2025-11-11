@@ -10,11 +10,20 @@ classdef miSim
         obstacles = cell(0, 1); % geometries that define obstacles within the domain
         agents = cell(0, 1); % agents that move within the domain
         adjacency = NaN; % Adjacency matrix representing communications network graph
+        partitioning = NaN;
     end
 
     properties (Access = private)
+        % Plot objects
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot
+        partitionPlot; % objects for partition plot
+
+        % Indicies for various plot types in the main tiled layout figure
+        spatialPlotIndices = [6, 4, 3, 2];
+        objectivePlotIndices = [6, 4];
+        networkGraphIndex = 5;
+        partitionGraphIndex = 1;
     end
 
     methods (Access = public)
@@ -52,29 +61,35 @@ classdef miSim
             % Compute adjacency matrix
             obj = obj.updateAdjacency();
 
+            % Create initial partitioning
+            obj = obj.partition();
+
             % Set up initial plot
             % Set up axes arrangement
             % Plot domain
-            [obj.domain, f] = obj.domain.plotWireframe();
+            [obj.domain, f] = obj.domain.plotWireframe(obj.spatialPlotIndices);
 
             % Plot obstacles
             for ii = 1:size(obj.obstacles, 1)
-                [obj.obstacles{ii}, f] = obj.obstacles{ii}.plotWireframe(f);
+                [obj.obstacles{ii}, f] = obj.obstacles{ii}.plotWireframe(obj.spatialPlotIndices, f);
             end
 
             % Plot objective gradient
-            f = obj.objective.plot(f);
+            f = obj.objective.plot(obj.objectivePlotIndices, f);
 
             % Plot agents and their collision geometries
             for ii = 1:size(obj.agents, 1)
-                [obj.agents{ii}, f] = obj.agents{ii}.plot(f);
+                [obj.agents{ii}, f] = obj.agents{ii}.plot(obj.spatialPlotIndices, f);
             end
 
             % Plot communication links
-            [obj, f] = obj.plotConnections(f);
+            [obj, f] = obj.plotConnections(obj.spatialPlotIndices, f);
 
             % Plot abstract network graph
-            [obj, f] = obj.plotGraph(f);
+            [obj, f] = obj.plotGraph(obj.networkGraphIndex, f);
+
+            % Plot domain partitioning
+            [obj, f] = obj.plotPartitions(obj.partitionGraphIndex, f);
         end
         function [obj, f] = run(obj, f)
             arguments (Input)
@@ -119,6 +134,31 @@ classdef miSim
 
             % Close video file
             v.close();
+        end
+        function obj = partition(obj)
+            arguments (Input)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+            end
+            arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+            end
+
+            % Assess sensing performance of each agent at each sample point
+            % in the domain
+            agentPerformances = cellfun(@(x) reshape(x.sensorModel.sensorPerformance(x.pos, x.pan, x.tilt, [obj.objective.X(:), obj.objective.Y(:), zeros(size(obj.objective.X(:)))]), size(obj.objective.X)), obj.agents, 'UniformOutput', false);
+            agentPerformances = cat(3, agentPerformances{:});
+            
+            % Get highest performance value at each point
+            [~, idx] = max(agentPerformances, [], 3);
+
+            % Collect agent indices in the same way
+            agentInds = cellfun(@(x) x.index * ones(size(obj.objective.X)), obj.agents, 'UniformOutput', false);
+            agentInds = cat(3, agentInds{:});
+
+            % Get highest performing agent's index
+            [m,n,~] = size(agentInds);
+            [i,j] = ndgrid(1:m, 1:n);
+            obj.partitioning = agentInds(sub2ind(size(agentInds), i, j, idx));
         end
         function [obj, f] = updatePlots(obj, f)
             arguments (Input)
@@ -171,15 +211,20 @@ classdef miSim
                                 A(ii, jj) = true;
                             end
                         end
+                        % need extra handling for cases with no obstacles
+                        if isempty(obj.obstacles)
+                            A(ii, jj) = true;
+                        end
                     end
                 end
             end
 
             obj.adjacency = A | A';
         end
-        function [obj, f] = plotConnections(obj, f)
+        function [obj, f] = plotConnections(obj, ind, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
+                ind (1, :) double = NaN;
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
@@ -202,23 +247,57 @@ classdef miSim
             X = X'; Y = Y'; Z = Z';
 
             % Plot the connections
-            hold(f.CurrentAxes, "on");
-            o = plot3(X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
-            hold(f.CurrentAxes, "off");
+            if isnan(ind)
+                hold(f.CurrentAxes, "on");
+                o = plot3(f.CurrentAxes, X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
+                hold(f.CurrentAxes, "off");
+            else
+                hold(f.Children(1).Children(ind(1)), "on");
+                o = plot3(f.Children(1).Children(ind(1)), X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
+                hold(f.Children(1).Children(ind(1)), "off");
+            end
 
-            % Check if this is a tiled layout figure
-            if strcmp(f.Children(1).Type, 'tiledlayout')
-                % Add to other plots
-                o = [o, copyobj(o(:, 1), f.Children(1).Children(2))];
-                o = [o, copyobj(o(:, 1), f.Children(1).Children(3))];
-                o = [o, copyobj(o(:, 1), f.Children(1).Children(5))];
+            % Copy to other plots
+            if size(ind, 2) > 1
+                for ii = 2:size(ind, 2)
+                    o = [o, copyobj(o(:, 1), f.Children(1).Children(ind(ii)))];
+                end 
             end
 
             obj.connectionsPlot = o;
         end
-        function [obj, f] = plotGraph(obj, f)
+        function [obj, f] = plotPartitions(obj, ind, f)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
+                ind (1, :) double = NaN;
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
+            end
+            arguments (Output)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+                f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
+            end
+
+            if isnan(ind)
+                hold(f.CurrentAxes, 'on');
+                o = imagesc(f.CurrentAxes, obj.partitioning);
+                hold(f.CurrentAxes, 'off');
+            else
+                hold(f.Children(1).Children(ind(1)), 'on');
+                o = imagesc(f.Children(1).Children(ind(1)), obj.partitioning);
+                hold(f.Children(1).Children(ind(1)), 'on');
+                if size(ind, 2) > 1
+                    for ii = 2:size(ind, 2)
+                        o = [o, copyobj(o(1), f.Children(1).Children(ind(ii)))];
+                    end
+                end
+            end
+            obj.partitionPlot = o;
+
+        end
+        function [obj, f] = plotGraph(obj, ind, f)
+            arguments (Input)
+                obj (1, 1) {mustBeA(obj, 'miSim')};
+                ind (1, :) double = NaN;
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
@@ -230,9 +309,21 @@ classdef miSim
             G = graph(obj.adjacency, 'omitselfloops');
 
             % Plot graph object
-            hold(f.Children(1).Children(4), 'on');
-            obj.graphPlot = plot(f.Children(1).Children(4), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
-            hold(f.Children(1).Children(4), 'off');
+            if isnan(ind)
+                hold(f.CurrentAxes, 'on');
+                o = plot(f.CurrentAxes, G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
+                hold(f.CurrentAxes, 'off');
+            else
+                hold(f.Children(1).Children(ind(1)), 'on');
+                o = plot(f.Children(1).Children(ind(1)), G, 'LineStyle', '--', 'EdgeColor', 'g', 'NodeColor', 'k', 'LineWidth', 2);
+                hold(f.Children(1).Children(ind(1)), 'off');
+                if size(ind, 2) > 1
+                    for ii = 2:size(ind, 2)
+                        o = [o; copyobj(o(1), f.Children(1).Children(ind(ii)))];
+                    end
+                end
+            end
+            obj.graphPlot = o;
         end
     end
 

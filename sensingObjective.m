@@ -46,9 +46,10 @@ classdef sensingObjective
             idx = obj.values == max(obj.values, [], "all");
             obj.groundPos = [obj.X(idx), obj.Y(idx)];
         end
-        function f = plot(obj, f)
+        function f = plot(obj, ind, f)
             arguments (Input)
                 obj (1,1) {mustBeA(obj, 'sensingObjective')};
+                ind (1, :) double = NaN;
                 f (1,1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
             end
             arguments (Output)
@@ -58,24 +59,27 @@ classdef sensingObjective
             % Create axes if they don't already exist
             f = firstPlotSetup(f);
 
-            % Check if this is a tiled layout figure
-            if strcmp(f.Children(1).Type, 'tiledlayout')
-                % Plot gradient on the "floor" of the domain
-                hold(f.Children(1).Children(3), "on");
-                o = surf(f.Children(1).Children(3), obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
-                o.HitTest = 'off';
-                o.PickableParts = 'none';
-                hold(f.Children(1).Children(3), "off");
-
-                % Add to other perspectives
-                copyobj(o, f.Children(1).Children(5));
-            else
-                % Plot gradient on the "floor" of the domain
+            % Plot gradient on the "floor" of the domain
+            if isnan(ind)
                 hold(f.CurrentAxes, "on");
-                o = surf(obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
+                o = surf(f.CurrentAxes, obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
                 o.HitTest = 'off';
                 o.PickableParts = 'none';
                 hold(f.CurrentAxes, "off");
+
+            else
+                hold(f.Children(1).Children(ind(1)), "on");
+                o = surf(f.Children(1).Children(ind(1)), obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
+                o.HitTest = 'off';
+                o.PickableParts = 'none';
+                hold(f.Children(1).Children(ind(1)), "off");
+            end
+
+            % Add to other perspectives
+            if size(ind, 2) > 1
+                for ii = 2:size(ind, 2)
+                    copyobj(o, f.Children(1).Children(ind(ii)));
+                end
             end
         end
     end
