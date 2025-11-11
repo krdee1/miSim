@@ -4,7 +4,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Domain
         domain = rectangularPrism; % domain geometry
-        maxIter = 1000;
+        maxIter = 250;
         timestep = 0.05
 
         % Obstacles
@@ -358,8 +358,8 @@ classdef test_miSim < matlab.unittest.TestCase
                     candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
                     
                     % Initialize candidate agent sensor model
-                    sensor = fixedCardinalSensor;
-                    sensor.initialize(tc.sensingLength);
+                    sensor = sigmoidSensor;
+                    sensor = sensor.initialize(1, 1, 1, 1, 1, 1);
 
                     % Initialize candidate agent
                     newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii));
@@ -414,6 +414,35 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Run simulation loop
             [tc.testClass, f] = tc.testClass.run(f);
+        end
+        function test_basic_partitioning(tc)
+            % place agents a fixed distance +/- X from the domain's center
+            d = 1;
+            c = 0.1;
+
+            % make basic domain
+            tc.domain = tc.domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.objective = tc.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2), eye(2)), tc.domain.footprint, tc.domain.minCorner(3), tc.objectiveDiscretizationStep);
+        
+            % Initialize agent collision geometry
+            geometry1 = rectangularPrism;
+            geometry2 = geometry1;
+            geometry1 = geometry1.initialize([tc.domain.center + [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry2 = geometry2.initialize([tc.domain.center - [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center - [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 2));
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            sensor = sensor.initialize(1, 1, 1, 1, 1, 1);
+    
+            % Initialize agents
+            tc.agents = {agent; agent};
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3*d, 1, sprintf("Agent %d", 1));
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*d, 2, sprintf("Agent %d", 2));
+
+            % Initialize the simulation
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter);
         end
     end
 end
