@@ -1,12 +1,12 @@
 classdef sigmoidSensor
     properties (SetAccess = private, GetAccess = public)
         % Sensor parameters
-        alphaDist;
-        betaDist;
-        alphaPan;
-        betaPan;
-        alphaTilt;
-        betaTilt;
+        alphaDist = NaN;
+        betaDist = NaN;
+        alphaPan = NaN;
+        betaPan = NaN;
+        alphaTilt = NaN;
+        betaTilt = NaN;
     end
 
     methods (Access = public)
@@ -31,19 +31,26 @@ classdef sigmoidSensor
             obj.alphaTilt = alphaTilt;
             obj.betaTilt = betaTilt;
         end
-        function [neighborValues, neighborPos] = sense(obj, objectiveFunction, domain, pos)
+        function [values, positions] = sense(obj, agent, sensingObjective, domain, partitioning)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'sigmoidSensor')};
-                objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
+                agent (1, 1) {mustBeA(agent, 'agent')};
+                sensingObjective (1, 1) {mustBeA(sensingObjective, 'sensingObjective')};
                 domain (1, 1) {mustBeGeometry};
-                pos (1, 3) double;
+                partitioning (:, :) double;
             end
             arguments (Output)
-                neighborValues (4, 1) double;
-                neighborPos (4, 3) double;
+                values (:, 1) double;
+                positions (:, 3) double;
             end
-            
-            
+
+            % Find positions for this agent's assigned partition in the domain
+            idx = partitioning == agent.index;
+            positions = [sensingObjective.X(idx), sensingObjective.Y(idx), zeros(size(sensingObjective.X(idx)))];
+
+            % Evaluate objective function at every point in this agent's
+            % assigned partiton
+            values = sensingObjective.values(idx);
         end
         function value = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos)
             arguments (Input)

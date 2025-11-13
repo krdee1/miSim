@@ -6,6 +6,7 @@ classdef test_miSim < matlab.unittest.TestCase
         domain = rectangularPrism; % domain geometry
         maxIter = 250;
         timestep = 0.05
+        partitoningFreq = 5;
 
         % Obstacles
         minNumObstacles = 1; % Minimum number of obstacles to be randomly generated
@@ -242,7 +243,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter, tc.obstacles);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
         end
         function misim_run(tc)
             % randomly create obstacles
@@ -410,7 +411,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter, tc.obstacles);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
 
             % Run simulation loop
             [tc.testClass, f] = tc.testClass.run(f);
@@ -418,7 +419,6 @@ classdef test_miSim < matlab.unittest.TestCase
         function test_basic_partitioning(tc)
             % place agents a fixed distance +/- X from the domain's center
             d = 1;
-            c = 0.1;
 
             % make basic domain
             tc.domain = tc.domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
@@ -442,7 +442,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*d, 2, sprintf("Agent %d", 2));
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.maxIter);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
         end
     end
 end

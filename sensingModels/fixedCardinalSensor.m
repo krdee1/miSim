@@ -15,12 +15,13 @@ classdef fixedCardinalSensor
             end
             obj.r = r;
         end
-        function [neighborValues, neighborPos] = sense(obj, objectiveFunction, domain, pos)
+        function [neighborValues, neighborPos] = sense(obj, agent, sensingObjective, domain, partitioning)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'fixedCardinalSensor')};
-                objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
+                agent (1, 1) {mustBeA(agent, 'agent')};
+                sensingObjective (1, 1) {mustBeA(sensingObjective, 'sensingObjective')};
                 domain (1, 1) {mustBeGeometry};
-                pos (1, 3) double;
+                partitioning (:, :) double = NaN;
             end
             arguments (Output)
                 neighborValues (4, 1) double;
@@ -28,7 +29,7 @@ classdef fixedCardinalSensor
             end
         
             % Evaluate objective at position offsets +/-[r, 0, 0] and +/-[0, r, 0]
-            currentPos = pos(1:2);
+            currentPos = agent.pos(1:2);
             neighborPos = [currentPos(1) + obj.r, currentPos(2); ... % (+x)
                            currentPos(1), currentPos(2) + obj.r; ... % (+y)
                            currentPos(1) - obj.r, currentPos(2); ... % (-x)
@@ -44,13 +45,13 @@ classdef fixedCardinalSensor
             end
         
             % Replace out of bounds positions with inoffensive in-bounds positions
-            neighborPos(outOfBounds, 1:3) = repmat(pos, sum(outOfBounds), 1);
+            neighborPos(outOfBounds, 1:3) = repmat(agent.pos, sum(outOfBounds), 1);
         
             % Sense values at selected positions
-            neighborValues = [objectiveFunction(neighborPos(1, 1), neighborPos(1, 2)), ... % (+x)
-                              objectiveFunction(neighborPos(2, 1), neighborPos(2, 2)), ... % (+y)
-                              objectiveFunction(neighborPos(3, 1), neighborPos(3, 2)), ... % (-x)
-                              objectiveFunction(neighborPos(4, 1), neighborPos(4, 2)), ... % (-y)
+            neighborValues = [sensingObjective.objectiveFunction(neighborPos(1, 1), neighborPos(1, 2)), ... % (+x)
+                              sensingObjective.objectiveFunction(neighborPos(2, 1), neighborPos(2, 2)), ... % (+y)
+                              sensingObjective.objectiveFunction(neighborPos(3, 1), neighborPos(3, 2)), ... % (-x)
+                              sensingObjective.objectiveFunction(neighborPos(4, 1), neighborPos(4, 2)), ... % (-y)
                              ];
         
             % Prevent out of bounds locations from ever possibly being selected

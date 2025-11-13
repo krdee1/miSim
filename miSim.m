@@ -4,6 +4,7 @@ classdef miSim
     % Simulation parameters
     properties (SetAccess = private, GetAccess = public)
         timestep = NaN; % delta time interval for simulation iterations
+        partitioningFreq = NaN; % number of simulation timesteps at which the partitioning routine is re-run
         maxIter = NaN; % maximum number of simulation iterations
         domain = rectangularPrism;
         objective = sensingObjective;
@@ -27,13 +28,14 @@ classdef miSim
     end
 
     methods (Access = public)
-        function [obj, f] = initialize(obj, domain, objective, agents, timestep, maxIter, obstacles)
+        function [obj, f] = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 domain (1, 1) {mustBeGeometry};
                 objective (1, 1) {mustBeA(objective, 'sensingObjective')};
                 agents (:, 1) cell;
                 timestep (:, 1) double = 0.05;
+                partitoningFreq (:, 1) double = 0.25
                 maxIter (:, 1) double = 1000;
                 obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
             end
@@ -48,6 +50,7 @@ classdef miSim
 
             % Define domain
             obj.domain = domain;
+            obj.partitioningFreq = partitoningFreq;
 
             % Add geometries representing obstacles within the domain
             obj.obstacles = obstacles;
@@ -106,6 +109,7 @@ classdef miSim
 
             % Set up times to iterate over
             times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
+            partitioningTimes = times(obj.partitioningFreq:obj.partitioningFreq:size(times, 1));
 
             % Start video writer
             v = setupVideoWriter(obj.timestep);
@@ -116,16 +120,23 @@ classdef miSim
                 t = times(ii);
                 fprintf("Sim Time: %4.2f (%d/%d)\n", t, ii, obj.maxIter)
 
+                % Check if it's time for new partitions
+                updatePartitions = false;
+                if ismember(t, partitioningTimes)
+                    updatePartitions = true;
+                    obj = obj.partition();
+                end
+
                 % Iterate over agents to simulate their motion
                 for jj = 1:size(obj.agents, 1)
-                    obj.agents{jj} = obj.agents{jj}.run(obj.objective.objectiveFunction, obj.domain);
+                    obj.agents{jj} = obj.agents{jj}.run(obj.objective, obj.domain, obj.partitioning);
                 end
     
                 % Update adjacency matrix
                 obj = obj.updateAdjacency;
     
                 % Update plots
-                [obj, f] = obj.updatePlots(f);
+                [obj, f] = obj.updatePlots(f, updatePartitions);
 
                 % Write frame in to video
                 I = getframe(f);
@@ -160,10 +171,11 @@ classdef miSim
             [i,j] = ndgrid(1:m, 1:n);
             obj.partitioning = agentInds(sub2ind(size(agentInds), i, j, idx));
         end
-        function [obj, f] = updatePlots(obj, f)
+        function [obj, f] = updatePlots(obj, f, updatePartitions)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
                 f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
+                updatePartitions (1, 1) logical = false;
             end
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'miSim')};
@@ -181,11 +193,17 @@ classdef miSim
 
             % Update agent connections plot
             delete(obj.connectionsPlot);
-            [obj, f] = obj.plotConnections(f);
+            [obj, f] = obj.plotConnections(obj.spatialPlotIndices, f);
 
             % Update network graph plot
             delete(obj.graphPlot);
-            [obj, f] = obj.plotGraph(f);
+            [obj, f] = obj.plotGraph(obj.networkGraphIndex, f);
+
+            % Update partitioning plot
+            if updatePartitions
+                delete(obj.partitionPlot);
+                [obj, f] = obj.plotPartitions(obj.partitionGraphIndex, f);
+            end
 
             drawnow;
         end
