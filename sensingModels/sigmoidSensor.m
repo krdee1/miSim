@@ -7,6 +7,8 @@ classdef sigmoidSensor
         betaPan = NaN;
         alphaTilt = NaN;
         betaTilt = NaN;
+
+        r = NaN;
     end
 
     methods (Access = public)
@@ -30,6 +32,8 @@ classdef sigmoidSensor
             obj.betaPan = betaPan;
             obj.alphaTilt = alphaTilt;
             obj.betaTilt = betaTilt;
+
+            obj.r = obj.alphaDist;
         end
         function [values, positions] = sense(obj, agent, sensingObjective, domain, partitioning)
             arguments (Input)

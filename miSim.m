@@ -205,6 +205,13 @@ classdef miSim
                 [obj, f] = obj.plotPartitions(obj.partitionGraphIndex, f);
             end
 
+            % reset plot limits to fit domain
+            for ii = 1:size(obj.spatialPlotIndices, 2)
+                xlim(f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(1), obj.domain.maxCorner(1)]);
+                ylim(f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(2), obj.domain.maxCorner(2)]);
+                zlim(f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(3), obj.domain.maxCorner(3)]);
+            end
+
             drawnow;
         end
         function obj = updateAdjacency(obj)

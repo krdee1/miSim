@@ -21,6 +21,9 @@ classdef agent
         % Collision
         collisionGeometry;
 
+        % FOV cone
+        fovGeometry;
+
         % Communication
         comRange = NaN;
 
@@ -57,6 +60,10 @@ classdef agent
             obj.comRange = comRange;
             obj.index = index;
             obj.label = label;
+
+            % Initialize FOV cone
+            obj.fovGeometry = cone;
+            obj.fovGeometry = obj.fovGeometry.initialize([obj.pos(1:2), 0], obj.sensorModel.r, obj.pos(3), REGION_TYPE.FOV, sprintf("%s FOV", obj.label));
         end
         function obj = run(obj, sensingObjective, domain, partitioning)
             arguments (Input)
@@ -113,7 +120,13 @@ classdef agent
                 end
             end
 
-            % Network connections
+            % Update FOV geometry surfaces
+            for jj = 1:size(obj.fovGeometry.surface, 2)
+                % Update each plot
+                obj.fovGeometry.surface(jj).XData = obj.fovGeometry.surface(jj).XData + deltaPos(1);
+                obj.fovGeometry.surface(jj).YData = obj.fovGeometry.surface(jj).YData + deltaPos(2);
+                obj.fovGeometry.surface(jj).ZData = obj.fovGeometry.surface(jj).ZData + deltaPos(3);
+            end
         end
         function [obj, f] = plot(obj, ind, f)
             arguments (Input)
@@ -146,6 +159,9 @@ classdef agent
 
             % Plot collision geometry
             [obj.collisionGeometry, f] = obj.collisionGeometry.plotWireframe(ind, f);
+
+            % Plot FOV geometry
+            [obj.fovGeometry, f] = obj.fovGeometry.plot(ind, f);
         end
     end
 end
