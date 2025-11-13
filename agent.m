@@ -58,18 +58,19 @@ classdef agent
             obj.index = index;
             obj.label = label;
         end
-        function obj = run(obj, objectiveFunction, domain)
+        function obj = run(obj, sensingObjective, domain, partitioning)
             arguments (Input)
                 obj (1, 1) {mustBeA(obj, 'agent')};
-                objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
+                sensingObjective (1, 1) {mustBeA(sensingObjective, 'sensingObjective')};
                 domain (1, 1) {mustBeGeometry};
+                partitioning (:, :) double;
             end
             arguments (Output)
                 obj (1, 1) {mustBeA(obj, 'agent')};
             end
 
             % Do sensing
-            [sensedValues, sensedPositions] = obj.sensorModel.sense(objectiveFunction, domain, obj.pos);
+            [sensedValues, sensedPositions] = obj.sensorModel.sense(obj, sensingObjective, domain, partitioning);
 
             % Determine next planned position
             nextPos = obj.guidanceModel(sensedValues, sensedPositions, obj.pos);
