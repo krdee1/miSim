@@ -7,8 +7,6 @@ classdef sigmoidSensor
         betaPan = NaN;
         alphaTilt = NaN;
         betaTilt = NaN;
-
-        r = NaN;
     end
 
     methods (Access = public)
@@ -32,8 +30,6 @@ classdef sigmoidSensor
             obj.betaPan = betaPan;
             obj.alphaTilt = alphaTilt;
             obj.betaTilt = betaTilt;
-
-            obj.r = obj.alphaDist;
         end
         function [values, positions] = sense(obj, agent, sensingObjective, domain, partitioning)
             arguments (Input)
@@ -68,13 +64,13 @@ classdef sigmoidSensor
                 value (:, 1) double;
             end
 
-            d = vecnorm(agentPos - targetPos, 2, 2);
-            panAngle = atan2(targetPos(:, 2) - agentPos(2), targetPos(:, 1) - agentPos(1)) - agentPan;
-            tiltAngle = atan2(targetPos(:, 3) - agentPos(3), d) - agentTilt;
+            d = vecnorm(agentPos - targetPos, 2, 2); % distance from sensor to target
+            x = vecnorm(agentPos(1:2) - targetPos(:, 1:2), 2, 2); % distance from sensor nadir to target nadir (i.e. distance ignoring height difference)
+            tiltAngle = atan2(targetPos(:, 3) - agentPos(3), x) - agentTilt;
 
             % Membership functions
             mu_d = 1 - (1 ./ (1 + exp(-obj.betaDist .* (d - obj.alphaDist)))); % distance
-            mu_p = (1 ./ (1 + exp(-obj.betaPan .* (panAngle + obj.alphaPan)))) - (1 ./ (1 + exp(-obj.betaPan .* (panAngle - obj.alphaPan)))); % pan
+            mu_p = 1; % pan
             mu_t = (1 ./ (1 + exp(-obj.betaPan .* (tiltAngle + obj.alphaPan)))) - (1 ./ (1 + exp(-obj.betaPan .* (tiltAngle - obj.alphaPan)))); % tilt
 
             value = mu_d .* mu_p .* mu_t * 1e12;
