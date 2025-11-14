@@ -1,6 +1,7 @@
 classdef fixedCardinalSensor
     % Senses in the +/-x, +/- y directions at some specified fixed length
     properties
+        alphaTilt = NaN;
         r = 0.1; % fixed sensing length
     end
 
@@ -27,6 +28,9 @@ classdef fixedCardinalSensor
                 neighborValues (4, 1) double;
                 neighborPos (4, 3) double;
             end
+
+            % Set alphaTilt to produce an FOV cone with radius 'r' on the ground
+            obj.alphaTilt = atan2(obj.r, agent.pos(3));
         
             % Evaluate objective at position offsets +/-[r, 0, 0] and +/-[0, r, 0]
             currentPos = agent.pos(1:2);
@@ -70,7 +74,6 @@ classdef fixedCardinalSensor
             end
 
             value = 0.5 * ones(size(targetPos, 1), 1);
-            
         end
     end
 end
