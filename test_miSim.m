@@ -360,7 +360,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     
                     % Initialize candidate agent sensor model
                     sensor = sigmoidSensor;
-                    sensor = sensor.initialize(1, 1, 1, 1, 1, 1);
+                    sensor = sensor.initialize(2.5, 3, NaN, NaN, deg2rad(15), 3);
 
                     % Initialize candidate agent
                     newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii));
@@ -434,7 +434,7 @@ classdef test_miSim < matlab.unittest.TestCase
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
-            sensor = sensor.initialize(1, 1, 1, 1, 1, 1);
+            sensor = sensor.initialize(2.5, 3, NaN, NaN, deg2rad(15), 3);
     
             % Initialize agents
             tc.agents = {agent; agent};

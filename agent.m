@@ -63,7 +63,7 @@ classdef agent
 
             % Initialize FOV cone
             obj.fovGeometry = cone;
-            obj.fovGeometry = obj.fovGeometry.initialize([obj.pos(1:2), 0], obj.sensorModel.r, obj.pos(3), REGION_TYPE.FOV, sprintf("%s FOV", obj.label));
+            obj.fovGeometry = obj.fovGeometry.initialize([obj.pos(1:2), 0], tan(obj.sensorModel.alphaTilt) * obj.pos(3), obj.pos(3), REGION_TYPE.FOV, sprintf("%s FOV", obj.label));
         end
         function obj = run(obj, sensingObjective, domain, partitioning)
             arguments (Input)
