@@ -77,7 +77,7 @@ classdef sigmoidSensor
             mu_p = (1 ./ (1 + exp(-obj.betaPan .* (panAngle + obj.alphaPan)))) - (1 ./ (1 + exp(-obj.betaPan .* (panAngle - obj.alphaPan)))); % pan
             mu_t = (1 ./ (1 + exp(-obj.betaPan .* (tiltAngle + obj.alphaPan)))) - (1 ./ (1 + exp(-obj.betaPan .* (tiltAngle - obj.alphaPan)))); % tilt
 
-            value = mu_d .* mu_p .* mu_t;
+            value = mu_d .* mu_p .* mu_t * 1e12;
         end
     end
 end
