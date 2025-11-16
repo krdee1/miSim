@@ -17,7 +17,7 @@ function value = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos
     % Membership functions
     mu_d = 1 - (1 ./ (1 + exp(-obj.betaDist .* (d - obj.alphaDist)))); % distance
     mu_p = 1; % pan
-    mu_t = (1 ./ (1 + exp(-obj.betaPan .* (tiltAngle + obj.alphaPan)))) - (1 ./ (1 + exp(-obj.betaPan .* (tiltAngle - obj.alphaPan)))); % tilt
+    mu_t = (1 ./ (1 + exp(-obj.betaTilt .* (tiltAngle + obj.alphaTilt)))) - (1 ./ (1 + exp(-obj.betaTilt .* (tiltAngle - obj.alphaTilt)))); % tilt
 
-    value = mu_d .* mu_p .* mu_t * 1e12;
+    value = mu_d .* mu_p .* mu_t;
 end

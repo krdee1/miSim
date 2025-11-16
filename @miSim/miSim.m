@@ -11,6 +11,7 @@ classdef miSim
         obstacles = cell(0, 1); % geometries that define obstacles within the domain
         agents = cell(0, 1); % agents that move within the domain
         adjacency = NaN; % Adjacency matrix representing communications network graph
+        sensorPerformanceMinimum = 1e-6; % minimum sensor performance to allow assignment of a point in the domain to a partition
         partitioning = NaN;
     end
 
