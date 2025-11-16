@@ -15,10 +15,7 @@ function obj = partition(obj)
     % Get highest performance value at each point
     [~, idx] = max(agentPerformances, [], 3);
 
-    % Current total performance
-    obj.performance = sum(max(agentPerformances(:, :, 1:(end - 1)), [], 3), 'all');
-
-    % Collect agent indices in the same way
+    % Collect agent indices in the same way as performance
     agentInds = cellfun(@(x) x.index * ones(size(obj.objective.X)), obj.agents, 'UniformOutput', false);
     agentInds{end + 1} = zeros(size(agentInds{end})); % index for no assignment
     agentInds = cat(3, agentInds{:});
@@ -27,4 +24,13 @@ function obj = partition(obj)
     [m,n,~] = size(agentInds);
     [i,j] = ndgrid(1:m, 1:n);
     obj.partitioning = agentInds(sub2ind(size(agentInds), i, j, idx));
+
+    % Get individual agent sensor performance
+    for ii = 1:size(obj.agents, 1)
+        obj.agents{ii}.performance = sum(agentPerformances(sub2ind(size(agentInds), i, j, idx)), 'all');
+    end
+
+    % Current total performance
+    sum(arrayfun(@(x) x.performance, [obj.agents{:}]))
+    obj.performance = sum(max(agentPerformances(:, :, 1:(end - 1)), [], 3), 'all'); % do not count final "non-assignment" layer in computing cumulative performance
 end
