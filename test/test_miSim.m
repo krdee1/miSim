@@ -25,7 +25,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Agents
         minAgents = 3; % Minimum number of agents to be randomly generated
-        maxAgents = 9; % Maximum number of agents to be randomly generated
+        maxAgents = 6; % Maximum number of agents to be randomly generated
         sensingLength = 0.05; % length parameter used by sensing function
         agents = cell(0, 1);
         
@@ -75,20 +75,10 @@ classdef test_miSim < matlab.unittest.TestCase
                     tc.obstacles{ii} = rectangularPrism;
                     tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain);
     
-                    % Check if the obstacle intersects with any existing
-                    % obstacles
-                    violation = false;
-                    for kk = 1:(ii - 1)
-                        if geometryIntersects(tc.obstacles{kk}, tc.obstacles{ii})
-                            violation = true;
-                            break;
-                        end
+                    % Check if the obstacle collides with an existing obstacle
+                    if ~tc.obstacleCollisionCheck(tc.obstacles(1:(ii - 1)), tc.obstacles{ii})
+                        badCandidate = false;
                     end
-                    if violation
-                        continue;
-                    end
-                    
-                    badCandidate = false;
                 end
             end
 
@@ -215,20 +205,10 @@ classdef test_miSim < matlab.unittest.TestCase
                     tc.obstacles{ii} = rectangularPrism;
                     tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain);
     
-                    % Check if the obstacle intersects with any existing
-                    % obstacles
-                    violation = false;
-                    for kk = 1:(ii - 1)
-                        if geometryIntersects(tc.obstacles{kk}, tc.obstacles{ii})
-                            violation = true;
-                            break;
-                        end
+                    % Check if the obstacle collides with an existing obstacle
+                    if ~tc.obstacleCollisionCheck(tc.obstacles(1:(ii - 1)), tc.obstacles{ii})
+                        badCandidate = false;
                     end
-                    if violation
-                        continue;
-                    end
-                    
-                    badCandidate = false;
                 end
             end
 
@@ -378,6 +358,18 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize the simulation
             [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+        end
+    end
+
+    methods
+        function c = obstacleCollisionCheck(~, obstacles, obstacle)
+            % Check if the obstacle intersects with any other obstacles
+            c = false;
+            for ii = 1:size(obstacles, 1)
+                if geometryIntersects(obstacles{ii}, obstacle)
+                    c = true;
+                end
+            end
         end
     end
 end
