@@ -34,6 +34,16 @@ classdef test_miSim < matlab.unittest.TestCase
         maxCollisionRange = 0.5; % Maximum randomly generated collision geometry size
         collisionRanges = NaN;
 
+        % Sensing
+        betaDistMin = 3;
+        betaDistMax = 15;
+        betaTiltMin = 3;
+        betaTiltMax = 15;
+        alphaDistMin = 2.5;
+        alphaDistMax = 3;
+        alphaTiltMin = deg2rad(15);
+        alphaTiltMax = deg2rad(30);
+
         % Communications
         comRange = 5; % Maximum range between agents that forms a communications link
     end
@@ -139,7 +149,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Initialize candidate agent sensor model
                     sensor = sigmoidSensor;
-                    sensor = sensor.initialize(2.5, 3, NaN, NaN, deg2rad(15), 3);
+                    sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
                     newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii)); 
@@ -269,7 +279,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     
                     % Initialize candidate agent sensor model
                     sensor = sigmoidSensor;
-                    sensor = sensor.initialize(2.5, 3, NaN, NaN, deg2rad(15), 3);
+                    sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
                     newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii));
@@ -343,8 +353,11 @@ classdef test_miSim < matlab.unittest.TestCase
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
+            % Homogeneous sensor model parameters
             sensor = sensor.initialize(2.5, 3, NaN, NaN, deg2rad(15), 3);
-    
+            % Heterogeneous sensor model parameters
+            % sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
+
             % Initialize agents
             tc.agents = {agent; agent};
             tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3*d, 1, sprintf("Agent %d", 1));
