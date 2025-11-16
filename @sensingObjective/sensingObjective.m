@@ -12,7 +12,8 @@ classdef sensingObjective
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, objectiveFunction, footprint, groundAlt, discretizationStep);
+        [obj] = initialize(obj, objectiveFunction, domain, discretizationStep);
+        [obj] = initializeRandomMvnpdf(obj, domain, protectedRange, discretizationStep);
         [f  ] = plot(obj, ind, f);
     end
 end

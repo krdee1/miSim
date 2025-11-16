@@ -1,22 +1,21 @@
-function obj = initialize(obj, objectiveFunction, footprint, groundAlt, discretizationStep)
+function obj = initialize(obj, objectiveFunction, domain, discretizationStep)
     arguments (Input)
         obj (1,1) {mustBeA(obj, 'sensingObjective')};
         objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
-        footprint (:, 2) double;
-        groundAlt (1, 1) double = 0;
+        domain (1, 1) {mustBeGeometry};
         discretizationStep (1, 1) double = 1;
     end
     arguments (Output)
         obj (1,1) {mustBeA(obj, 'sensingObjective')};
     end
 
-    obj.groundAlt = groundAlt;
+    obj.groundAlt = domain.minCorner(3);
 
     % Extract footprint limits
-    xMin = min(footprint(:, 1));
-    xMax = max(footprint(:, 1));
-    yMin = min(footprint(:, 2));
-    yMax = max(footprint(:, 2));
+    xMin = min(domain.footprint(:, 1));
+    xMax = max(domain.footprint(:, 1));
+    yMin = min(domain.footprint(:, 2));
+    yMax = max(domain.footprint(:, 2));
 
     xGrid = unique([xMin:discretizationStep:xMax, xMax]);
     yGrid = unique([yMin:discretizationStep:yMax, yMax]);

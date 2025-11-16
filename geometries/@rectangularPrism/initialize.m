@@ -1,9 +1,11 @@
-function obj = initialize(obj, bounds, tag, label)
+function obj = initialize(obj, bounds, tag, label, objectiveFunction, discretizationStep)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
         bounds (2, 3) double;
         tag (1, 1) REGION_TYPE = REGION_TYPE.INVALID;
         label (1, 1) string = "";
+        objectiveFunction (1, 1) function_handle = @(x, y) 1;
+        discretizationStep (1, 1) double = 1;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
@@ -12,7 +14,7 @@ function obj = initialize(obj, bounds, tag, label)
     obj.tag = tag;
     obj.label = label;
 
-    %% Define geometry bounds by LL corner and UR corner
+    % Define geometry bounds by LL corner and UR corner
     obj.minCorner = bounds(1, 1:3);
     obj.maxCorner = bounds(2, 1:3);
 
@@ -37,4 +39,9 @@ function obj = initialize(obj, bounds, tag, label)
                      [obj.minCorner(1), obj.maxCorner(2)]; ...
                      [obj.maxCorner(1), obj.minCorner(2)]; ...
                      obj.maxCorner(1:2)];
+
+    % Instantiate sensingObjective only for DOMAIN-type regions
+    if tag == REGION_TYPE.DOMAIN
+        obj.objective = sensingObjective;
+    end
 end
