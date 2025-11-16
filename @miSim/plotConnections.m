@@ -1,12 +1,9 @@
-function [obj, f] = plotConnections(obj, ind, f)
+function obj = plotConnections(obj)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
-        ind (1, :) double = NaN;
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
     end
 
     % Iterate over lower triangle off-diagonal region of the 
@@ -24,20 +21,20 @@ function [obj, f] = plotConnections(obj, ind, f)
     X = X'; Y = Y'; Z = Z';
 
     % Plot the connections
-    if isnan(ind)
-        hold(f.CurrentAxes, "on");
-        o = plot3(f.CurrentAxes, X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
-        hold(f.CurrentAxes, "off");
+    if isnan(obj.spatialPlotIndices)
+        hold(obj.f.CurrentAxes, "on");
+        o = plot3(obj.f.CurrentAxes, X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
+        hold(obj.f.CurrentAxes, "off");
     else
-        hold(f.Children(1).Children(ind(1)), "on");
-        o = plot3(f.Children(1).Children(ind(1)), X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
-        hold(f.Children(1).Children(ind(1)), "off");
+        hold(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), "on");
+        o = plot3(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
+        hold(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), "off");
     end
 
     % Copy to other plots
-    if size(ind, 2) > 1
-        for ii = 2:size(ind, 2)
-            o = [o, copyobj(o(:, 1), f.Children(1).Children(ind(ii)))];
+    if size(obj.spatialPlotIndices, 2) > 1
+        for ii = 2:size(obj.spatialPlotIndices, 2)
+            o = [o, copyobj(o(:, 1), obj.f.Children(1).Children(obj.spatialPlotIndices(ii)))];
         end 
     end
 

@@ -15,6 +15,9 @@ function obj = partition(obj)
     % Get highest performance value at each point
     [~, idx] = max(agentPerformances, [], 3);
 
+    % Current total performance
+    obj.performance = sum(max(agentPerformances(:, :, 1:(end - 1)), [], 3), 'all');
+
     % Collect agent indices in the same way
     agentInds = cellfun(@(x) x.index * ones(size(obj.objective.X)), obj.agents, 'UniformOutput', false);
     agentInds{end + 1} = zeros(size(agentInds{end})); % index for no assignment
