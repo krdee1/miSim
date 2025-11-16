@@ -9,11 +9,12 @@ classdef sensingObjective
         X = [];
         Y = [];
         values = [];
+        protectedRange = 1; % keep obstacles from crowding objective
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, objectiveFunction, domain, discretizationStep);
-        [obj] = initializeRandomMvnpdf(obj, domain, protectedRange, discretizationStep);
+        [obj] = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange);
+        [obj] = initializeRandomMvnpdf(obj, domain, protectedRange, discretizationStep, protectedRange);
         [f  ] = plot(obj, ind, f);
     end
 end

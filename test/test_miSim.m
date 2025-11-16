@@ -43,15 +43,13 @@ classdef test_miSim < matlab.unittest.TestCase
         % Generate a random domain
         function tc = setDomain(tc)
             % random integer-dimensioned cubic domain
-            tc.domain = tc.domain.initializeRandom(tc.minDimension, REGION_TYPE.DOMAIN, "Domain");
+            tc.domain = tc.domain.initializeRandom(REGION_TYPE.DOMAIN, "Domain", tc.minDimension);
             % Random bivariate normal PDF objective
-            tc.domain.objective = tc.domain.objective.initializeRandomMvnpdf(tc.domain, tc.protectedRange, tc.discretizationStep);
+            tc.domain.objective = tc.domain.objective.initializeRandomMvnpdf(tc.domain, tc.discretizationStep, tc.protectedRange);
         end
         % Instantiate agents
         function tc = setAgents(tc)
-            % Agents will be initialized under different parameters in
-            % individual test cases
-
+            % Agents will be initialized under different parameters in individual test cases
             % Instantiate a random number of agents according to parameters
             for ii = 1:randi([tc.minAgents, tc.maxAgents])
                 tc.agents{ii, 1} = agent;
@@ -73,20 +71,10 @@ classdef test_miSim < matlab.unittest.TestCase
             for ii = 1:size(tc.obstacles, 1)
                 badCandidate = true;
                 while badCandidate
-                    % Instantiate a rectangular prism obstacle
+                    % Instantiate a rectangular prism obstacle inside the domain
                     tc.obstacles{ii} = rectangularPrism;
+                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain);
     
-                    % Randomly generate min corner for the obstacle
-                    candidateMinCorner = tc.domain.random();
-                    candidateMinCorner = [candidateMinCorner(1:2), 0]; % bind obstacles to floor of domain
-    
-                    % Randomly select a corresponding maximum corner that
-                    % satisfies min/max obstacle size specifications
-                    candidateMaxCorner = candidateMinCorner + tc.minObstacleSize + rand(1, 3) * (tc.maxObstacleSize - tc.minObstacleSize);
-                
-                    % Initialize obstacle
-                    tc.obstacles{ii} = tc.obstacles{ii}.initialize([candidateMinCorner; candidateMaxCorner], REGION_TYPE.OBSTACLE, sprintf("Column obstacle %d", ii));
-
                     % Check if the obstacle intersects with any existing
                     % obstacles
                     violation = false;
@@ -97,24 +85,6 @@ classdef test_miSim < matlab.unittest.TestCase
                         end
                     end
                     if violation
-                        continue;
-                    end
-
-                    % Make sure that the obstacles are fully contained by 
-                    % the domain
-                    if ~domainContainsObstacle(tc.domain, tc.obstacles{ii})
-                        continue;
-                    end
-
-                    % Make sure that the obstacles don't cover the sensing
-                    % objective
-                    if obstacleCoversObjective(tc.domain.objective, tc.obstacles{ii})
-                        continue;
-                    end
-
-                    % Make sure that the obstacles aren't too close to the
-                    % sensing objective
-                    if obstacleCrowdsObjective(tc.domain.objective, tc.obstacles{ii}, tc.protectedRange)
                         continue;
                     end
                     
@@ -241,20 +211,10 @@ classdef test_miSim < matlab.unittest.TestCase
             for ii = 1:size(tc.obstacles, 1)
                 badCandidate = true;
                 while badCandidate
-                    % Instantiate a rectangular prism obstacle
+                    % Instantiate a rectangular prism obstacle inside the domain
                     tc.obstacles{ii} = rectangularPrism;
+                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain);
     
-                    % Randomly generate min corner for the obstacle
-                    candidateMinCorner = tc.domain.random();
-                    candidateMinCorner = [candidateMinCorner(1:2), 0]; % bind obstacles to floor of domain
-    
-                    % Randomly select a corresponding maximum corner that
-                    % satisfies min/max obstacle size specifications
-                    candidateMaxCorner = candidateMinCorner + tc.minObstacleSize + rand(1, 3) * (tc.maxObstacleSize - tc.minObstacleSize);
-                
-                    % Initialize obstacle
-                    tc.obstacles{ii} = tc.obstacles{ii}.initialize([candidateMinCorner; candidateMaxCorner], REGION_TYPE.OBSTACLE, sprintf("Column obstacle %d", ii));
-
                     % Check if the obstacle intersects with any existing
                     % obstacles
                     violation = false;
@@ -265,24 +225,6 @@ classdef test_miSim < matlab.unittest.TestCase
                         end
                     end
                     if violation
-                        continue;
-                    end
-
-                    % Make sure that the obstacles are fully contained by 
-                    % the domain
-                    if ~domainContainsObstacle(tc.domain, tc.obstacles{ii})
-                        continue;
-                    end
-
-                    % Make sure that the obstacles don't cover the sensing
-                    % objective
-                    if obstacleCoversObjective(tc.domain.objective, tc.obstacles{ii})
-                        continue;
-                    end
-
-                    % Make sure that the obstacles aren't too close to the
-                    % sensing objective
-                    if obstacleCrowdsObjective(tc.domain.objective, tc.obstacles{ii}, tc.protectedRange)
                         continue;
                     end
                     
@@ -411,7 +353,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2)), tc.domain, tc.discretizationStep);
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2)), tc.domain, tc.discretizationStep, tc.protectedRange);
         
             % Initialize agent collision geometry
             geometry1 = rectangularPrism;

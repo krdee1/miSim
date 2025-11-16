@@ -28,7 +28,7 @@ classdef rectangularPrism
 
     methods (Access = public)
         [obj   ] = initialize(obj, bounds, tag, label, objectiveFunction, discretizationStep);
-        [obj   ] = initializeRandom(obj, tag, label);
+        [obj   ] = initializeRandom(obj, tag, label, minDimension, maxDimension, domain);
         [r     ] = random(obj);
         [c     ] = contains(obj, pos);
         [d     ] = distance(obj, pos);

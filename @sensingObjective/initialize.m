@@ -1,15 +1,17 @@
-function obj = initialize(obj, objectiveFunction, domain, discretizationStep)
+function obj = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange)
     arguments (Input)
         obj (1,1) {mustBeA(obj, 'sensingObjective')};
         objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
         domain (1, 1) {mustBeGeometry};
         discretizationStep (1, 1) double = 1;
+        protectedRange (1, 1) double = 1;
     end
     arguments (Output)
         obj (1,1) {mustBeA(obj, 'sensingObjective')};
     end
 
     obj.groundAlt = domain.minCorner(3);
+    obj.protectedRange = protectedRange;
 
     % Extract footprint limits
     xMin = min(domain.footprint(:, 1));
@@ -30,4 +32,6 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep)
     % store ground position
     idx = obj.values == max(obj.values, [], "all");
     obj.groundPos = [obj.X(idx), obj.Y(idx)];
+
+    assert(domain.distance([obj.groundPos, domain.center(3)]) > protectedRange, "Domain is crowding the sensing objective")
 end
