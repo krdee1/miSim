@@ -1,41 +1,40 @@
-function [obj, f] = plot(obj)
+function obj = plot(obj)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
     end
 
     % Plot domain
-    [obj.domain, f] = obj.domain.plotWireframe(obj.spatialPlotIndices);
+    [obj.domain, obj.f] = obj.domain.plotWireframe(obj.spatialPlotIndices);
 
     % Plot obstacles
     for ii = 1:size(obj.obstacles, 1)
-        [obj.obstacles{ii}, f] = obj.obstacles{ii}.plotWireframe(obj.spatialPlotIndices, f);
+        [obj.obstacles{ii}, obj.f] = obj.obstacles{ii}.plotWireframe(obj.spatialPlotIndices, obj.f);
     end
 
     % Plot objective gradient
-    f = obj.domain.objective.plot(obj.objectivePlotIndices, f);
+    obj.f = obj.domain.objective.plot(obj.objectivePlotIndices, obj.f);
 
     % Plot agents and their collision geometries
     for ii = 1:size(obj.agents, 1)
-        [obj.agents{ii}, f] = obj.agents{ii}.plot(obj.spatialPlotIndices, f);
+        [obj.agents{ii}, obj.f] = obj.agents{ii}.plot(obj.spatialPlotIndices, obj.f);
     end
 
     % Plot communication links
-    [obj, f] = obj.plotConnections(obj.spatialPlotIndices, f);
+    obj = obj.plotConnections();
 
     % Plot abstract network graph
-    [obj, f] = obj.plotGraph(obj.networkGraphIndex, f);
+    obj = obj.plotGraph();
 
     % Plot domain partitioning
-    [obj, f] = obj.plotPartitions(obj.partitionGraphIndex, f);
+    obj = obj.plotPartitions();
 
     % Enforce plot limits
     for ii = 1:size(obj.spatialPlotIndices, 2)
-        xlim(f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(1), obj.domain.maxCorner(1)]);
-        ylim(f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(2), obj.domain.maxCorner(2)]);
-        zlim(f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(3), obj.domain.maxCorner(3)]);
+        xlim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(1), obj.domain.maxCorner(1)]);
+        ylim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(2), obj.domain.maxCorner(2)]);
+        zlim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(3), obj.domain.maxCorner(3)]);
     end
 end

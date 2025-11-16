@@ -1,4 +1,4 @@
-function [obj, f] = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles)
+function obj = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
         domain (1, 1) {mustBeGeometry};
@@ -11,7 +11,6 @@ function [obj, f] = initialize(obj, domain, objective, agents, timestep, partito
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
     end
 
     % Define simulation time parameters
@@ -38,5 +37,5 @@ function [obj, f] = initialize(obj, domain, objective, agents, timestep, partito
     obj = obj.partition();
 
     % Set up plots showing initialized state
-    [obj, f] = obj.plot();
+    obj = obj.plot();
 end

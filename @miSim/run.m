@@ -1,15 +1,10 @@
-function [obj, f] = run(obj, f)
+function [obj] = run(obj)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
     end
-
-    % Create axes if they don't already exist
-    f = firstPlotSetup(f);
 
     % Set up times to iterate over
     times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
@@ -37,13 +32,13 @@ function [obj, f] = run(obj, f)
         end
 
         % Update adjacency matrix
-        obj = obj.updateAdjacency;
+        obj = obj.updateAdjacency();
 
         % Update plots
-        [obj, f] = obj.updatePlots(f, updatePartitions);
+        obj = obj.updatePlots(updatePartitions);
 
         % Write frame in to video
-        I = getframe(f);
+        I = getframe(obj.f);
         v.writeVideo(I);
     end
 

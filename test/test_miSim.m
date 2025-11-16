@@ -200,7 +200,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
         end
         function misim_run(tc)
             % randomly create obstacles
@@ -330,10 +330,10 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
 
             % Run simulation loop
-            [tc.testClass, f] = tc.testClass.run(f);
+            tc.testClass = tc.testClass.run(f);
         end
         function test_basic_partitioning(tc)
             % place agents a fixed distance +/- X from the domain's center
@@ -370,7 +370,7 @@ classdef test_miSim < matlab.unittest.TestCase
             % tc.agents{3} = tc.agents{3}.initialize(tc.domain.center - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
         end
     end
 

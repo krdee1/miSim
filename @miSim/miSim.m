@@ -13,13 +13,18 @@ classdef miSim
         adjacency = NaN; % Adjacency matrix representing communications network graph
         sensorPerformanceMinimum = 1e-6; % minimum sensor performance to allow assignment of a point in the domain to a partition
         partitioning = NaN;
+        performance = NaN; % current cumulative sensor performance
     end
 
     properties (Access = private)
         % Plot objects
+        f = firstPlotSetup(); % main plotting tiled layout figure
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot
         partitionPlot; % objects for partition plot
+
+        fPerf = figure; % performance plot figure
+        performancePlot; % objects for sensor performance plot
 
         % Indicies for various plot types in the main tiled layout figure
         spatialPlotIndices = [6, 4, 3, 2];
@@ -29,15 +34,15 @@ classdef miSim
     end
 
     methods (Access = public)
-        [obj, f] = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles);
-        [obj, f] = run(obj, f);
-        [obj]    = partition(obj);
-        [obj]    = updateAdjacency(obj);
-        [obj, f] = plot(obj);
-        [obj, f] = plotConnections(obj, ind, f);
-        [obj, f] = plotPartitions(obj, ind, f);
-        [obj, f] = plotGraph(obj, ind, f);
-        [obj, f] = updatePlots(obj, f, updatePartitions);
+        [obj] = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles);
+        [obj] = run(obj);
+        [obj] = partition(obj);
+        [obj] = updateAdjacency(obj);
+        [obj] = plot(obj);
+        [obj] = plotConnections(obj);
+        [obj] = plotPartitions(obj);
+        [obj] = plotGraph(obj);
+        [obj] = updatePlots(obj, updatePartitions);
     end
     methods (Access = private)
         [v] = setupVideoWriter(obj);
