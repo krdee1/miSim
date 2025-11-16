@@ -18,7 +18,6 @@ function f = plot(obj, ind, f)
         o.HitTest = 'off';
         o.PickableParts = 'none';
         hold(f.CurrentAxes, "off");
-
     else
         hold(f.Children(1).Children(ind(1)), "on");
         o = surf(f.Children(1).Children(ind(1)), obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');

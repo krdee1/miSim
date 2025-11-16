@@ -2,11 +2,14 @@ classdef test_miSim < matlab.unittest.TestCase
     properties (Access = private)
         testClass = miSim;
 
-        % Domain
-        domain = rectangularPrism; % domain geometry
+        % Sim
         maxIter = 250;
         timestep = 0.05
         partitoningFreq = 5;
+
+        % Domain
+        domain = rectangularPrism; % domain geometry
+        minDimension = 10;
 
         % Obstacles
         minNumObstacles = 1; % Minimum number of obstacles to be randomly generated
@@ -16,7 +19,7 @@ classdef test_miSim < matlab.unittest.TestCase
         obstacles = cell(1, 0);
         
         % Objective
-        objectiveDiscretizationStep = 0.01; % Step at which the objective function is solved in X and Y space
+        discretizationStep = 0.01; % Step at which the objective function is solved in X and Y space
         protectedRange = 1; % Minimum distance between the sensing objective and the edge of the domain
         objective = sensingObjective;
 
@@ -39,26 +42,10 @@ classdef test_miSim < matlab.unittest.TestCase
     methods (TestMethodSetup)
         % Generate a random domain
         function tc = setDomain(tc)
-            % random integer-sized cube domain ranging from [0, 5 -> 25]
-            % in all dimensions
-            L = ceil(5 + rand * 10 + rand * 10);
-            tc.domain = tc.domain.initialize([zeros(1, 3); L * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
-        end
-        % Generate a random sensing objective within that domain
-        function tc = setSensingObjective(tc)
-            % Using a bivariate normal distribution
-            % Set peak position (mean)
-            mu = tc.domain.minCorner;
-            while tc.domain.distance(mu) < tc.protectedRange
-                mu = tc.domain.random();
-            end
-            mu(3) = 0;
-
-            % Set standard deviations of bivariate distribution
-            sig = [2 + rand * 2, 1; 1, 2 + rand * 2];
-
-            % Define objective
-            tc.objective = tc.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], mu(1:2), sig), tc.domain.footprint, tc.domain.minCorner(3), tc.objectiveDiscretizationStep);
+            % random integer-dimensioned cubic domain
+            tc.domain = tc.domain.initializeRandom(tc.minDimension, REGION_TYPE.DOMAIN, "Domain");
+            % Random bivariate normal PDF objective
+            tc.domain.objective = tc.domain.objective.initializeRandomMvnpdf(tc.domain, tc.protectedRange, tc.discretizationStep);
         end
         % Instantiate agents
         function tc = setAgents(tc)
@@ -121,13 +108,13 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Make sure that the obstacles don't cover the sensing
                     % objective
-                    if obstacleCoversObjective(tc.objective, tc.obstacles{ii})
+                    if obstacleCoversObjective(tc.domain.objective, tc.obstacles{ii})
                         continue;
                     end
 
                     % Make sure that the obstacles aren't too close to the
                     % sensing objective
-                    if obstacleCrowdsObjective(tc.objective, tc.obstacles{ii}, tc.protectedRange)
+                    if obstacleCrowdsObjective(tc.domain.objective, tc.obstacles{ii}, tc.protectedRange)
                         continue;
                     end
                     
@@ -140,11 +127,11 @@ classdef test_miSim < matlab.unittest.TestCase
             for ii = 1:size(tc.agents, 1)
                 initInvalid = true;
                 while initInvalid
-                    candidatePos = [tc.objective.groundPos, 0];
+                    candidatePos = [tc.domain.objective.groundPos, 0];
                     % Generate a random position for the agent based on
                     % existing agent positions
                     if ii == 1
-                        while agentsCrowdObjective(tc.objective, candidatePos, mean(tc.domain.dimensions) / 2)
+                        while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
                         end
                     else
@@ -159,7 +146,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Make sure that the candidate position does not crowd
                     % the sensing objective and create boring scenarios
-                    if agentsCrowdObjective(tc.objective, candidatePos, mean(tc.domain.dimensions) / 2)
+                    if agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                         continue;
                     end
 
@@ -243,7 +230,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
         end
         function misim_run(tc)
             % randomly create obstacles
@@ -289,13 +276,13 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Make sure that the obstacles don't cover the sensing
                     % objective
-                    if obstacleCoversObjective(tc.objective, tc.obstacles{ii})
+                    if obstacleCoversObjective(tc.domain.objective, tc.obstacles{ii})
                         continue;
                     end
 
                     % Make sure that the obstacles aren't too close to the
                     % sensing objective
-                    if obstacleCrowdsObjective(tc.objective, tc.obstacles{ii}, tc.protectedRange)
+                    if obstacleCrowdsObjective(tc.domain.objective, tc.obstacles{ii}, tc.protectedRange)
                         continue;
                     end
                     
@@ -308,11 +295,11 @@ classdef test_miSim < matlab.unittest.TestCase
             for ii = 1:size(tc.agents, 1)
                 initInvalid = true;
                 while initInvalid
-                    candidatePos = [tc.objective.groundPos, 0];
+                    candidatePos = [tc.domain.objective.groundPos, 0];
                     % Generate a random position for the agent based on
                     % existing agent positions
                     if ii == 1
-                        while agentsCrowdObjective(tc.objective, candidatePos, mean(tc.domain.dimensions) / 2)
+                        while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
                         end
                     else
@@ -327,7 +314,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Make sure that the candidate position does not crowd
                     % the sensing objective and create boring scenarios
-                    if agentsCrowdObjective(tc.objective, candidatePos, mean(tc.domain.dimensions) / 2)
+                    if agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                         continue;
                     end
 
@@ -411,7 +398,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
 
             % Run simulation loop
             [tc.testClass, f] = tc.testClass.run(f);
@@ -424,7 +411,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.objective = tc.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2), eye(2)), tc.domain.footprint, tc.domain.minCorner(3), tc.objectiveDiscretizationStep);
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2), eye(2)), tc.domain.footprint, tc.domain.minCorner(3), tc.discretizationStep);
         
             % Initialize agent collision geometry
             geometry1 = rectangularPrism;
@@ -442,7 +429,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*d, 2, sprintf("Agent %d", 2));
 
             % Initialize the simulation
-            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            [tc.testClass, f] = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
         end
     end
 end

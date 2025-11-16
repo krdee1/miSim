@@ -16,7 +16,7 @@ function [obj, f] = plot(obj)
     end
 
     % Plot objective gradient
-    f = obj.objective.plot(obj.objectivePlotIndices, f);
+    f = obj.domain.objective.plot(obj.objectivePlotIndices, f);
 
     % Plot agents and their collision geometries
     for ii = 1:size(obj.agents, 1)

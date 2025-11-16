@@ -21,9 +21,14 @@ classdef rectangularPrism
         % Plotting
         lines;
     end
+    properties (SetAccess = public, GetAccess = public)
+        % Sensing objective (for DOMAIN region type only)
+        objective;
+    end
 
     methods (Access = public)
-        [obj   ] = initialize(obj, bounds, tag, label);
+        [obj   ] = initialize(obj, bounds, tag, label, objectiveFunction, discretizationStep);
+        [obj   ] = initializeRandom(obj, tag, label);
         [r     ] = random(obj);
         [c     ] = contains(obj, pos);
         [d     ] = distance(obj, pos);
