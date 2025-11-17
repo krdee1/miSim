@@ -1,5 +1,6 @@
 classdef test_miSim < matlab.unittest.TestCase
     properties (Access = private)
+        % System under test
         testClass = miSim;
 
         % Sim

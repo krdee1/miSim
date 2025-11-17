@@ -11,7 +11,7 @@ function obj = initialize(obj, alphaDist, betaDist, alphaPan, betaPan, alphaTilt
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'sigmoidSensor')}
     end
-
+    
     obj.alphaDist = alphaDist;
     obj.betaDist = betaDist;
     obj.alphaPan = alphaPan;
