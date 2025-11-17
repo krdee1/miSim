@@ -37,4 +37,7 @@ function obj = plot(obj)
         ylim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(2), obj.domain.maxCorner(2)]);
         zlim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(3), obj.domain.maxCorner(3)]);
     end
+
+    % Plot performance
+    obj = obj.plotPerformance();
 end

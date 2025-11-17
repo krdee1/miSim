@@ -36,6 +36,17 @@ function [obj] = updatePlots(obj, updatePartitions)
         ylim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(2), obj.domain.maxCorner(2)]);
         zlim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(3), obj.domain.maxCorner(3)]);
     end
-
     drawnow;
+    
+    % Update performance plot
+    if updatePartitions
+        nowIdx = [0; obj.partitioningTimes] == obj.t;
+        % set(obj.performancePlot(1), 'YData', obj.perf(end, 1:find(nowIdx)));
+        obj.performancePlot(1).YData(nowIdx) = obj.perf(end, nowIdx);
+        for ii = 2:size(obj.performancePlot, 1)
+            obj.performancePlot(ii).YData(nowIdx) = obj.perf(ii, nowIdx);
+        end
+        drawnow;
+    end
+
 end

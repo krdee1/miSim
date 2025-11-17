@@ -1,7 +1,4 @@
 classdef agent
-    properties (Access = public)
-        performance = NaN; % current individual sensor performance on partition
-    end
     properties (SetAccess = private, GetAccess = public)
         % Identifiers
         index = NaN;

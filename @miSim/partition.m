@@ -22,15 +22,15 @@ function obj = partition(obj)
 
     % Get highest performing agent's index
     [m,n,~] = size(agentInds);
-    [i,j] = ndgrid(1:m, 1:n);
-    obj.partitioning = agentInds(sub2ind(size(agentInds), i, j, idx));
+    [jj,kk] = ndgrid(1:m, 1:n);
+    obj.partitioning = agentInds(sub2ind(size(agentInds), jj, kk, idx));
 
     % Get individual agent sensor performance
+    nowIdx = [0; obj.partitioningTimes] == obj.t;
     for ii = 1:size(obj.agents, 1)
-        obj.agents{ii}.performance = sum(agentPerformances(sub2ind(size(agentInds), i, j, idx)), 'all');
+        obj.perf(ii, nowIdx) = sum(agentPerformances(sub2ind(size(agentInds), jj, kk, ii)), 'all');
     end
 
     % Current total performance
-    sum(arrayfun(@(x) x.performance, [obj.agents{:}]))
-    obj.performance = sum(max(agentPerformances(:, :, 1:(end - 1)), [], 3), 'all'); % do not count final "non-assignment" layer in computing cumulative performance
+    obj.perf(end, nowIdx) = sum(obj.perf(1:(end - 1), nowIdx));
 end
