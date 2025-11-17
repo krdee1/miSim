@@ -34,6 +34,9 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
             alphaTilt = deg2rad(15);
             betaTilt = 3;
             tc.testClass = tc.testClass.initialize(alphaDist, betaDist, NaN, NaN, alphaTilt, betaTilt);
+            
+            % Plot
+            tc.testClass.plotParameters();
 
             % Performance at current position should be maximized (1)
             % some wiggle room is needed for certain parameter conditions,

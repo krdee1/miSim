@@ -15,9 +15,8 @@ function value = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos
     tiltAngle = atan2(targetPos(:, 3) - agentPos(3), x) - agentTilt;
 
     % Membership functions
-    mu_d = 1 - (1 ./ (1 + exp(-obj.betaDist .* (d - obj.alphaDist)))); % distance
-    mu_p = 1; % pan
-    mu_t = (1 ./ (1 + exp(-obj.betaTilt .* (tiltAngle + obj.alphaTilt)))) - (1 ./ (1 + exp(-obj.betaTilt .* (tiltAngle - obj.alphaTilt)))); % tilt
+    mu_d = obj.distanceMembership(d);
+    mu_t = obj.tiltMembership(tiltAngle);
 
-    value = mu_d .* mu_p .* mu_t;
+    value = mu_d .* mu_t; % assume pan membership is always 1
 end
