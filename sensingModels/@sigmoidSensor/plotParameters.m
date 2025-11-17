@@ -20,25 +20,23 @@ function f = plotParameters(obj)
 
     % Distance
     nexttile(1, [1,  1]);
-    grid(f.Children(1).Children(1), "on");
-    title(f.Children(1).Children(1), "Distance Membership Sigmoid");
-    xlabel(f.Children(1).Children(1), "Distance (m)");
-    ylabel(f.Children(1).Children(1), "Membership");
-    hold(f.Children(1).Children(1), 'on');
-    plot(f.Children(1).Children(1), d, d_x, 'LineWidth', 2);
-    hold(f.Children(1).Children(1), 'off');
+    grid("on");
+    title("Distance Membership Sigmoid");
+    xlabel("Distance (m)");
+    ylabel("Membership");
+    hold('on');
+    plot(d, d_x, 'LineWidth', 2);
+    hold('off');
     ylim([0, 1]);
 
     % Tilt
     nexttile(2, [1,  1]);
-    grid(f.Children(1).Children(1), "on");
-    title(f.Children(1).Children(1), "Tilt Membership Sigmoid");
-    xlabel(f.Children(1).Children(1), "Tilt (deg)");
-    ylabel(f.Children(1).Children(1), "Membership");
-    hold(f.Children(1).Children(1), 'on');
-    plot(f.Children(1).Children(1), t, t_x, 'LineWidth', 2);
-    hold(f.Children(1).Children(1), 'off');
-
-
-    keyboard
+    grid("on");
+    title("Tilt Membership Sigmoid");
+    xlabel("Tilt (deg)");
+    ylabel("Membership");
+    hold('on');
+    plot(t, t_x, 'LineWidth', 2);
+    hold('off');
+    ylim([0, 1]);
 end
