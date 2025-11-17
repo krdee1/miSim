@@ -15,7 +15,7 @@ function obj = initialize(obj, domain, objective, agents, timestep, partitoningF
 
     % Define simulation time parameters
     obj.timestep = timestep;
-    obj.maxIter = maxIter;
+    obj.maxIter = maxIter - 1;
 
     % Define domain
     obj.domain = domain;
@@ -32,6 +32,14 @@ function obj = initialize(obj, domain, objective, agents, timestep, partitoningF
 
     % Compute adjacency matrix
     obj = obj.updateAdjacency();
+
+    % Set up times to iterate over
+    obj.times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
+    obj.partitioningTimes = obj.times(obj.partitioningFreq:obj.partitioningFreq:size(obj.times, 1));
+
+    % Prepare performance data store (at t = 0, all have 0 performance)
+    obj.fPerf = figure;
+    obj.perf = [zeros(size(obj.agents, 1) + 1, 1), NaN(size(obj.agents, 1) + 1, size(obj.partitioningTimes, 1) - 1)];
 
     % Create initial partitioning
     obj = obj.partition();

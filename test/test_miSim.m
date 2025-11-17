@@ -333,7 +333,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
 
             % Run simulation loop
-            tc.testClass = tc.testClass.run(f);
+            tc.testClass = tc.testClass.run();
         end
         function test_basic_partitioning(tc)
             % place agents a fixed distance +/- X from the domain's center

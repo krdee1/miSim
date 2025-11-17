@@ -17,13 +17,19 @@ classdef miSim
     end
 
     properties (Access = private)
+        % Sim
+        t = NaN; % current sim time
+        perf; % sensor performance timeseries array
+        times;
+        partitioningTimes;
+
         % Plot objects
         f = firstPlotSetup(); % main plotting tiled layout figure
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot
         partitionPlot; % objects for partition plot
 
-        fPerf = figure; % performance plot figure
+        fPerf; % performance plot figure
         performancePlot; % objects for sensor performance plot
 
         % Indicies for various plot types in the main tiled layout figure

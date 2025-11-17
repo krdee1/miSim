@@ -41,3 +41,7 @@ codegen/
 
 # Sandbox contents
 sandbox/*
+
+# Videos
+*.mp4
+*.avi

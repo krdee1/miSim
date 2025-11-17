@@ -6,22 +6,18 @@ function [obj] = run(obj)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
 
-    % Set up times to iterate over
-    times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
-    partitioningTimes = times(obj.partitioningFreq:obj.partitioningFreq:size(times, 1));
-
     % Start video writer
     v = obj.setupVideoWriter();
     v.open();
 
-    for ii = 1:size(times, 1)
+    for ii = 1:size(obj.times, 1)
         % Display current sim time
-        t = times(ii);
-        fprintf("Sim Time: %4.2f (%d/%d)\n", t, ii, obj.maxIter)
+        obj.t = obj.times(ii);
+        fprintf("Sim Time: %4.2f (%d/%d)\n", obj.t, ii, obj.maxIter + 1);
 
         % Check if it's time for new partitions
         updatePartitions = false;
-        if ismember(t, partitioningTimes)
+        if ismember(obj.t, obj.partitioningTimes)
             updatePartitions = true;
             obj = obj.partition();
         end
