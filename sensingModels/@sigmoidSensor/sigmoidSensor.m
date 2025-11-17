@@ -13,7 +13,7 @@ classdef sigmoidSensor
         [obj]               = initialize(obj, alphaDist, betaDist, alphaPan, betaPan, alphaTilt, betaTilt);
         [values, positions] = sense(obj, agent, sensingObjective, domain, partitioning);
         [value]             = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos);
-        plotParameters(obj);
+        [f] = plotParameters(obj);
     end
     methods (Access = private)
         x = distanceMembership(obj, d);

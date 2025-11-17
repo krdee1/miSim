@@ -356,6 +356,7 @@ classdef test_miSim < matlab.unittest.TestCase
             sensor = sigmoidSensor;
             % Homogeneous sensor model parameters
             sensor = sensor.initialize(2.5, 3, NaN, NaN, deg2rad(15), 3);
+            f = sensor.plotParameters();
             % Heterogeneous sensor model parameters
             % sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
@@ -365,10 +366,10 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*d, 2, sprintf("Agent %d", 2));
 
             % Optional third agent along the +Y axis
-            % geometry3 = rectangularPrism;
-            % geometry3 = geometry3.initialize([tc.domain.center - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
-            % tc.agents{3} = agent;
-            % tc.agents{3} = tc.agents{3}.initialize(tc.domain.center - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
+            geometry3 = rectangularPrism;
+            geometry3 = geometry3.initialize([tc.domain.center - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
+            tc.agents{3} = agent;
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
