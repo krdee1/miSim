@@ -104,6 +104,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ii == 1
                         while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
+                            candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, 0.5 + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
@@ -234,6 +235,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ii == 1
                         while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
+                            candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, 0.5 + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
@@ -370,6 +372,30 @@ classdef test_miSim < matlab.unittest.TestCase
             geometry3 = geometry3.initialize([tc.domain.center - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
             tc.agents{3} = agent;
             tc.agents{3} = tc.agents{3}.initialize(tc.domain.center - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
+
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+        end
+        function test_annular_partition(tc)
+            % make basic domain
+            tc.domain = tc.domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2)), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            geometry1 = rectangularPrism;
+            geometry1 = geometry1.initialize([[tc.domain.center(1:2), 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2), 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            % Homogeneous sensor model parameters
+            sensor = sensor.initialize(2.5666, 5.0807, NaN, NaN, 0.3641, 13);
+            f = sensor.plotParameters();
+
+            % Initialize agents
+            tc.agents = {agent};
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1));
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
