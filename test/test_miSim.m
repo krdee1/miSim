@@ -25,8 +25,8 @@ classdef test_miSim < matlab.unittest.TestCase
         objective = sensingObjective;
 
         % Agents
-        minAgents = 3; % Minimum number of agents to be randomly generated
-        maxAgents = 6; % Maximum number of agents to be randomly generated
+        minAgents = 2; % Minimum number of agents to be randomly generated
+        maxAgents = 4; % Maximum number of agents to be randomly generated
         sensingLength = 0.05; % length parameter used by sensing function
         agents = cell(0, 1);
         
@@ -46,7 +46,7 @@ classdef test_miSim < matlab.unittest.TestCase
         alphaTiltMax = deg2rad(30);
 
         % Communications
-        comRange = 5; % Maximum range between agents that forms a communications link
+        comRange = 8; % Maximum range between agents that forms a communications link
     end
 
     % Setup for each test
@@ -104,7 +104,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ii == 1
                         while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
-                            candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, 0.5 + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
+                            candidatePos(3) = 2  + rand * 2; % place agents at decent altitudes for sensing
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));

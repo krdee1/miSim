@@ -45,3 +45,6 @@ sandbox/*
 # Videos
 *.mp4
 *.avi
+
+# Figures
+*.fig
