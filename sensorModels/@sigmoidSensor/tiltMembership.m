@@ -1,7 +1,7 @@
 function x = tiltMembership(obj, t)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'sigmoidSensor')};
-        t (:, 1) double;
+        t (:, 1) double; % degrees
     end
     arguments (Output)
         x (:, 1) double;

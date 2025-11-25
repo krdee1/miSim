@@ -5,7 +5,7 @@ classdef sigmoidSensor
         betaDist = NaN;
         alphaPan = NaN;
         betaPan = NaN;
-        alphaTilt = NaN;
+        alphaTilt = NaN; % degrees
         betaTilt = NaN;
     end
 
