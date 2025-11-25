@@ -10,8 +10,11 @@ function value = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos
         value (:, 1) double;
     end
 
+    % compute direct distance and distance projected onto the ground
     d = vecnorm(agentPos - targetPos, 2, 2); % distance from sensor to target
     x = vecnorm(agentPos(1:2) - targetPos(:, 1:2), 2, 2); % distance from sensor nadir to target nadir (i.e. distance ignoring height difference)
+
+    % compute tilt angle
     tiltAngle = (180 - atan2d(x, targetPos(:, 3) - agentPos(3))) - agentTilt; % degrees
 
     % Membership functions

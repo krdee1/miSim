@@ -33,20 +33,29 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
             betaDist = 3;
             alphaTilt = 15; % degrees
             betaTilt = 3;
+            h = 1e-6;
             tc.testClass = tc.testClass.initialize(alphaDist, betaDist, NaN, NaN, alphaTilt, betaTilt);
             
             % Plot
             tc.testClass.plotParameters();
 
-            % Performance at current position should be maximized (1)
-            % some wiggle room is needed for certain parameter conditions,
-            % e.g. small alphaDist and betaDist produce mu_d slightly < 1
-            tc.verifyEqual(tc.testClass.sensorPerformance(zeros(1, 3), NaN, 0, zeros(1, 3)), 1, 'AbsTol', 1e-3); 
+            % Anticipate perfect performance for a point directly below and
+            % extremely close
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], NaN, 0, [0, 0, 0]), 1, 'RelTol', 1e-3); 
             % It looks like mu_t can max out at really low values like 0.37
             % when alphaTilt and betaTilt are small, which seems wrong
 
-            % Performance at distance alphaDist should be 1/2
-            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, alphaDist], NaN, 0, [0, 0, 0]), 1/2, 'AbsTol', 1e-3);
+            % Performance at nadir point, distance alphaDist should be 1/2 exactly
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, alphaDist], NaN, 0, [0, 0, 0]), 1/2);
+
+            % Performance at (almost) 0 distance, alphaTilt should be 1/2
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], NaN, 0, [tand(alphaTilt)*h, 0, 0]), 1/2, 'RelTol', 1e-3);
+
+            % Performance at great distance should be 0
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, 10], NaN, 0, [0, 0, 0]), 0, 'AbsTol', 1e-9);
+
+            % Performance at great tilt should be 0
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], NaN, 0, [5, 5, 0]), 0, 'AbsTol', 1e-9);
         end
     end
 
