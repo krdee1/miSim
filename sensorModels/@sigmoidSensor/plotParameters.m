@@ -12,7 +12,7 @@ function f = plotParameters(obj)
 
     % Sample membership functions
     d_x = obj.distanceMembership(d);
-    t_x = obj.tiltMembership(deg2rad(t));
+    t_x = obj.tiltMembership(t);
 
     % Plot resultant sigmoid curves
     f = figure;

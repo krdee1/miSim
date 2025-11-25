@@ -20,15 +20,20 @@ function obj = partition(obj)
     agentInds{end + 1} = zeros(size(agentInds{end})); % index for no assignment
     agentInds = cat(3, agentInds{:});
 
-    % Get highest performing agent's index
-    [m,n,~] = size(agentInds);
-    [jj,kk] = ndgrid(1:m, 1:n);
+    % Use highest performing agent's index to form partitions
+    [m, n, ~] = size(agentInds);
+    [jj, kk] = ndgrid(1:m, 1:n);
     obj.partitioning = agentInds(sub2ind(size(agentInds), jj, kk, idx));
 
     % Get individual agent sensor performance
     nowIdx = [0; obj.partitioningTimes] == obj.t;
+    if isnan(obj.t)
+        nowIdx = 1;
+    end
     for ii = 1:size(obj.agents, 1)
-        obj.perf(ii, nowIdx) = sum(agentPerformances(sub2ind(size(agentInds), jj, kk, ii)), 'all');
+        idx = obj.partitioning == ii;
+        agentPerformance = squeeze(agentPerformances(:, :, ii));
+        obj.perf(ii, nowIdx) = sum(agentPerformance(idx) .* obj.objective.values(idx));
     end
 
     % Current total performance

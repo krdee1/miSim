@@ -12,7 +12,7 @@ function value = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos
 
     d = vecnorm(agentPos - targetPos, 2, 2); % distance from sensor to target
     x = vecnorm(agentPos(1:2) - targetPos(:, 1:2), 2, 2); % distance from sensor nadir to target nadir (i.e. distance ignoring height difference)
-    tiltAngle = atan2(targetPos(:, 3) - agentPos(3), x) - agentTilt;
+    tiltAngle = (180 - atan2d(x, targetPos(:, 3) - agentPos(3))) - agentTilt; % degrees
 
     % Membership functions
     mu_d = obj.distanceMembership(d);

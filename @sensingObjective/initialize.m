@@ -28,9 +28,12 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
     % Evaluate function over grid points
     obj.objectiveFunction = objectiveFunction;
     obj.values = reshape(obj.objectiveFunction(obj.X, obj.Y), size(obj.X));
+    
+    % Normalize
+    obj.values = obj.values ./ max(obj.values, [], "all");
 
     % store ground position
-    idx = obj.values == max(obj.values, [], "all");
+    idx = obj.values == 1;
     obj.groundPos = [obj.X(idx), obj.Y(idx)];
 
     assert(domain.distance([obj.groundPos, domain.center(3)]) > protectedRange, "Domain is crowding the sensing objective")

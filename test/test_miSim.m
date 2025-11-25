@@ -42,8 +42,8 @@ classdef test_miSim < matlab.unittest.TestCase
         betaTiltMax = 15;
         alphaDistMin = 2.5;
         alphaDistMax = 3;
-        alphaTiltMin = deg2rad(15);
-        alphaTiltMax = deg2rad(30);
+        alphaTiltMin = 15; % degrees
+        alphaTiltMax = 30; % degrees
 
         % Communications
         comRange = 8; % Maximum range between agents that forms a communications link
@@ -349,36 +349,38 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2)), tc.domain, tc.discretizationStep, tc.protectedRange);
         
             % Initialize agent collision geometry
+            dh = [0,0,-1]; % bias agent altitude from domain center
             geometry1 = rectangularPrism;
             geometry2 = geometry1;
-            geometry1 = geometry1.initialize([tc.domain.center + [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize([tc.domain.center - [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center - [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 2));
+            geometry1 = geometry1.initialize([tc.domain.center + dh + [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh + [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry2 = geometry2.initialize([tc.domain.center + dh - [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 2));
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
             % Homogeneous sensor model parameters
-            sensor = sensor.initialize(2.5, 3, NaN, NaN, deg2rad(15), 3);
+            sensor = sensor.initialize(2.75, 9, NaN, NaN, 22.5, 9);
             f = sensor.plotParameters();
             % Heterogeneous sensor model parameters
             % sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
             % Initialize agents
             tc.agents = {agent; agent};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3*d, 1, sprintf("Agent %d", 1));
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*d, 2, sprintf("Agent %d", 2));
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + dh + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3*d, 1, sprintf("Agent %d", 1));
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + dh - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*d, 2, sprintf("Agent %d", 2));
 
             % Optional third agent along the +Y axis
             geometry3 = rectangularPrism;
-            geometry3 = geometry3.initialize([tc.domain.center - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
+            geometry3 = geometry3.initialize([tc.domain.center + dh - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
             tc.agents{3} = agent;
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
         end
-        function test_annular_partition(tc)
+        function test_single_partition(tc)
             % make basic domain
-            tc.domain = tc.domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+            l = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
             tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2)), tc.domain, tc.discretizationStep, tc.protectedRange);
@@ -390,7 +392,9 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agent sensor model
             sensor = sigmoidSensor;
             % Homogeneous sensor model parameters
-            sensor = sensor.initialize(2.5666, 5.0807, NaN, NaN, 0.3641, 13);
+            % sensor = sensor.initialize(2.5666, 5.0807, NaN, NaN, 20.8614, 13); % 13
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 20, 3);
             f = sensor.plotParameters();
 
             % Initialize agents
@@ -399,6 +403,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+
         end
     end
 

@@ -13,8 +13,8 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
         betaTiltMax = 15;
         alphaDistMin = 2.5;
         alphaDistMax = 3;
-        alphaTiltMin = deg2rad(15);
-        alphaTiltMax = deg2rad(30);
+        alphaTiltMin = 15; % degrees
+        alphaTiltMax = 30; % degrees
     end
 
     methods (TestMethodSetup)
@@ -31,7 +31,7 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
             tc.testClass = sigmoidSensor;
             alphaDist = 2.5;
             betaDist = 3;
-            alphaTilt = deg2rad(15);
+            alphaTilt = 15; % degrees
             betaTilt = 3;
             tc.testClass = tc.testClass.initialize(alphaDist, betaDist, NaN, NaN, alphaTilt, betaTilt);
             
