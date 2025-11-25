@@ -104,7 +104,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ii == 1
                         while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
-                            candidatePos(3) = 2  + rand * 2; % place agents at decent altitudes for sensing
+                            candidatePos(3) = 2  + rand * 1.5; % place agents at decent altitudes for sensing
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));

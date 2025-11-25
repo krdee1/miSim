@@ -24,5 +24,13 @@ function obj = plotPerformance(obj)
         hold(obj.fPerf.Children(1), 'off');
     end
 
+    % Add legend
+    agentStrings = repmat("Agent %d", size(obj.perf, 1) - 1, 1);
+    for ii = 1:size(agentStrings, 1)
+        agentStrings(ii) = sprintf(agentStrings(ii), ii);
+    end
+    agentStrings = ["Total"; agentStrings];
+    legend(obj.fPerf.Children(1), agentStrings, 'Location', 'northwest');
+
     obj.performancePlot = o;
 end
