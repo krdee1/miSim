@@ -104,10 +104,11 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ii == 1
                         while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
-                            candidatePos(3) = 2  + rand * 1.5; % place agents at decent altitudes for sensing
+                            candidatePos(3) = 1  + rand * 3; % place agents at decent altitudes for sensing
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
+                        candidatePos(3) = 1  + rand * 3; % place agents at decent altitudes for sensing
                     end
 
                     % Make sure that the candidate position is within the
@@ -239,6 +240,7 @@ classdef test_miSim < matlab.unittest.TestCase
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
+                        candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, 0.5 + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
                     end
 
                     % Make sure that the candidate position is within the
@@ -359,9 +361,11 @@ classdef test_miSim < matlab.unittest.TestCase
             sensor = sigmoidSensor;
             % Homogeneous sensor model parameters
             sensor = sensor.initialize(2.75, 9, NaN, NaN, 22.5, 9);
-            f = sensor.plotParameters();
             % Heterogeneous sensor model parameters
             % sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
+
+            % Plot sensor parameters (optional)
+            % f = sensor.plotParameters();
 
             % Initialize agents
             tc.agents = {agent; agent};
@@ -376,6 +380,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            close(tc.testClass.fPerf);
         end
         function test_single_partition(tc)
             % make basic domain
@@ -383,7 +388,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2)), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2) + rand(1, 2) * 6 - 3), tc.domain, tc.discretizationStep, tc.protectedRange);
         
             % Initialize agent collision geometry
             geometry1 = rectangularPrism;
@@ -395,6 +400,8 @@ classdef test_miSim < matlab.unittest.TestCase
             % sensor = sensor.initialize(2.5666, 5.0807, NaN, NaN, 20.8614, 13); % 13
             alphaDist = l/2; % half of domain length/width
             sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 20, 3);
+
+            % Plot sensor parameters (optional)
             f = sensor.plotParameters();
 
             % Initialize agents
@@ -403,7 +410,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
-
+            close(tc.testClass.fPerf);
         end
     end
 

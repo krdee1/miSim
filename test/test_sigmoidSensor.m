@@ -36,8 +36,8 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
             h = 1e-6;
             tc.testClass = tc.testClass.initialize(alphaDist, betaDist, NaN, NaN, alphaTilt, betaTilt);
             
-            % Plot
-            tc.testClass.plotParameters();
+            % Plot (optional)
+            % tc.testClass.plotParameters();
 
             % Anticipate perfect performance for a point directly below and
             % extremely close

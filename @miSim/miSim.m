@@ -14,6 +14,9 @@ classdef miSim
         sensorPerformanceMinimum = 1e-6; % minimum sensor performance to allow assignment of a point in the domain to a partition
         partitioning = NaN;
         performance = NaN; % current cumulative sensor performance
+        oldMeanTotalPerf = 0;
+
+        fPerf; % performance plot figure
     end
 
     properties (Access = private)
@@ -29,7 +32,6 @@ classdef miSim
         graphPlot; % objects for abstract network graph plot
         partitionPlot; % objects for partition plot
 
-        fPerf; % performance plot figure
         performancePlot; % objects for sensor performance plot
 
         % Indicies for various plot types in the main tiled layout figure
