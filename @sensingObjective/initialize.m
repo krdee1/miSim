@@ -10,6 +10,8 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
         obj (1,1) {mustBeA(obj, 'sensingObjective')};
     end
 
+    obj.discretizationStep = discretizationStep;
+
     obj.groundAlt = domain.minCorner(3);
     obj.protectedRange = protectedRange;
 
@@ -19,8 +21,8 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
     yMin = min(domain.footprint(:, 2));
     yMax = max(domain.footprint(:, 2));
 
-    xGrid = unique([xMin:discretizationStep:xMax, xMax]);
-    yGrid = unique([yMin:discretizationStep:yMax, yMax]);
+    xGrid = unique([xMin:obj.discretizationStep:xMax, xMax]);
+    yGrid = unique([yMin:obj.discretizationStep:yMax, yMax]);
     
     % Store grid points for plotting later
     [obj.X, obj.Y] = meshgrid(xGrid, yGrid);
