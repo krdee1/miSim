@@ -1,4 +1,4 @@
-function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label)
+function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label, debug)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'agent')};
         pos (1, 3) double;
@@ -11,6 +11,7 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
         comRange (1, 1) double = NaN;
         index (1, 1) double = NaN;
         label (1, 1) string = "";
+        debug (1, 1) logical = false;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'agent')};
@@ -26,6 +27,32 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     obj.comRange = comRange;
     obj.index = index;
     obj.label = label;
+    obj.debug = debug;
+
+    if obj.debug
+        obj.debugFig = figure;
+        tiledlayout(obj.debugFig, "TileSpacing", "tight", "Padding", "compact");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Objective View");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Sensor Performance View");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Gradient Objective View");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Gradient Sensor Performance View");
+    end
 
     % Initialize FOV cone
     obj.fovGeometry = cone;

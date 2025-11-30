@@ -412,6 +412,38 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
             close(tc.testClass.fPerf);
         end
+        function test_single_partition_basic_GA(tc)
+            % make basic domain
+            l = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], tc.domain.center(1:2) + rand(1, 2) * 6 - 3), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            geometry1 = rectangularPrism;
+            geometry1 = geometry1.initialize([[tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            % Homogeneous sensor model parameters
+            % sensor = sensor.initialize(2.5666, 5.0807, NaN, NaN, 20.8614, 13); % 13
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 20, 3);
+
+            % Plot sensor parameters (optional)
+            f = sensor.plotParameters();
+
+            % Initialize agents
+            tc.agents = {agent};
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1), true);
+
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            
+            % Run the simulation
+            tc.testClass.run();
+        end
     end
 
     methods

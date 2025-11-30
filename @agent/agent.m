@@ -31,11 +31,13 @@ classdef agent
 
         % Plotting
         scatterPoints;
+        debug = false;
+        debugFig;
     end
 
     methods (Access = public)
         [obj] = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label);
-        [obj] = run(obj, domain, partitioning);
+        [obj] = run(obj, domain, partitioning, t);
         [obj, f] = plot(obj, ind, f);
         updatePlots(obj);
     end
