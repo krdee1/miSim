@@ -27,13 +27,15 @@ classdef agent
         % Communication
         comRange = NaN;
 
+        performance = 0;
+
         % Plotting
         scatterPoints;
     end
 
     methods (Access = public)
         [obj] = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label);
-        [obj] = run(obj, sensingObjective, domain, partitioning);
+        [obj] = run(obj, domain, partitioning);
         [obj, f] = plot(obj, ind, f);
         updatePlots(obj);
     end
