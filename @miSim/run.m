@@ -25,7 +25,7 @@ function [obj] = run(obj)
 
         % Iterate over agents to simulate their motion
         for jj = 1:size(obj.agents, 1)
-            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning);
+            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.t);
         end
 
         % Update adjacency matrix
