@@ -36,22 +36,42 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
         axes(obj.debugFig.Children(1).Children(1));
         axis(obj.debugFig.Children(1).Children(1), "image");
         xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
-        title(obj.debugFig.Children(1).Children(1), "Objective View");
+        title(obj.debugFig.Children(1).Children(1), "Objective");
         nexttile;
         axes(obj.debugFig.Children(1).Children(1));
         axis(obj.debugFig.Children(1).Children(1), "image");
         xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
-        title(obj.debugFig.Children(1).Children(1), "Sensor Performance View");
+        title(obj.debugFig.Children(1).Children(1), "Sensor Performance");
         nexttile;
         axes(obj.debugFig.Children(1).Children(1));
         axis(obj.debugFig.Children(1).Children(1), "image");
         xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
-        title(obj.debugFig.Children(1).Children(1), "Gradient Objective View");
+        title(obj.debugFig.Children(1).Children(1), "Gradient Objective");
         nexttile;
         axes(obj.debugFig.Children(1).Children(1));
         axis(obj.debugFig.Children(1).Children(1), "image");
         xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
-        title(obj.debugFig.Children(1).Children(1), "Gradient Sensor Performance View");
+        title(obj.debugFig.Children(1).Children(1), "Gradient Sensor Performance");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Sensor Performance x Gradient Objective");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Gradient Sensor Performance x Objective");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Agent Performance (C)");
+        nexttile;
+        axes(obj.debugFig.Children(1).Children(1));
+        axis(obj.debugFig.Children(1).Children(1), "image");
+        xlabel(obj.debugFig.Children(1).Children(1), "X"); ylabel(obj.debugFig.Children(1).Children(1), "Y");
+        title(obj.debugFig.Children(1).Children(1), "Gradient Agent Performance (del C)");
     end
 
     % Initialize FOV cone
