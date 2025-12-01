@@ -28,6 +28,9 @@ function [obj] = run(obj)
             obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.t);
         end
 
+        % Update total performance
+        obj.performance = [obj.performance, sum(cellfun(@(x) x.performance(end), obj.agents))];
+
         % Update adjacency matrix
         obj = obj.updateAdjacency();
 

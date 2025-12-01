@@ -39,16 +39,12 @@ function [obj] = updatePlots(obj, updatePartitions)
     drawnow;
     
     % Update performance plot
-    if updatePartitions
-        % find index corresponding to the current time
-        nowIdx = [0; obj.partitioningTimes] == obj.t;
-        nowIdx = find(nowIdx);
-
-        % Re-normalize performance plot
-        normalizingFactor = 1/max(obj.perf(end, 1:nowIdx));
-        obj.performancePlot(1).YData(1:nowIdx) = obj.perf(end, 1:nowIdx) * normalizingFactor;
-        for ii = 2:size(obj.performancePlot, 1)
-            obj.performancePlot(ii).YData(1:nowIdx) = obj.perf(ii - 1, 1:nowIdx) * normalizingFactor;
-        end
+    % Re-normalize performance plot
+    normalizingFactor = 1/max(obj.performance(end));
+    obj.performancePlot(1).YData(1:length(obj.performance)) = obj.performance * normalizingFactor;
+    obj.performancePlot(1).XData(find(isnan(obj.performancePlot(1).XData), 1, 'first')) = obj.t;
+    for ii = 2:(size(obj.agents, 1) + 1)
+        obj.performancePlot(ii).YData(1:length(obj.performance)) = obj.agents{ii - 1}.performance * normalizingFactor;
+        obj.performancePlot(ii).XData(find(isnan(obj.performancePlot(ii).XData), 1, 'first')) = obj.t;
     end
 end

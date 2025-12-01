@@ -25,8 +25,8 @@ function obj = run(obj, domain, partitioning, t)
     S(partitionMask) = sensorValues;
 
     % Find agent's performance
-    C = S.* F; % try gradient on this directly
-    obj.performance = [obj.performance  sum(C(~isnan(C)))];
+    C = S.* F;
+    obj.performance = [obj.performance, sum(C(~isnan(C)))];
 
     % Compute gradient on agent's performance
     [gradSensorPerformanceX, gradSensorPerformanceY] = gradient(S, domain.objective.discretizationStep); % grad S_n

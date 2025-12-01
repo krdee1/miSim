@@ -24,18 +24,4 @@ function obj = partition(obj)
     [m, n, ~] = size(agentInds);
     [jj, kk] = ndgrid(1:m, 1:n);
     obj.partitioning = agentInds(sub2ind(size(agentInds), jj, kk, idx));
-
-    % Get individual agent sensor performance
-    nowIdx = [0; obj.partitioningTimes] == obj.t;
-    if isnan(obj.t)
-        nowIdx = 1;
-    end
-    for ii = 1:size(obj.agents, 1)
-        idx = obj.partitioning == ii;
-        agentPerformance = squeeze(agentPerformances(:, :, ii));
-        obj.perf(ii, nowIdx) = sum(agentPerformance(idx) .* obj.objective.values(idx));
-    end
-
-    % Current total performance
-    obj.perf(end, nowIdx) = sum(obj.perf(1:(end - 1), nowIdx));
 end

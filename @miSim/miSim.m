@@ -13,7 +13,7 @@ classdef miSim
         adjacency = NaN; % Adjacency matrix representing communications network graph
         sensorPerformanceMinimum = 1e-6; % minimum sensor performance to allow assignment of a point in the domain to a partition
         partitioning = NaN;
-        performance = NaN; % current cumulative sensor performance
+        performance = 0; % cumulative sensor performance
 
         fPerf; % performance plot figure
     end
