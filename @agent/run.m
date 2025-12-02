@@ -29,17 +29,17 @@ function obj = run(obj, domain, partitioning, t)
     obj.performance = [obj.performance, sum(C(~isnan(C)))];
 
     % Compute gradient on agent's performance
-    [gradSensorPerformanceX, gradSensorPerformanceY] = gradient(S, domain.objective.discretizationStep); % grad S_n
-    [gradObjectiveX, gradObjectiveY] = gradient(F, domain.objective.discretizationStep); % grad f
-
-    gradS = cat(3, gradSensorPerformanceX, gradSensorPerformanceY, zeros(size(gradSensorPerformanceX))); % grad S_n
-    gradF = cat(3, gradObjectiveX, gradObjectiveY, zeros(size(gradObjectiveX))); % grad f
-
     [gradCX, gradCY] = gradient(C, domain.objective.discretizationStep); % grad C;
     gradC = cat(3, gradCX, gradCY, zeros(size(gradCX))); % temp zeros for gradCZ
     nGradC = vecnorm(gradC, 2, 3);
 
     if obj.debug
+        % Compute additional component-level values for diagnosing issues
+        [gradSensorPerformanceX, gradSensorPerformanceY] = gradient(S, domain.objective.discretizationStep); % grad S_n
+        [gradObjectiveX, gradObjectiveY] = gradient(F, domain.objective.discretizationStep); % grad f
+        gradS = cat(3, gradSensorPerformanceX, gradSensorPerformanceY, zeros(size(gradSensorPerformanceX))); % grad S_n
+        gradF = cat(3, gradObjectiveX, gradObjectiveY, zeros(size(gradObjectiveX))); % grad f
+
         ii = 8;
         hold(obj.debugFig.Children(1).Children(ii), "on");
         imagesc(obj.debugFig.Children(1).Children(ii), F./max(F, [], 'all'));
@@ -96,26 +96,21 @@ function obj = run(obj, domain, partitioning, t)
         end
     end
 
-    % grad(s*f) = grad(f) * s + f * grad(s) - product rule (f scalar field, s vector field)
-    % gradC = S .* abs(gradF) + F .* abs(gradS); % second term provides altitude
-    % normalize in x3 dimension and find the direction which maximizes ascent
-    % nGradC = vecnorm(gradC, 2, 3);
-    [xNextIdx, yNextIdx] = find(nGradC == max(nGradC, [], 'all')); % find direction of steepest increase
+    % Use largest grad(C) value to find the direction of the next position
+    [xNextIdx, yNextIdx] = find(nGradC == max(nGradC, [], 'all'));
     roundingScale = 10^-log10(domain.objective.discretizationStep);
     pNext = [floor(roundingScale .* mean(unique(domain.objective.X(:, xNextIdx))))./roundingScale, floor(roundingScale .* mean(unique(domain.objective.Y(yNextIdx, :))))./roundingScale, obj.pos(3)]; % have to do some unfortunate rounding here soemtimes
 
+    % Determine next position
     vDir = (pNext - obj.pos)./norm(pNext - obj.pos, 2);
     rate = 0.2 - 0.004 * t;
     nextPos = obj.pos + vDir * rate;
 
     % Move to next position
-    % (dynamics not modeled at this time)
     obj.lastPos = obj.pos;
     obj.pos = nextPos;
 
-    % Calculate movement
-    d = obj.pos - obj.collisionGeometry.center;
-
     % Reinitialize collision geometry in the new position
+    d = obj.pos - obj.collisionGeometry.center;
     obj.collisionGeometry = obj.collisionGeometry.initialize([obj.collisionGeometry.minCorner; obj.collisionGeometry.maxCorner] + d, obj.collisionGeometry.tag, obj.collisionGeometry.label);
 end
