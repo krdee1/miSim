@@ -15,14 +15,17 @@ function obj = plotPerformance(obj)
     % Plot current cumulative performance
     hold(obj.fPerf.Children(1), 'on');
     o = plot(obj.fPerf.Children(1), obj.perf(end, :));
-    o.XData = NaN(size(o.XData)); % correct time will be set at runtime
+    warning('off', 'MATLAB:gui:array:InvalidArrayShape'); % suppress this warning to avoid polluting output
+    o.XData = NaN(1, obj.maxIter); % correct time will be set at runtime
+    o.YData = [0, NaN(1, obj.maxIter - 1)];
     hold(obj.fPerf.Children(1), 'off');
 
     % Plot current agent performance
     for ii = 1:(size(obj.perf, 1) - 1)
         hold(obj.fPerf.Children(1), 'on');
         o = [o; plot(obj.fPerf.Children(1), obj.perf(ii, :))];
-        o(end).XData = NaN(size(o(end).XData)); % correct time will be set at runtime
+        o(end).XData = NaN(1, obj.maxIter); % correct time will be set at runtime
+        o(end).YData = [0, NaN(1, obj.maxIter - 1)];
         hold(obj.fPerf.Children(1), 'off');
     end
 
