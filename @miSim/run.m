@@ -9,8 +9,7 @@ function [obj] = run(obj)
     % Start video writer
     v = obj.setupVideoWriter();
     v.open();
-
-    steady = 0;
+    
     for ii = 1:size(obj.times, 1)
         % Display current sim time
         obj.t = obj.times(ii);
