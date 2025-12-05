@@ -32,6 +32,7 @@ classdef rectangularPrism
         [r     ] = random(obj);
         [c     ] = contains(obj, pos);
         [d     ] = distance(obj, pos);
+        [g     ] = distanceGradient(obj, pos);
         [c     ] = containsLine(obj, pos1, pos2);
         [obj, f] = plotWireframe(obj, ind, f);
     end

@@ -8,6 +8,12 @@ function obj = run(obj, domain, partitioning, t)
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'agent')};
     end
+    
+    % Update collision barrier function
+    % first part evaluates to +/-1 if the point is outside/inside the collision geometry
+    % Second part determines the distance from the point to the boundary of the collision geometry
+    obj.barrierFunction = @(x) (1 - 2 * obj.collisionGeometry.contains(x)) * obj.collisionGeometry.distance(x); % x is 1x3
+    obj.dBarrierFunction = @(x) obj.collisionGeometry.distanceGradient(x); % x is 1x3
 
     % Collect objective function values across partition
     partitionMask = partitioning == obj.index;

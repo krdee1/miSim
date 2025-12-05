@@ -20,6 +20,8 @@ classdef agent
 
         % Collision
         collisionGeometry;
+        barrierFunction;
+        dBarrierFunction;
 
         % FOV cone
         fovGeometry;
