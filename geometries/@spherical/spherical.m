@@ -1,4 +1,4 @@
-classdef rectangularPrism
+classdef spherical
     % Rectangular prism geometry
     properties (SetAccess = private, GetAccess = public)
         % Meta
@@ -6,18 +6,12 @@ classdef rectangularPrism
         label = "";
 
         % Spatial
-        minCorner = NaN(1, 3);
-        maxCorner = NaN(1, 3);
-        dimensions = NaN(1, 3);
         center = NaN;
-        footprint = NaN(4, 2);
-        radius = NaN; % fake radius
+        radius = NaN;
+        diameter = NaN;
 
-        % Graph
-        vertices = NaN(8, 3);
-        edges = [1 2; 2 3; 3 4; 4 1;  % bottom square
-            5 6; 6 8; 8 7; 7 5;  % top square
-            1 5; 2 6; 3 8; 4 7]; % vertical edges
+        vertices; % fake vertices
+        edges; % fake edges
 
         % Plotting
         lines;
@@ -32,8 +26,7 @@ classdef rectangularPrism
     end
 
     methods (Access = public)
-        [obj   ] = initialize(obj, bounds, tag, label, objectiveFunction, discretizationStep);
-        [obj   ] = initializeRandom(obj, tag, label, minDimension, maxDimension, domain);
+        [obj   ] = initialize(obj, center, radius, tag, label);
         [r     ] = random(obj);
         [c     ] = contains(obj, pos);
         [d     ] = distance(obj, pos);

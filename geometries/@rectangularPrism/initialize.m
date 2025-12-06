@@ -24,6 +24,10 @@ function obj = initialize(obj, bounds, tag, label, objectiveFunction, discretiza
     % Compute center
     obj.center = obj.minCorner + obj.dimensions ./ 2;
 
+    % Compute a (fake) radius
+    % fully contains the rectangular prism from the center
+    obj.radius = (1/2) * sqrt(sum(obj.dimensions.^2));
+
     % Compute vertices
     obj.vertices = [obj.minCorner;
                     obj.maxCorner(1), obj.minCorner(2:3);
@@ -44,4 +48,13 @@ function obj = initialize(obj, bounds, tag, label, objectiveFunction, discretiza
     if tag == REGION_TYPE.DOMAIN
         obj.objective = sensingObjective;
     end
+
+    % Initialize CBF
+    % first part evaluates to +/-1 if the point is outside/inside the collision geometry
+    % Second part determines the distance from the point to the boundary of the collision geometry
+    obj.barrierFunction = @(x) (1 - 2 * obj.collisionGeometry.contains(x)) * obj.collisionGeometry.distance(x); % x is 1x3
+    % gradient of barrier function 
+    obj.dBarrierFunction = @(x) obj.collisionGeometry.distanceGradient(x); % x is 1x3
+    % as long as the collisionGeometry object is updated during runtime,
+    % these functions never have to be updated again
 end

@@ -1,5 +1,5 @@
 classdef agent
-    properties (SetAccess = private, GetAccess = public)
+    properties (SetAccess = public, GetAccess = public)
         % Identifiers
         index = NaN;
         label = "";

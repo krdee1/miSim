@@ -27,6 +27,10 @@ function [obj] = run(obj)
             obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.t);
         end
 
+        % Adjust motion determined by unconstrained gradient ascent using
+        % CBF constraints solved by QP
+        obj = constrainMotion(obj);
+
         % Update total performance
         obj.performance = [obj.performance, sum(cellfun(@(x) x.performance(end), obj.agents))];
 

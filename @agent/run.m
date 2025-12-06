@@ -8,12 +8,6 @@ function obj = run(obj, domain, partitioning, t)
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'agent')};
     end
-    
-    % Update collision barrier function
-    % first part evaluates to +/-1 if the point is outside/inside the collision geometry
-    % Second part determines the distance from the point to the boundary of the collision geometry
-    obj.barrierFunction = @(x) (1 - 2 * obj.collisionGeometry.contains(x)) * obj.collisionGeometry.distance(x); % x is 1x3
-    obj.dBarrierFunction = @(x) obj.collisionGeometry.distanceGradient(x); % x is 1x3
 
     % Collect objective function values across partition
     partitionMask = partitioning == obj.index;
@@ -84,6 +78,11 @@ function obj = run(obj, domain, partitioning, t)
         % just pick one
         r = randi([1, size(x, 1)]);
         x = x(r); y = y(r);
+
+        % switch them
+        temp = x;
+        x = y;
+        y = temp;
         
         % find objective location in discrete domain
         [~, xIdx] = find(domain.objective.groundPos(1) == domain.objective.X);
@@ -104,12 +103,17 @@ function obj = run(obj, domain, partitioning, t)
 
     % Use largest grad(C) value to find the direction of the next position
     [xNextIdx, yNextIdx] = find(nGradC == max(nGradC, [], 'all'));
+    % switch them
+    temp = xNextIdx;
+    xNextIdx = yNextIdx;
+    yNextIdx = temp;
+
     roundingScale = 10^-log10(domain.objective.discretizationStep);
     pNext = [floor(roundingScale .* mean(unique(domain.objective.X(:, xNextIdx))))./roundingScale, floor(roundingScale .* mean(unique(domain.objective.Y(yNextIdx, :))))./roundingScale, obj.pos(3)]; % have to do some unfortunate rounding here soemtimes
 
     % Determine next position
     vDir = (pNext - obj.pos)./norm(pNext - obj.pos, 2);
-    rate = 0.2 - 0.004 * t;
+    rate = 0.1 - 0.0004 * t; % slow down as you get closer, coming to a stop by the end
     nextPos = obj.pos + vDir * rate;
 
     % Move to next position
@@ -118,5 +122,11 @@ function obj = run(obj, domain, partitioning, t)
 
     % Reinitialize collision geometry in the new position
     d = obj.pos - obj.collisionGeometry.center;
-    obj.collisionGeometry = obj.collisionGeometry.initialize([obj.collisionGeometry.minCorner; obj.collisionGeometry.maxCorner] + d, obj.collisionGeometry.tag, obj.collisionGeometry.label);
+    if isa(obj.collisionGeometry, 'rectangularPrism')
+        obj.collisionGeometry = obj.collisionGeometry.initialize([obj.collisionGeometry.minCorner; obj.collisionGeometry.maxCorner] + d, obj.collisionGeometry.tag, obj.collisionGeometry.label);
+    elseif isa(obj.collisionGeometry, 'spherical')
+        obj.collisionGeometry = obj.collisionGeometry.initialize(obj.collisionGeometry.center + d, obj.collisionGeometry.radius, obj.collisionGeometry.tag, obj.collisionGeometry.label);
+    else
+        error("?");
+    end
 end

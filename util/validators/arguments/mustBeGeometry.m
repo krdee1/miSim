@@ -1,5 +1,5 @@
 function mustBeGeometry(geometry)
-    validGeometries = ["rectangularPrism";];
+    validGeometries = ["rectangularPrism"; "spherical"];
     if isa(geometry, 'cell')
         for ii = 1:size(geometry, 1)
             assert(any(arrayfun(@(x) isa(geometry{ii}, x), validGeometries)), "Geometry in index %d is not a valid geometry class", ii);

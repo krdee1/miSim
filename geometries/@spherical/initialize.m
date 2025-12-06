@@ -1,0 +1,42 @@
+function obj = initialize(obj, center, radius, tag, label)
+    arguments (Input)
+        obj (1, 1) {mustBeA(obj, 'spherical')};
+        center (1, 3) double;
+        radius  (1, 1) double;
+        tag (1, 1) REGION_TYPE = REGION_TYPE.INVALID;
+        label (1, 1) string = "";
+    end
+    arguments (Output)
+        obj (1, 1) {mustBeA(obj, 'spherical')};
+    end
+
+    obj.tag = tag;
+    obj.label = label;
+
+    % Define geometry
+    obj.center = center;
+    obj.radius = radius;
+    obj.diameter = 2 * obj.radius;
+
+    % Initialize CBF
+    obj.barrierFunction = @(x) NaN;
+    % gradient of barrier function 
+    obj.dBarrierFunction = @(x) NaN;
+
+    % fake vertices in a cross pattern
+    obj.vertices = [obj.center + [obj.radius, 0, 0]; ...
+                    obj.center - [obj.radius, 0, 0]; ...
+                    obj.center + [0, obj.radius, 0]; ...
+                    obj.center - [0, obj.radius, 0]; ...
+                    obj.center + [0, 0, obj.radius]; ...
+                    obj.center - [0, 0, obj.radius]];
+    % fake edges in two perpendicular rings
+    obj.edges = [1, 3; ...
+                 3, 2; ...
+                 2, 4; ...
+                 4, 1; ...
+                 1, 5; ...
+                 5, 2; ...
+                 2, 6; ...
+                 6, 1];
+end
