@@ -90,6 +90,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ~tc.obstacleCollisionCheck(tc.obstacles(1:(ii - 1)), tc.obstacles{ii})
                         badCandidate = false;
                     end
+
                 end
             end
 
