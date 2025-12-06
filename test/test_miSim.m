@@ -447,6 +447,46 @@ classdef test_miSim < matlab.unittest.TestCase
             % Run the simulation
             tc.testClass.run();
         end
+        function test_collision_avoidance(tc)
+            % No obstacles
+            % Fixed agent initial conditions
+            % Exaggerated large collision geometries to test CA
+            % make basic domain
+            l = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [3, 7]), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            radius = 1.5;
+            d = [2.5, 0, 0];
+            geometry1 = spherical;
+            geometry2 = spherical;
+            geometry1 = geometry1.initialize(tc.domain.center + d, radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry2 = geometry2.initialize(tc.domain.center - d, radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            % Homogeneous sensor model parameters
+            % sensor = sensor.initialize(2.5666, 5.0807, NaN, NaN, 20.8614, 13); % 13
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
+
+            % Plot sensor parameters (optional)
+            f = sensor.plotParameters();
+
+            % Initialize agents
+            tc.agents = {agent; agent};
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1));
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3, 2, sprintf("Agent %d", 2));
+
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            
+            % Run the simulation
+            tc.testClass.run();
+        end
     end
 
     methods
