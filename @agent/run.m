@@ -29,7 +29,7 @@ function obj = run(obj, domain, partitioning, t)
     obj.performance = [obj.performance, sum(C(~isnan(C)))];
 
     % Compute gradient on agent's performance
-    [gradCX, gradCY] = gradient(C, domain.objective.discretizationStep); % grad C;
+    [gradCX, gradCY] = gradient(C, domain.objective.discretizationStep); % grad C
     gradC = cat(3, gradCX, gradCY, zeros(size(gradCX))); % temp zeros for gradCZ
     nGradC = vecnorm(gradC, 2, 3);
 
