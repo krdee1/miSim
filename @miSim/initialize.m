@@ -32,8 +32,8 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
     % Add an additional obstacle spanning the domain's footprint to 
     % represent the minimum allowable altitude
     obj.minAlt = minAlt;
-    obj.obstacles{end + 1} = rectangularPrism;
-    obj.obstacles{end} = obj.obstacles{end}.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), obj.minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
+    obj.obstacles{end + 1, 1} = rectangularPrism;
+    obj.obstacles{end, 1} = obj.obstacles{end, 1}.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), obj.minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
 
     % Define objective
     obj.objective = objective;

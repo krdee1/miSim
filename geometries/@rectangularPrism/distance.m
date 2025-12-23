@@ -4,7 +4,7 @@ function d = distance(obj, pos)
         pos (:, 3) double;
     end
     arguments (Output)
-        d (:, 1) double
+        d (:, 1) double;
     end
     if obj.contains(pos)
         % Queried point is inside geometry

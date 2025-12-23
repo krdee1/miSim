@@ -14,12 +14,16 @@ function [obj] = constrainMotion(obj)
     agents = [obj.agents{:}];
     v = reshape(([agents.pos] - [agents.lastPos])./obj.timestep, 3, size(obj.agents, 1))';
 
+    % Initialize QP based on number of agents and obstacles
     h = NaN(size(obj.agents, 1));
     h(logical(eye(size(obj.agents, 1)))) = 0; % self value is 0
-    nCon = nchoosek(size(obj.agents, 1), 2);
+    nAAPairs = nchoosek(size(obj.agents, 1), 2);
+    nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1);
     kk = 1;
-    A = zeros(nCon, 3 * size(obj.agents, 1));
-    b = zeros(nCon, 1);
+    A = zeros(nAAPairs + nAOPairs, 3 * size(obj.agents, 1));
+    b = zeros(nAAPairs + nAOPairs, 1);
+
+    % Set up collision avoidance constraints
     for ii = 1:(size(obj.agents, 1) - 1)
         for jj = (ii + 1):size(obj.agents, 1)
             h(ii, jj) = norm(agents(ii).pos - agents(jj).pos)^2 - (agents(ii).collisionGeometry.radius + agents(jj).collisionGeometry.radius)^2;
@@ -31,6 +35,23 @@ function [obj] = constrainMotion(obj)
             kk = kk + 1;
         end
     end
+
+    hObs = NaN(size(obj.agents, 1), size(obj.obstacles, 1));
+    % Set up obstacle avoidance constraints
+    for ii = 1:size(obj.agents, 1)
+        for jj = 1:size(obj.obstacles, 1)
+            % find closest position to agent on/in obstacle
+            cPos = obj.obstacles{jj}.closestToPoint(agents(ii).pos);
+
+            hObs(ii, jj) = dot(agents(ii).pos - cPos, agents(ii).pos - cPos) - agents(ii).collisionGeometry.radius^2;
+
+            A(kk, (3 * ii - 2):(3 * ii)) = -2 * (agents(ii).pos - cPos);
+            b(kk) = obj.barrierGain * hObs(ii, jj)^3;
+           
+            kk = kk + 1;
+        end
+    end
+
 
     % Solve QP program generated earlier
     vhat = reshape(v', 3 * size(obj.agents, 1), 1);

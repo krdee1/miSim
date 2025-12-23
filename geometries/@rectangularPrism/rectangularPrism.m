@@ -36,6 +36,7 @@ classdef rectangularPrism
         [obj   ] = initializeRandom(obj, tag, label, minDimension, maxDimension, domain);
         [r     ] = random(obj);
         [c     ] = contains(obj, pos);
+        [cPos  ] = closestToPoint(obj, pos);
         [d     ] = distance(obj, pos);
         [g     ] = distanceGradient(obj, pos);
         [c     ] = containsLine(obj, pos1, pos2);
