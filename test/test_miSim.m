@@ -386,7 +386,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
             close(tc.testClass.fPerf);
         end
         function test_single_partition(tc)
@@ -416,7 +416,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1));
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
             close(tc.testClass.fPerf);
         end
         function test_single_partition_basic_GA(tc)
@@ -446,7 +446,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1), true);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();
@@ -477,16 +477,50 @@ classdef test_miSim < matlab.unittest.TestCase
             alphaDist = l/2; % half of domain length/width
             sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
 
-            % Plot sensor parameters (optional)
-            f = sensor.plotParameters();
-
             % Initialize agents
             tc.agents = {agent; agent};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1));
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3, 2, sprintf("Agent %d", 2));
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1), false);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3, 2, sprintf("Agent %d", 2), false);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, cell(0, 1), tc.maxIter, tc.makeVideo);
+            
+            % Run the simulation
+            tc.testClass.run();
+        end
+        function test_obstacle_avoidance(tc)
+            % Fixed single obstacle
+            % Fixed single agent initial conditions
+            % Exaggerated large collision geometries
+            % make basic domain
+            l = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            radius = 1.5;
+            d = [3, 0, 0];
+            geometry1 = spherical;
+            geometry1 = geometry1.initialize(tc.domain.center - d, radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
+
+            % Initialize agents
+            tc.agents = {agent};
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1), false);
+            
+            % Initialize obstacles
+            obstacleLength = 1;
+            tc.obstacles{1} = rectangularPrism;
+            tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, 0; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
+
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();
