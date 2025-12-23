@@ -14,7 +14,7 @@ classdef test_miSim < matlab.unittest.TestCase
         % Domain
         domain = rectangularPrism; % domain geometry
         minDimension = 10;
-        minAlt = 2; % minimum allowed agent altitude
+        minAlt = 1; % minimum allowed agent altitude
 
         % Obstacles
         minNumObstacles = 1; % Minimum number of obstacles to be randomly generated
@@ -109,11 +109,11 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ii == 1
                         while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
-                            candidatePos(3) = 1  + rand * 3; % place agents at decent altitudes for sensing
+                            candidatePos(3) = tc.minAlt  + rand * 3; % place agents at decent altitudes for sensing
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
-                        candidatePos(3) = 1  + rand * 3; % place agents at decent altitudes for sensing
+                        candidatePos(3) = tc.minAlt  + rand * 3; % place agents at decent altitudes for sensing
                     end
 
                     % Make sure that the candidate position is within the
@@ -241,11 +241,11 @@ classdef test_miSim < matlab.unittest.TestCase
                     if ii == 1
                         while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
                             candidatePos = tc.domain.random();
-                            candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, 0.5 + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
+                            candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, tc.minAlt + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
                         end
                     else
                         candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
-                        candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, 0.5 + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
+                        candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, tc.minAlt + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
                     end
 
                     % Make sure that the candidate position is within the
