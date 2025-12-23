@@ -1,9 +1,10 @@
-function obj = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles, makeVideo)
+function obj = initialize(obj, domain, objective, agents, minAlt, timestep, partitoningFreq, maxIter, obstacles, makeVideo)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
         domain (1, 1) {mustBeGeometry};
         objective (1, 1) {mustBeA(objective, 'sensingObjective')};
         agents (:, 1) cell;
+        minAlt (1, 1) double = 1;
         timestep (:, 1) double = 0.05;
         partitoningFreq (:, 1) double = 0.25
         maxIter (:, 1) double = 1000;
@@ -27,6 +28,12 @@ function obj = initialize(obj, domain, objective, agents, timestep, partitoningF
 
     % Add geometries representing obstacles within the domain
     obj.obstacles = obstacles;
+
+    % Add an additional obstacle spanning the domain's footprint to 
+    % represent the minimum allowable altitude
+    obj.minAlt = minAlt;
+    obj.obstacles{end + 1} = rectangularPrism;
+    obj.obstacles{end} = obj.obstacles{end}.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), obj.minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
 
     % Define objective
     obj.objective = objective;

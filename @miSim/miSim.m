@@ -15,6 +15,7 @@ classdef miSim
         partitioning = NaN;
         performance = 0; % cumulative sensor performance
         barrierGain = 100; % collision avoidance parameter
+        minAlt = 1; % minimum allowed altitude constraint
 
         fPerf; % performance plot figure
     end
