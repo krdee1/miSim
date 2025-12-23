@@ -27,6 +27,7 @@ classdef miSim
         partitioningTimes;
 
         % Plot objects
+        makeVideo = true; % enable/disable VideoWriter (performance implications)
         f = firstPlotSetup(); % main plotting tiled layout figure
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot

@@ -3,6 +3,9 @@ classdef test_miSim < matlab.unittest.TestCase
         % System under test
         testClass = miSim;
 
+        % Debug
+        makeVideo = false; % disable video writing for big performance increase
+
         % Sim
         maxIter = 250;
         timestep = 0.05
@@ -204,7 +207,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles, tc.makeVideo);
         end
         function misim_run(tc)
             % randomly create obstacles
@@ -338,7 +341,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles, tc.makeVideo);
 
             % Run simulation loop
             tc.testClass = tc.testClass.run();
@@ -382,7 +385,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d, 3, sprintf("Agent %d", 3));
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
             close(tc.testClass.fPerf);
         end
         function test_single_partition(tc)
@@ -412,7 +415,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1));
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
             close(tc.testClass.fPerf);
         end
         function test_single_partition_basic_GA(tc)
@@ -442,7 +445,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1), true);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();
@@ -482,7 +485,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3, 2, sprintf("Agent %d", 2));
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();

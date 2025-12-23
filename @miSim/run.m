@@ -7,8 +7,10 @@ function [obj] = run(obj)
     end
 
     % Start video writer
-    v = obj.setupVideoWriter();
-    v.open();
+    if obj.makeVideo
+        v = obj.setupVideoWriter();
+        v.open();
+    end
     
     for ii = 1:size(obj.times, 1)
         % Display current sim time
@@ -41,10 +43,14 @@ function [obj] = run(obj)
         obj = obj.updatePlots(updatePartitions);
 
         % Write frame in to video
-        I = getframe(obj.f);
-        v.writeVideo(I);
+        if obj.makeVideo
+            I = getframe(obj.f);
+            v.writeVideo(I);
+        end
     end
 
-    % Close video file
-    v.close();
+    if obj.makeVideo
+        % Close video file
+        v.close();
+    end
 end

@@ -1,4 +1,4 @@
-function obj = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles)
+function obj = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles, makeVideo)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
         domain (1, 1) {mustBeGeometry};
@@ -8,10 +8,14 @@ function obj = initialize(obj, domain, objective, agents, timestep, partitoningF
         partitoningFreq (:, 1) double = 0.25
         maxIter (:, 1) double = 1000;
         obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
+        makeVideo (1, 1) logical = true;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
+
+    % enable/disable video writer
+    obj.makeVideo = makeVideo;
 
     % Define simulation time parameters
     obj.timestep = timestep;
