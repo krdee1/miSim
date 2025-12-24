@@ -17,11 +17,12 @@ function [obj] = constrainMotion(obj)
     % Initialize QP based on number of agents and obstacles
     h = NaN(size(obj.agents, 1));
     h(logical(eye(size(obj.agents, 1)))) = 0; % self value is 0
-    nAAPairs = nchoosek(size(obj.agents, 1), 2);
-    nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1);
+    nAAPairs = nchoosek(size(obj.agents, 1), 2); % unique agent/agent pairs
+    nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
+    nADPairs = size(obj.agents, 1) * 5; % agents x (4 walls + 1 ceiling)
     kk = 1;
-    A = zeros(nAAPairs + nAOPairs, 3 * size(obj.agents, 1));
-    b = zeros(nAAPairs + nAOPairs, 1);
+    A = zeros(nAAPairs + nAOPairs + nADPairs, 3 * size(obj.agents, 1));
+    b = zeros(nAAPairs + nAOPairs + nADPairs, 1);
 
     % Set up collision avoidance constraints
     for ii = 1:(size(obj.agents, 1) - 1)
@@ -51,7 +52,47 @@ function [obj] = constrainMotion(obj)
             kk = kk + 1;
         end
     end
-
+    
+    % Set up domain constraints (walls and ceiling only)
+    % Floor constraint is implicit with an obstacle corresponding to the
+    % minimum allowed altitude, but I included it anyways
+    for ii = 1:size(obj.agents, 1)
+        % X minimum
+        h_xMin = (agents(ii).pos(1) - obj.domain.minCorner(1)) - agents(ii).collisionGeometry.radius;
+        A(kk, (3 * ii - 2):(3 * ii)) = [-1, 0, 0];
+        b(kk) = obj.barrierGain * h_xMin^3;
+        kk = kk + 1;
+    
+        % X maximum
+        h_xMax = (obj.domain.maxCorner(1) - agents(ii).pos(1)) - agents(ii).collisionGeometry.radius;
+        A(kk, (3 * ii - 2):(3 * ii)) = [1, 0, 0];
+        b(kk) = obj.barrierGain * h_xMax^3;
+        kk = kk + 1;
+    
+        % Y minimum
+        h_yMin = (agents(ii).pos(2) - obj.domain.minCorner(2)) - agents(ii).collisionGeometry.radius;
+        A(kk, (3 * ii - 2):(3 * ii)) = [0, -1, 0];
+        b(kk) = obj.barrierGain * h_yMin^3;
+        kk = kk + 1;
+    
+        % Y maximum
+        h_yMax = (obj.domain.maxCorner(2) - agents(ii).pos(2)) - agents(ii).collisionGeometry.radius;
+        A(kk, (3 * ii - 2):(3 * ii)) = [0, 1, 0];
+        b(kk) = obj.barrierGain * h_yMax^3;
+        kk = kk + 1;
+    
+        % Z minimum
+        h_zMin = (agents(ii).pos(3) - obj.domain.minCorner(3)) - agents(ii).collisionGeometry.radius;
+        A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, -1];
+        b(kk) = obj.barrierGain * h_zMin^3;
+        kk = kk + 1;
+    
+        % Z maximum
+        h_zMax = (obj.domain.maxCorner(2) - agents(ii).pos(2)) - agents(ii).collisionGeometry.radius;
+        A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, 1];
+        b(kk) = obj.barrierGain * h_zMax^3;
+        kk = kk + 1;
+    end
 
     % Solve QP program generated earlier
     vhat = reshape(v', 3 * size(obj.agents, 1), 1);

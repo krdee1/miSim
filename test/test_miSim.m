@@ -4,7 +4,7 @@ classdef test_miSim < matlab.unittest.TestCase
         testClass = miSim;
 
         % Debug
-        makeVideo = false; % disable video writing for big performance increase
+        makeVideo = true; % disable video writing for big performance increase
 
         % Sim
         maxIter = 250;
@@ -88,7 +88,7 @@ classdef test_miSim < matlab.unittest.TestCase
                 while badCandidate
                     % Instantiate a rectangular prism obstacle inside the domain
                     tc.obstacles{ii} = rectangularPrism;
-                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain);
+                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain, tc.minAlt);
     
                     % Check if the obstacle collides with an existing obstacle
                     if ~tc.obstacleCollisionCheck(tc.obstacles(1:(ii - 1)), tc.obstacles{ii})
@@ -221,7 +221,7 @@ classdef test_miSim < matlab.unittest.TestCase
                 while badCandidate
                     % Instantiate a rectangular prism obstacle inside the domain
                     tc.obstacles{ii} = rectangularPrism;
-                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain);
+                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain, tc.minAlt);
     
                     % Check if the obstacle collides with an existing obstacle
                     if ~tc.obstacleCollisionCheck(tc.obstacles(1:(ii - 1)), tc.obstacles{ii})
@@ -500,12 +500,12 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
         
             % Initialize agent collision geometry
-            radius = 1.5;
+            radius = 1.1;
             d = [3, 0, 0];
             geometry1 = spherical;
             geometry2 = geometry1;
-            geometry1 = geometry1.initialize(tc.domain.center - d + [0, radius * 1.1, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.1, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry1 = geometry1.initialize(tc.domain.center - d + [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -514,16 +514,16 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.1, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, 1, sprintf("Agent %d", 1), false);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.1, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3, 2, sprintf("Agent %d", 2), false);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3*radius, 1, sprintf("Agent %d", 1), false);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*radius, 2, sprintf("Agent %d", 2), false);
             
             % Initialize obstacles
             obstacleLength = 1;
             tc.obstacles{1} = rectangularPrism;
-            tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, 0; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
+            tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, tc.minAlt; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();
