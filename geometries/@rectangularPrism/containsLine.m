@@ -43,32 +43,4 @@ function c = containsLine(obj, pos1, pos2)
         end
     end
     c = true;
-    
-    % if abs(d) < 1e-12
-    %     % check if it happens to start or end inside or outside of
-    %     % the geometry
-    %     if obj.contains(pos1) || obj.contains(pos2)
-    %         c = true;
-    %     else
-    %         c = false;
-    %     end
-    %     return;
-    % end
-    % 
-    % tMin = -inf;        
-    % tMax = inf;
-    % 
-    % % Standard case
-    % for ii = 1:3
-    %     t1 = (obj.minCorner(ii) - pos1(ii)) / d(ii);
-    %     t2 = (obj.maxCorner(ii) - pos2(ii)) / d(ii);
-    %     tMin = max(tMin, min(t1, t2));
-    %     tMax = min(tMax, max(t1, t2));
-    %     if tMin > tMax
-    %         c = false;
-    %         return;
-    %     end
-    % end
-    % 
-    % c = (tMax >= 0) && (tMin <= 1);
 end

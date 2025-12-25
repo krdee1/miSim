@@ -24,22 +24,6 @@ function obj = updateAdjacency(obj)
                     A(ii, jj) = false;
                 end
             end
-
-
-
-            % if norm(obj.agents{ii}.pos - obj.agents{jj}.pos) <= min([obj.agents{ii}.comRange, obj.agents{jj}.comRange])
-            %     % Make sure that obstacles don't obstruct the line
-            %     % of sight, breaking the connection
-            %     for kk = 1:size(obj.obstacles, 1)
-            %         if A(ii, jj) && obj.obstacles{kk}.containsLine(obj.agents{ii}.pos, obj.agents{jj}.pos)
-            %             A(ii, jj) = false;
-            %         end
-            %     end
-            %     % need extra handling for cases with no obstacles
-            %     if isempty(obj.obstacles)
-            %         A(ii, jj) = true;
-            %     end
-            % end
         end
     end
 
