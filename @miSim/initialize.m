@@ -1,4 +1,4 @@
-function obj = initialize(obj, domain, objective, agents, minAlt, timestep, partitoningFreq, maxIter, obstacles, makeVideo)
+function obj = initialize(obj, domain, objective, agents, minAlt, timestep, partitoningFreq, maxIter, obstacles, makePlots, makeVideo)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
         domain (1, 1) {mustBeGeometry};
@@ -9,14 +9,23 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
         partitoningFreq (:, 1) double = 0.25
         maxIter (:, 1) double = 1000;
         obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
+        makePlots(1, 1) logical = true;
         makeVideo (1, 1) logical = true;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
 
-    % enable/disable video writer
+    % enable/disable plotting and video writer
+    obj.makePlots = makePlots;
+    if ~obj.makePlots
+        if makeVideo
+            warning("makeVideo set to true, but makePlots set to false. Setting makeVideo to false.");
+            makeVideo = false;
+        end
+    end
     obj.makeVideo = makeVideo;
+    
 
     % Define simulation time parameters
     obj.timestep = timestep;
@@ -51,7 +60,6 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
     obj.partitioningTimes = obj.times(obj.partitioningFreq:obj.partitioningFreq:size(obj.times, 1));
 
     % Prepare performance data store (at t = 0, all have 0 performance)
-    obj.fPerf = figure;
     obj.perf = [zeros(size(obj.agents, 1) + 1, 1), NaN(size(obj.agents, 1) + 1, size(obj.partitioningTimes, 1) - 1)];
 
     % Create initial partitioning

@@ -5,6 +5,11 @@ function obj = plot(obj)
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
+    
+    % fast exit when plotting is disabled
+    if ~obj.makePlots
+        return;
+    end
 
     % Plot domain
     [obj.domain, obj.f] = obj.domain.plotWireframe(obj.spatialPlotIndices);

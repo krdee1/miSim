@@ -7,6 +7,11 @@ function [obj] = updatePlots(obj, updatePartitions)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
 
+    % Fast exit when plotting is disabled
+    if ~obj.makePlots
+        return;
+    end
+
     % Update agent positions, collision geometries
     for ii = 1:size(obj.agents, 1)
         obj.agents{ii}.updatePlots();

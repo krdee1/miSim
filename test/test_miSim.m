@@ -5,6 +5,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Debug
         makeVideo = true; % disable video writing for big performance increase
+        makePlots = true; % disable plotting for big performance increase (also disables video)
 
         % Sim
         maxIter = 250;
@@ -528,7 +529,6 @@ classdef test_miSim < matlab.unittest.TestCase
             % Run the simulation
             tc.testClass.run();
         end
-
         function test_obstacle_blocks_comms_LOS(tc)
             % Fixed single obstacle
             % Fixed two agents initial conditions
@@ -565,8 +565,8 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, 0; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, 0, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, tc.makeVideo);
-        
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, 0, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, false, false);
+
             % No communications link should be established
             tc.assertEqual(tc.testClass.adjacency, logical(eye(2)));
         end

@@ -6,6 +6,13 @@ function obj = plotPerformance(obj)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
 
+    % fast exit when plotting is disabled
+    if ~obj.makePlots
+        return;
+    end
+    
+    obj.fPerf = figure;
+
     axes(obj.fPerf);
     title(obj.fPerf.Children(1), "Sensor Performance");
     xlabel(obj.fPerf.Children(1), 'Time (s)');
