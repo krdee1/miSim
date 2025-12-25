@@ -490,7 +490,7 @@ classdef test_miSim < matlab.unittest.TestCase
         end
         function test_obstacle_avoidance(tc)
             % Fixed single obstacle
-            % Fixed single agent initial conditions
+            % Fixed two agents initial conditions
             % Exaggerated large collision geometries
             % make basic domain
             l = 10; % domain size
@@ -514,8 +514,8 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3*radius, 1, sprintf("Agent %d", 1), false);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*radius, 2, sprintf("Agent %d", 2), false);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 5*radius, 1, sprintf("Agent %d", 1), false);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 5*radius, 2, sprintf("Agent %d", 2), false);
             
             % Initialize obstacles
             obstacleLength = 1;
@@ -523,10 +523,52 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, tc.minAlt; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 100, tc.obstacles, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();
+        end
+
+        function test_obstacle_blocks_comms_LOS(tc)
+            % Fixed single obstacle
+            % Fixed two agents initial conditions
+            % Exaggerated large communications radius
+            % make basic domain
+            l = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            radius = .25;
+            d = 2;
+            geometry1 = spherical;
+            geometry2 = geometry1;
+            geometry1 = geometry1.initialize(tc.domain.center - [d, 0, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry2 = geometry2.initialize(tc.domain.center - [0, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
+
+            % Initialize agents
+            commsRadius = 5;
+            tc.agents = {agent; agent;};
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, commsRadius, 1, sprintf("Agent %d", 1), false);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [0, d, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, commsRadius, 2, sprintf("Agent %d", 2), false);
+            
+            % Initialize obstacles
+            obstacleLength = 1.5;
+            tc.obstacles{1} = rectangularPrism;
+            tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, 0; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
+
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, 0, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, tc.makeVideo);
+        
+            % No communications link should be established
+            tc.assertEqual(tc.testClass.adjacency, logical(eye(2)));
         end
     end
 
