@@ -28,6 +28,7 @@ classdef agent
 
         % Communication
         comRange = NaN;
+        commsGeometry = spherical;
 
         performance = 0;
 
@@ -35,6 +36,7 @@ classdef agent
         scatterPoints;
         debug = false;
         debugFig;
+        plotCommsGeometry = true;
     end
 
     methods (Access = public)

@@ -12,7 +12,7 @@ function [obj] = updatePlots(obj, updatePartitions)
         return;
     end
 
-    % Update agent positions, collision geometries
+    % Update agent positions, collision/communication geometries
     for ii = 1:size(obj.agents, 1)
         obj.agents{ii}.updatePlots();
     end

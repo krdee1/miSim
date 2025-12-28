@@ -22,7 +22,7 @@ function obj = plot(obj)
     % Plot objective gradient
     obj.f = obj.domain.objective.plot(obj.objectivePlotIndices, obj.f);
 
-    % Plot agents and their collision geometries
+    % Plot agents and their collision/communications geometries
     for ii = 1:size(obj.agents, 1)
         [obj.agents{ii}, obj.f] = obj.agents{ii}.plot(obj.spatialPlotIndices, obj.f);
     end

@@ -6,6 +6,7 @@ classdef test_miSim < matlab.unittest.TestCase
         % Debug
         makeVideo = true; % disable video writing for big performance increase
         makePlots = true; % disable plotting for big performance increase (also disables video)
+        plotCommsGeometry = false; % disable plotting communications geometries
 
         % Sim
         maxIter = 250;
@@ -484,7 +485,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3, 2, sprintf("Agent %d", 2), false);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, cell(0, 1), tc.maxIter, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo, tc.makePlots);
             
             % Run the simulation
             tc.testClass.run();
@@ -515,8 +516,8 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 5*radius, 1, sprintf("Agent %d", 1), false);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 5*radius, 2, sprintf("Agent %d", 2), false);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 4, 1, sprintf("Agent %d", 1), false, false);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 4, 2, sprintf("Agent %d", 2), false, false);
             
             % Initialize obstacles
             obstacleLength = 1;

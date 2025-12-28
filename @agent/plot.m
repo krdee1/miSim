@@ -30,6 +30,11 @@ function [obj, f] = plot(obj, ind, f)
     % Plot collision geometry
     [obj.collisionGeometry, f] = obj.collisionGeometry.plotWireframe(ind, f);
 
+    % Plot communications geometry
+    if obj.plotCommsGeometry
+        [obj.commsGeometry, f] = obj.commsGeometry.plotWireframe(ind, f);
+    end
+
     % Plot FOV geometry
     [obj.fovGeometry, f] = obj.fovGeometry.plot(ind, f);
 end

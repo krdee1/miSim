@@ -25,6 +25,17 @@ function updatePlots(obj)
         end
     end
 
+    % Communications geometry edges
+    if obj.plotCommsGeometry
+        for jj = 1:size(obj.commsGeometry.lines, 2)
+            for ii = 1:size(obj.collisionGeometry.lines(:, jj), 1)
+                obj.collisionGeometry.lines(ii, jj).XData = obj.collisionGeometry.lines(ii, jj).XData + deltaPos(1);
+                obj.collisionGeometry.lines(ii, jj).YData = obj.collisionGeometry.lines(ii, jj).YData + deltaPos(2);
+                obj.collisionGeometry.lines(ii, jj).ZData = obj.collisionGeometry.lines(ii, jj).ZData + deltaPos(3);
+            end
+        end
+    end
+
     % Update FOV geometry surfaces
     for jj = 1:size(obj.fovGeometry.surface, 2)
         % Update each plot

@@ -9,6 +9,7 @@ classdef REGION_TYPE
         OBSTACLE (2, [255, 127, 127]); % obstacle region
         COLLISION (3, [255, 255, 128]); % collision avoidance region
         FOV (4, [255, 165, 0]); % field of view region
+        COMMS (5, [0, 255, 0]); % comunications region
     end
     methods
         function obj = REGION_TYPE(id, color)

@@ -1,4 +1,4 @@
-function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label, debug)
+function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label, debug, plotCommsGeometry)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'agent')};
         pos (1, 3) double;
@@ -12,6 +12,7 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
         index (1, 1) double = NaN;
         label (1, 1) string = "";
         debug (1, 1) logical = false;
+        plotCommsGeometry (1, 1) logical = true;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'agent')};
@@ -24,10 +25,13 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     obj.collisionGeometry = collisionGeometry;
     obj.sensorModel = sensorModel;
     obj.guidanceModel = guidanceModel;
-    obj.comRange = comRange;
     obj.index = index;
     obj.label = label;
     obj.debug = debug;
+    obj.plotCommsGeometry = plotCommsGeometry;
+
+    % Add spherical geometry based on com range
+    obj.commsGeometry = obj.commsGeometry.initialize(obj.pos, comRange, REGION_TYPE.COMMS, sprintf("Agent %d Comms Geometry", obj.index));
 
     if obj.debug
         obj.debugFig = figure;
