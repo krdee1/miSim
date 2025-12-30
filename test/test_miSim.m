@@ -296,7 +296,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii));
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange, ii, sprintf("Agent %d", ii), false, false);
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
