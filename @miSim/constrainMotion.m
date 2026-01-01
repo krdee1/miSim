@@ -15,16 +15,18 @@ function [obj] = constrainMotion(obj)
     v = reshape(([agents.pos] - [agents.lastPos])./obj.timestep, 3, size(obj.agents, 1))';
 
     % Initialize QP based on number of agents and obstacles
-    h = NaN(size(obj.agents, 1));
-    h(logical(eye(size(obj.agents, 1)))) = 0; % self value is 0
     nAAPairs = nchoosek(size(obj.agents, 1), 2); % unique agent/agent pairs
     nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
     nADPairs = size(obj.agents, 1) * 5; % agents x (4 walls + 1 ceiling)
+    nLNAPairs = sum(obj.constraintAdjacencyMatrix) - size(obj.agents, 1);
+    total = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
     kk = 1;
-    A = zeros(nAAPairs + nAOPairs + nADPairs, 3 * size(obj.agents, 1));
-    b = zeros(nAAPairs + nAOPairs + nADPairs, 1);
+    A = zeros(total, 3 * size(obj.agents, 1));
+    b = zeros(total, 1);
 
     % Set up collision avoidance constraints
+    h = NaN(size(obj.agents, 1));
+    h(logical(eye(size(obj.agents, 1)))) = 0; % self value is 0
     for ii = 1:(size(obj.agents, 1) - 1)
         for jj = (ii + 1):size(obj.agents, 1)
             h(ii, jj) = norm(agents(ii).pos - agents(jj).pos)^2 - (agents(ii).collisionGeometry.radius + agents(jj).collisionGeometry.radius)^2;
@@ -92,6 +94,23 @@ function [obj] = constrainMotion(obj)
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, 1];
         b(kk) = obj.barrierGain * h_zMax^3;
         kk = kk + 1;
+    end
+
+    % Add communication network constraints
+    hComms = NaN(size(obj.agents, 1));
+    hComms(logical(eye(size(obj.agents, 1)))) = 0; % self value is 0
+    for ii = 1:(size(obj.agents, 1) - 1)
+        for jj = (ii + 1):size(obj.agents, 1)
+            if obj.constraintAdjacencyMatrix(ii, jj)
+                hComms(ii, jj) = (agents(ii).commsGeometry.radius + agents(jj).commsGeometry.radius)^2 - norm(agents(ii).pos - agents(jj).pos)^2;
+                hComms(jj, ii) = hComms(ii, jj);
+                
+                A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (agents(ii).pos - agents(jj).pos);
+                A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
+                b(kk) = obj.barrierGain * hComms(ii, jj)^3;
+                kk = kk + 1;
+            end
+        end
     end
 
     % Solve QP program generated earlier

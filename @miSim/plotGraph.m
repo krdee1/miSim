@@ -7,7 +7,7 @@ function obj = plotGraph(obj)
     end
 
     % Form graph from adjacency matrix
-    G = graph(obj.adjacency, 'omitselfloops');
+    G = graph(obj.constraintAdjacencyMatrix, 'omitselfloops');
 
     % Plot graph object
     if isnan(obj.networkGraphIndex)

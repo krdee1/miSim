@@ -28,4 +28,9 @@ function obj = updateAdjacency(obj)
     end
 
     obj.adjacency = A & A';
+
+    if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, 'all')
+        warning("Eliminated network connections that were necessary");
+        keyboard
+    end
 end

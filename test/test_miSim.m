@@ -31,8 +31,8 @@ classdef test_miSim < matlab.unittest.TestCase
         objective = sensingObjective;
 
         % Agents
-        minAgents = 2; % Minimum number of agents to be randomly generated
-        maxAgents = 4; % Maximum number of agents to be randomly generated
+        minAgents = 4; % Minimum number of agents to be randomly generated
+        maxAgents = 6; % Maximum number of agents to be randomly generated
         sensingLength = 0.05; % length parameter used by sensing function
         agents = cell(0, 1);
         

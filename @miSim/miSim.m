@@ -11,6 +11,7 @@ classdef miSim
         obstacles = cell(0, 1); % geometries that define obstacles within the domain
         agents = cell(0, 1); % agents that move within the domain
         adjacency = NaN; % Adjacency matrix representing communications network graph
+        constraintAdjacencyMatrix = NaN; % Adjacency matrix representing desired lesser neighbor connections
         sensorPerformanceMinimum = 1e-6; % minimum sensor performance to allow assignment of a point in the domain to a partition
         partitioning = NaN;
         performance = 0; % cumulative sensor performance
@@ -47,6 +48,7 @@ classdef miSim
     methods (Access = public)
         [obj] = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles);
         [obj] = run(obj);
+        [obj] = lesserNeighbor(obj);
         [obj] = constrainMotion(obj);
         [obj] = partition(obj);
         [obj] = updateAdjacency(obj);

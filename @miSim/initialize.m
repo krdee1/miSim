@@ -25,7 +25,6 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
         end
     end
     obj.makeVideo = makeVideo;
-    
 
     % Define simulation time parameters
     obj.timestep = timestep;
@@ -51,9 +50,11 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
 
     % Define agents
     obj.agents = agents;
+    obj.constraintAdjacencyMatrix = logical(eye(size(agents, 1)));
 
-    % Compute adjacency matrix
+    % Compute adjacency matrix and lesser neighbors
     obj = obj.updateAdjacency();
+    obj = obj.lesserNeighbor();
 
     % Set up times to iterate over
     obj.times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';

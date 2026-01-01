@@ -24,7 +24,10 @@ function [obj] = run(obj)
             obj = obj.partition();
         end
 
-        % Iterate over agents to simulate their motion
+        % Determine desired communications links
+        obj = obj.lesserNeighbor();
+
+        % Iterate over agents to simulate their unconstrained motion
         for jj = 1:size(obj.agents, 1)
             obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.t);
         end
@@ -32,6 +35,8 @@ function [obj] = run(obj)
         % Adjust motion determined by unconstrained gradient ascent using
         % CBF constraints solved by QP
         obj = constrainMotion(obj);
+
+        % Finished simulation for this timestep, do accounting
 
         % Update total performance
         obj.performance = [obj.performance, sum(cellfun(@(x) x.performance(end), obj.agents))];

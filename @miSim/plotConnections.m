@@ -9,9 +9,9 @@ function obj = plotConnections(obj)
     % Iterate over lower triangle off-diagonal region of the 
     % adjacency matrix to plot communications links between agents
     X = []; Y = []; Z = [];
-    for ii = 2:size(obj.adjacency, 1)
+    for ii = 2:size(obj.constraintAdjacencyMatrix, 1)
         for jj = 1:(ii - 1)
-            if obj.adjacency(ii, jj)
+            if obj.constraintAdjacencyMatrix(ii, jj)
                 X = [X; obj.agents{ii}.pos(1), obj.agents{jj}.pos(1)];
                 Y = [Y; obj.agents{ii}.pos(2), obj.agents{jj}.pos(2)];
                 Z = [Z; obj.agents{ii}.pos(3), obj.agents{jj}.pos(3)];
