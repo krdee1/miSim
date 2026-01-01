@@ -18,12 +18,12 @@ function obj = updateAdjacency(obj)
                 continue;
             end
 
-            % Check that agents do not have their line of sight obstructed
-            for kk = 1:size(obj.obstacles, 1)
-                if obj.obstacles{kk}.containsLine(obj.agents{jj}.pos, obj.agents{ii}.pos)
-                    A(ii, jj) = false;
-                end
-            end
+            % % Check that agents do not have their line of sight obstructed
+            % for kk = 1:size(obj.obstacles, 1)
+            %     if obj.obstacles{kk}.containsLine(obj.agents{jj}.pos, obj.agents{ii}.pos)
+            %         A(ii, jj) = false;
+            %     end
+            % end
         end
     end
 

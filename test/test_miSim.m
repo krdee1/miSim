@@ -507,7 +507,7 @@ classdef test_miSim < matlab.unittest.TestCase
             geometry1 = spherical;
             geometry2 = geometry1;
             geometry1 = geometry1.initialize(tc.domain.center - d + [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -516,8 +516,8 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 4, 1, sprintf("Agent %d", 1), false, false);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0] - [0, 1, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 4, 2, sprintf("Agent %d", 2), false, false);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 10, 1, sprintf("Agent %d", 1), false, false);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 10, 2, sprintf("Agent %d", 2), false, false);
             
             % Initialize obstacles
             obstacleLength = 1;

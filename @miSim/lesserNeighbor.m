@@ -21,12 +21,8 @@ function obj = lesserNeighbor(obj)
         % indexed agent provides connectivity already
         for jj = 1:(ii - 1)
             for kk = 1:(jj - 1)
-                % Check if a connection between the two lesser agents
-                % already exists
-                if constraintAdjacencyMatrix(jj, kk)
-                    constraintAdjacencyMatrix(jj, kk) = false;
-                    constraintAdjacencyMatrix(kk, jj) = false;
-                end
+                constraintAdjacencyMatrix(ii, kk) = false;
+                constraintAdjacencyMatrix(kk, ii) = false;
             end
         end
     end

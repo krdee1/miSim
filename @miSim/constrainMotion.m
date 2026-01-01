@@ -18,7 +18,7 @@ function [obj] = constrainMotion(obj)
     nAAPairs = nchoosek(size(obj.agents, 1), 2); % unique agent/agent pairs
     nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
     nADPairs = size(obj.agents, 1) * 5; % agents x (4 walls + 1 ceiling)
-    nLNAPairs = sum(obj.constraintAdjacencyMatrix) - size(obj.agents, 1);
+    nLNAPairs = sum(obj.constraintAdjacencyMatrix, 'all') - size(obj.agents, 1);
     total = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
     kk = 1;
     A = zeros(total, 3 * size(obj.agents, 1));
@@ -98,14 +98,22 @@ function [obj] = constrainMotion(obj)
 
     % Add communication network constraints
     hComms = NaN(size(obj.agents, 1));
-    hComms(logical(eye(size(obj.agents, 1)))) = 0; % self value is 0
+    hComms(logical(eye(size(obj.agents, 1)))) = 0;
     for ii = 1:(size(obj.agents, 1) - 1)
         for jj = (ii + 1):size(obj.agents, 1)
             if obj.constraintAdjacencyMatrix(ii, jj)
-                hComms(ii, jj) = (agents(ii).commsGeometry.radius + agents(jj).commsGeometry.radius)^2 - norm(agents(ii).pos - agents(jj).pos)^2;
-                hComms(jj, ii) = hComms(ii, jj);
-                
-                A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (agents(ii).pos - agents(jj).pos);
+                % d = agents(ii).pos - agents(jj).pos;
+                % h = agents(ii).commsGeometry.radius^2 - dot(d,d);
+                % 
+                % A(kk, (3*ii-2):(3*ii)) =  2*d;
+                % A(kk, (3*jj-2):(3*jj)) = -2*d;
+                % b(kk) = obj.barrierGain * h^3;
+                % 
+                % kk = kk + 1;
+
+                hComms(ii, jj) = agents(ii).commsGeometry.radius^2 - norm(agents(ii).pos - agents(jj).pos)^2;
+
+                A(kk, (3 * ii - 2):(3 * ii)) = 2 * (agents(ii).pos - agents(jj).pos);
                 A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
                 b(kk) = obj.barrierGain * hComms(ii, jj)^3;
                 kk = kk + 1;
@@ -119,8 +127,12 @@ function [obj] = constrainMotion(obj)
     f = -2 * vhat;
     
     % Update solution based on constraints
+    assert(size(A,2) == size(H,1))
+    assert(size(A,1) == size(b,1))
+    assert(size(H,1) == length(f))
     opt = optimoptions('quadprog', 'Display', 'off');
-    [vNew, ~, exitflag] = quadprog(sparse(H), double(f), A, b, [],[], [], [], [], opt);
+    [vNew, ~, exitflag, m] = quadprog(sparse(H), double(f), A, b, [],[], [], [], [], opt);
+    assert(exitflag == 1, sprintf('quadprog failure... %s%s', newline, m.message));
     vNew = reshape(vNew, 3, size(obj.agents, 1))';
 
     if exitflag <= 0
