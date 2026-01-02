@@ -1,7 +1,6 @@
 classdef agent
     properties (SetAccess = public, GetAccess = public)
         % Identifiers
-        index = NaN;
         label = "";
 
         % Sensor
@@ -41,7 +40,7 @@ classdef agent
 
     methods (Access = public)
         [obj] = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label);
-        [obj] = run(obj, domain, partitioning, t);
+        [obj] = run(obj, domain, partitioning, t, index);
         [obj, f] = plot(obj, ind, f);
         updatePlots(obj);
     end

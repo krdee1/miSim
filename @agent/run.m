@@ -1,16 +1,17 @@
-function obj = run(obj, domain, partitioning, t)
+function obj = run(obj, domain, partitioning, t, index)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'agent')};
         domain (1, 1) {mustBeGeometry};
         partitioning (:, :) double;
         t (1, 1) double;
+        index (1, 1) double;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'agent')};
     end
 
     % Collect objective function values across partition
-    partitionMask = partitioning == obj.index;
+    partitionMask = partitioning == index;
     objectiveValues = domain.objective.values(partitionMask); % f(omega) on W_n
 
     % Compute sensor performance across partition

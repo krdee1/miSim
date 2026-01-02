@@ -16,7 +16,10 @@ function obj = partition(obj)
     [~, idx] = max(agentPerformances, [], 3);
 
     % Collect agent indices in the same way as performance
-    agentInds = cellfun(@(x) x.index * ones(size(obj.objective.X)), obj.agents, 'UniformOutput', false);
+    indices = 1:size(obj.agents, 1);
+    agentInds = squeeze(tensorprod(indices, ones(size(obj.objective.X))));
+    agentInds = num2cell(agentInds, 2:3);
+    agentInds = cellfun(@(x) squeeze(x), agentInds, 'UniformOutput', false);
     agentInds{end + 1} = zeros(size(agentInds{end})); % index for no assignment
     agentInds = cat(3, agentInds{:});
 
