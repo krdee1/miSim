@@ -36,6 +36,9 @@ function obj = plot(obj)
     % Plot domain partitioning
     obj = obj.plotPartitions();
 
+    % Plot agent trails
+    obj = obj.plotTrails();
+
     % Enforce plot limits
     for ii = 1:size(obj.spatialPlotIndices, 2)
         xlim(obj.f.Children(1).Children(obj.spatialPlotIndices(ii)), [obj.domain.minCorner(1), obj.domain.maxCorner(1)]);

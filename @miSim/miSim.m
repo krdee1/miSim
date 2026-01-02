@@ -4,6 +4,7 @@ classdef miSim
     % Simulation parameters
     properties (SetAccess = private, GetAccess = public)
         timestep = NaN; % delta time interval for simulation iterations
+        timestepIndex = NaN; % index of the current timestep (useful for time-indexed arrays)
         partitioningFreq = NaN; % number of simulation timesteps at which the partitioning routine is re-run
         maxIter = NaN; % maximum number of simulation iterations
         domain = rectangularPrism;
@@ -35,8 +36,10 @@ classdef miSim
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot
         partitionPlot; % objects for partition plot
-
         performancePlot; % objects for sensor performance plot
+
+        posHist; % data for trail plot
+        trailPlot; % objects for agent trail plot
 
         % Indicies for various plot types in the main tiled layout figure
         spatialPlotIndices = [6, 4, 3, 2];
@@ -56,6 +59,7 @@ classdef miSim
         [obj] = plotConnections(obj);
         [obj] = plotPartitions(obj);
         [obj] = plotGraph(obj);
+        [obj] = plotTrails(obj);
         [obj] = updatePlots(obj, updatePartitions);
     end
     methods (Access = private)

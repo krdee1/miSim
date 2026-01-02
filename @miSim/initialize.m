@@ -28,6 +28,7 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
 
     % Define simulation time parameters
     obj.timestep = timestep;
+    obj.timestepIndex = 0;
     obj.maxIter = maxIter - 1;
 
     % Define domain
@@ -65,6 +66,10 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
 
     % Create initial partitioning
     obj = obj.partition();
+
+    % Initialize variable that will store agent positions for trail plots
+    obj.posHist = NaN(size(obj.agents, 1), obj.maxIter + 1, 3);
+    obj.posHist(1:size(obj.agents, 1), 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, 'UniformOutput', false)), size(obj.agents, 1), 1, 3);
 
     % Set up plots showing initialized state
     obj = obj.plot();
