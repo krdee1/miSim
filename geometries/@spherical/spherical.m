@@ -1,10 +1,6 @@
 classdef spherical
     % Rectangular prism geometry
     properties (SetAccess = private, GetAccess = public)
-        % Meta
-        tag = REGION_TYPE.INVALID;
-        label = "";
-
         % Spatial
         center = NaN;
         radius = NaN;
@@ -21,6 +17,10 @@ classdef spherical
         dBarrierFunction;
     end
     properties (SetAccess = public, GetAccess = public)
+        % Meta
+        tag = REGION_TYPE.INVALID;
+        label = "";
+        
         % Sensing objective (for DOMAIN region type only)
         objective;
     end

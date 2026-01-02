@@ -155,7 +155,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Initialize candidate agent collision geometry
                     candidateGeometry = rectangularPrism;
-                    candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
+                    candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION);
 
                     % Initialize candidate agent sensor model
                     sensor = sigmoidSensor;
@@ -287,9 +287,9 @@ classdef test_miSim < matlab.unittest.TestCase
 
                     % Initialize candidate agent collision geometry
                     % candidateGeometry = rectangularPrism;
-                    % candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
+                    % candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION);
                     candidateGeometry = spherical;
-                    candidateGeometry = candidateGeometry.initialize(candidatePos, tc.collisionRanges(ii), REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", ii));
+                    candidateGeometry = candidateGeometry.initialize(candidatePos, tc.collisionRanges(ii), REGION_TYPE.COLLISION);
 
                     % Initialize candidate agent sensor model
                     sensor = sigmoidSensor;
@@ -363,8 +363,8 @@ classdef test_miSim < matlab.unittest.TestCase
             dh = [0,0,-1]; % bias agent altitude from domain center
             geometry1 = rectangularPrism;
             geometry2 = geometry1;
-            geometry1 = geometry1.initialize([tc.domain.center + dh + [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh + [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize([tc.domain.center + dh - [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 2));
+            geometry1 = geometry1.initialize([tc.domain.center + dh + [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh + [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize([tc.domain.center + dh - [d, 0, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [d, 0, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -383,7 +383,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Optional third agent along the +Y axis
             geometry3 = rectangularPrism;
-            geometry3 = geometry3.initialize([tc.domain.center + dh - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
+            geometry3 = geometry3.initialize([tc.domain.center + dh - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
             tc.agents{3} = agent;
             tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d);
 
@@ -401,7 +401,7 @@ classdef test_miSim < matlab.unittest.TestCase
         
             % Initialize agent collision geometry
             geometry1 = rectangularPrism;
-            geometry1 = geometry1.initialize([[tc.domain.center(1:2), 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2), 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry1 = geometry1.initialize([[tc.domain.center(1:2), 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2), 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -431,7 +431,7 @@ classdef test_miSim < matlab.unittest.TestCase
         
             % Initialize agent collision geometry
             geometry1 = rectangularPrism;
-            geometry1 = geometry1.initialize([[tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry1 = geometry1.initialize([[tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -469,8 +469,8 @@ classdef test_miSim < matlab.unittest.TestCase
             d = [2.5, 0, 0];
             geometry1 = spherical;
             geometry2 = spherical;
-            geometry1 = geometry1.initialize(tc.domain.center + d, radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize(tc.domain.center - d, radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry1 = geometry1.initialize(tc.domain.center + d, radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center - d, radius, REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -506,8 +506,8 @@ classdef test_miSim < matlab.unittest.TestCase
             d = [3, 0, 0];
             geometry1 = spherical;
             geometry2 = geometry1;
-            geometry1 = geometry1.initialize(tc.domain.center - d + [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry1 = geometry1.initialize(tc.domain.center - d + [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -546,8 +546,8 @@ classdef test_miSim < matlab.unittest.TestCase
             d = 2;
             geometry1 = spherical;
             geometry2 = geometry1;
-            geometry1 = geometry1.initialize(tc.domain.center - [d, 0, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize(tc.domain.center - [0, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry1 = geometry1.initialize(tc.domain.center - [d, 0, 0], radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center - [0, d, 0], radius, REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -591,11 +591,11 @@ classdef test_miSim < matlab.unittest.TestCase
             geometry3 = geometry2;
             geometry4 = geometry3;
             geometry5 = geometry4;
-            geometry1 = geometry1.initialize(tc.domain.center + [d, 0, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
-            geometry2 = geometry2.initialize(tc.domain.center, radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 2));
-            geometry3 = geometry2.initialize(tc.domain.center + [-d, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
-            geometry4 = geometry2.initialize(tc.domain.center + [-2*d, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 4));
-            geometry5 = geometry2.initialize(tc.domain.center + [0, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 5));
+            geometry1 = geometry1.initialize(tc.domain.center + [d, 0, 0], radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center, radius, REGION_TYPE.COLLISION);
+            geometry3 = geometry2.initialize(tc.domain.center + [-d, d, 0], radius, REGION_TYPE.COLLISION);
+            geometry4 = geometry2.initialize(tc.domain.center + [-2*d, d, 0], radius, REGION_TYPE.COLLISION);
+            geometry5 = geometry2.initialize(tc.domain.center + [0, d, 0], radius, REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -612,8 +612,6 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], zeros(1,3), 0, 0, geometry5, sensor, @gradientAscent, commsRadius);
 
             % TODO
-            % make agent label optional, can be derived from index
-            % Consider how to do the same for collision geometry label
             % make @gradientAscent always the choice
             % Build collision geometry initialization into agent initialization?
             

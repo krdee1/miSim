@@ -28,12 +28,6 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     obj.debug = debug;
     obj.plotCommsGeometry = plotCommsGeometry;
 
-    if isempty(obj.label)
-        obj.label = sprintf("Agent %d");
-    end
-
-
-
     % Add spherical geometry based on com range
     obj.commsGeometry = obj.commsGeometry.initialize(obj.pos, comRange, REGION_TYPE.COMMS, sprintf("%s Comms Geometry", obj.label));
 

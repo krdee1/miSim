@@ -52,9 +52,18 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
     % Define agents
     obj.agents = agents;
     obj.constraintAdjacencyMatrix = logical(eye(size(agents, 1)));
+
+    % Set labels for agents and collision geometries in cases where they
+    % were not provieded at the time of their initialization
     for ii = 1:size(obj.agents, 1)
+        % Agent
         if isempty(char(obj.agents{ii}.label))
             obj.agents{ii}.label = sprintf("Agent %d", ii);
+        end
+
+        % Collision geometry
+        if isempty(char(obj.agents{ii}.collisionGeometry.label))
+            obj.agents{ii}.collisionGeometry.label = sprintf("Agent %d Collision Geometry", ii);
         end
     end
 
