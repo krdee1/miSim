@@ -571,6 +571,63 @@ classdef test_miSim < matlab.unittest.TestCase
             % No communications link should be established
             tc.assertEqual(tc.testClass.adjacency, logical(eye(2)));
         end
+
+        function test_LNA_example_case(tc)
+            % No obstacles
+            % Fixed 5 agents initial conditions
+            % unitary communicaitons radius
+            % negligible collision radius
+            % make basic domain
+            l = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            radius = .01;
+            d = 1;
+            geometry1 = spherical;
+            geometry2 = geometry1;
+            geometry3 = geometry2;
+            geometry4 = geometry3;
+            geometry5 = geometry4;
+            geometry1 = geometry1.initialize(tc.domain.center + [d, 0, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 1));
+            geometry2 = geometry2.initialize(tc.domain.center, radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 2));
+            geometry3 = geometry2.initialize(tc.domain.center + [-d, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 3));
+            geometry4 = geometry2.initialize(tc.domain.center + [-2*d, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 4));
+            geometry5 = geometry2.initialize(tc.domain.center + [0, d, 0], radius, REGION_TYPE.COLLISION, sprintf("Agent %d collision volume", 5));
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
+
+            % Initialize agents
+            commsRadius = d;
+            tc.agents = {agent; agent; agent; agent; agent;};
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, commsRadius, 1, sprintf("Agent %d", 1), false);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, commsRadius, 2, sprintf("Agent %d", 2), false);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [-d, d, 0], zeros(1,3), 0, 0, geometry3, sensor, @gradientAscent, commsRadius, 3, sprintf("Agent %d", 3), false);
+            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], zeros(1,3), 0, 0, geometry4, sensor, @gradientAscent, commsRadius, 4, sprintf("Agent %d", 4), false);
+            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], zeros(1,3), 0, 0, geometry5, sensor, @gradientAscent, commsRadius, 5, sprintf("Agent %d", 5), false);
+
+            % TODO
+            % make agent label and ID optional, they can be derived from index
+            % Consider how to do the same for collision geometry label
+            % make @gradientAscent always the choice
+            
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, 0, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, false, false);
+
+            % Constraint adjacency matrix defined by LNA should be as follows
+            tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
+                [ 1, 1, 0, 0, 0; ...
+                  1, 1, 0, 0, 1; ...
+                  0, 0, 1, 1, 1;
+                  0, 0, 1, 0, 0;
+                  0, 1, 1, 0, 0; ]));
+        end
     end
 
     methods
