@@ -23,9 +23,4 @@ function obj = plotTrails(obj)
     obj.trailPlot = o;
 
     % Add legend?
-    % TODO legend?
-    % TODO unique colors for agent trails (same as performance plot?)
-    % Could be agent-specific colors (stored as agent property)
-    keyboard
-
 end

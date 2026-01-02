@@ -611,9 +611,6 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], zeros(1,3), 0, 0, geometry4, sensor, commsRadius);
             tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], zeros(1,3), 0, 0, geometry5, sensor, commsRadius);
 
-            % TODO
-            % Build collision geometry initialization into agent initialization?
-            
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, 0, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, false, false);
 
