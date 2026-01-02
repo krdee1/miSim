@@ -162,7 +162,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange); 
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, tc.comRange); 
 
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -296,7 +296,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, @gradientAscent, tc.comRange);
+                    newAgent = tc.agents{ii}.initialize(candidatePos, zeros(1,3), 0, 0, candidateGeometry, sensor, tc.comRange);
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -378,14 +378,14 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + dh + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3*d);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + dh - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3*d);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + dh + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, 3*d);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + dh - [d, 0, 0], zeros(1,3), 0, 0, geometry2, sensor, 3*d);
 
             % Optional third agent along the +Y axis
             geometry3 = rectangularPrism;
             geometry3 = geometry3.initialize([tc.domain.center + dh - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
             tc.agents{3} = agent;
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, @gradientAscent, 3*d);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, 3*d);
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
@@ -415,7 +415,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent};
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], zeros(1,3), 0, 0, geometry1, sensor, 3);
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
@@ -445,7 +445,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent};
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3, "", true);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, 3, "", true);
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
@@ -481,8 +481,8 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 3);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 3);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, zeros(1,3), 0, 0, geometry1, sensor, 3);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, 3);
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo, tc.makePlots);
@@ -516,8 +516,8 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, 10);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, 10);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, 10);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry2, sensor, 10);
             
             % Initialize obstacles
             obstacleLength = 1;
@@ -557,8 +557,8 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             commsRadius = 5;
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, commsRadius);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [0, d, 0], zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, commsRadius);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, commsRadius);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [0, d, 0], zeros(1,3), 0, 0, geometry2, sensor, commsRadius);
             
             % Initialize obstacles
             obstacleLength = 1.5;
@@ -605,14 +605,13 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             commsRadius = d;
             tc.agents = {agent; agent; agent; agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, @gradientAscent, commsRadius);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, zeros(1,3), 0, 0, geometry2, sensor, @gradientAscent, commsRadius);
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [-d, d, 0], zeros(1,3), 0, 0, geometry3, sensor, @gradientAscent, commsRadius);
-            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], zeros(1,3), 0, 0, geometry4, sensor, @gradientAscent, commsRadius);
-            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], zeros(1,3), 0, 0, geometry5, sensor, @gradientAscent, commsRadius);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], zeros(1,3), 0, 0, geometry1, sensor, commsRadius);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, zeros(1,3), 0, 0, geometry2, sensor, commsRadius);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [-d, d, 0], zeros(1,3), 0, 0, geometry3, sensor, commsRadius);
+            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], zeros(1,3), 0, 0, geometry4, sensor, commsRadius);
+            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], zeros(1,3), 0, 0, geometry5, sensor, commsRadius);
 
             % TODO
-            % make @gradientAscent always the choice
             % Build collision geometry initialization into agent initialization?
             
             % Initialize the simulation

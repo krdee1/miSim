@@ -1,4 +1,4 @@
-function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, label, debug, plotCommsGeometry)
+function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, comRange, label, debug, plotCommsGeometry)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'agent')};
         pos (1, 3) double;
@@ -7,7 +7,6 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
         tilt (1, 1) double;
         collisionGeometry (1, 1) {mustBeGeometry};
         sensorModel (1, 1) {mustBeSensor};
-        guidanceModel (1, 1) {mustBeA(guidanceModel, 'function_handle')};
         comRange (1, 1) double;
         label (1, 1) string = "";
         debug (1, 1) logical = false;
@@ -23,7 +22,7 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     obj.tilt = tilt;
     obj.collisionGeometry = collisionGeometry;
     obj.sensorModel = sensorModel;
-    obj.guidanceModel = guidanceModel;
+    obj.guidanceModel = @gradientAscent;
     obj.label = label;
     obj.debug = debug;
     obj.plotCommsGeometry = plotCommsGeometry;
