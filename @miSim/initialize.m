@@ -52,6 +52,11 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
     % Define agents
     obj.agents = agents;
     obj.constraintAdjacencyMatrix = logical(eye(size(agents, 1)));
+    for ii = 1:size(obj.agents, 1)
+        if isempty(char(obj.agents{ii}.label))
+            obj.agents{ii}.label = sprintf("Agent %d", ii);
+        end
+    end
 
     % Compute adjacency matrix and lesser neighbors
     obj = obj.updateAdjacency();
