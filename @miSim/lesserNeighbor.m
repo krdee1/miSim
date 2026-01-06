@@ -6,12 +6,7 @@ function obj = lesserNeighbor(obj)
         obj (1, 1) {mustBeA(obj, 'miSim')};
     end
 
-    % Check possible connections from adjacency matrix
-    % Choose connections which fully connect network by selecting maximum
-    % indices according to the previous columns (or rows) of the new
-    % constraint adjacency matrix
-    % Place that choice in the constraint adjacency matrix
-
+    % initialize solution with self-connections only
     constraintAdjacencyMatrix = logical(eye(size(obj.agents, 1)));
 
     for ii = 1:size(obj.agents, 1)
@@ -34,6 +29,7 @@ function obj = lesserNeighbor(obj)
         subgraphAdjacency = obj.adjacency(obj.agents{ii}.lesserNeighbors, obj.agents{ii}.lesserNeighbors);
 
         % Find connected components in each agent's subgraph
+        % TODO: rewrite this using matlab "conncomp" function?
         visited = false(size(subgraphAdjacency, 1), 1);
         components = {};
         for jj = 1:size(subgraphAdjacency, 1)

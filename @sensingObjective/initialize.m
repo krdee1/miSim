@@ -37,6 +37,7 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
     % store ground position
     idx = obj.values == 1;
     obj.groundPos = [obj.X(idx), obj.Y(idx)];
+    obj.groundPos = obj.groundPos(1, 1:2); % for safety, in case 2 points are maximal (somehow)
 
     assert(domain.distance([obj.groundPos, domain.center(3)]) > protectedRange, "Domain is crowding the sensing objective")
 end

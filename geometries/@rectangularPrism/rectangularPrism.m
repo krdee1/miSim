@@ -3,7 +3,6 @@ classdef rectangularPrism
     properties (SetAccess = private, GetAccess = public)
         % Meta
         tag = REGION_TYPE.INVALID;
-        label = "";
 
         % Spatial
         minCorner = NaN(1, 3);
@@ -27,6 +26,7 @@ classdef rectangularPrism
         dBarrierFunction;
     end
     properties (SetAccess = public, GetAccess = public)
+        label = "";
         % Sensing objective (for DOMAIN region type only)
         objective;
     end

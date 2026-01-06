@@ -491,6 +491,9 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.testClass.run();
         end
         function test_obstacle_avoidance(tc)
+            % Right now this seems to prove that the communications
+            % constraints are working, but the result is dissatisfying
+
             % Fixed single obstacle
             % Fixed two agents initial conditions
             % Exaggerated large collision geometries
@@ -506,29 +509,75 @@ classdef test_miSim < matlab.unittest.TestCase
             d = [3, 0, 0];
             geometry1 = spherical;
             geometry2 = geometry1;
-            geometry1 = geometry1.initialize(tc.domain.center - d + [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION);
-            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.5, 0], radius, REGION_TYPE.COLLISION);
+            geometry1 = geometry1.initialize(tc.domain.center - d + [0.1, radius * 1.1, 0], radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center - d - [0.1, radius * 1.1, 0], radius, REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
             alphaDist = l/2; % half of domain length/width
             sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
-
-            % Initialize agents
-            tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry1, sensor, 10);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius * 1.5, 0], zeros(1,3), 0, 0, geometry2, sensor, 10);
             
             % Initialize obstacles
             obstacleLength = 1;
             tc.obstacles{1} = rectangularPrism;
             tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, tc.minAlt; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
 
+            % Initialize agents
+            commsRadius = (2*radius + obstacleLength) * 0.9; % defined such that they cannot go around the obstacle on both sides
+            tc.agents = {agent; agent;};
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0.1, radius * 1.1, 0], zeros(1,3), 0, 0, geometry1, sensor, commsRadius);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0.1, radius  *1.1, 0], zeros(1,3), 0, 0, geometry2, sensor, commsRadius);
+
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 100, tc.obstacles, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();
+        end
+        function test_communications_constraint(tc)
+            % No obstacles
+            % Fixed two agents initial conditions
+            % Negligible collision geometries
+            % Non-standard domain with two objectives that will try to pull the
+            % agents apart
+            l = 10; % domain size
+            dom = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            dom.objective = dom.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [2, 8]) + mvnpdf([x(:), y(:)], [8, 8]), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            radius = 0.1;
+            d = [1, 0, 0];
+            geometry1 = spherical;
+            geometry2 = geometry1;
+            geometry1 = geometry1.initialize(dom.center + d, radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(dom.center - d, radius, REGION_TYPE.COLLISION);
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
+            
+            % Initialize obstacles
+            tc.obstacles = {};
+            
+            % Initialize agents
+            commsRadius = 4; % defined such that they cannot reach their objective without breaking connectivity
+            tc.agents = {agent; agent;};
+            tc.agents{1} = tc.agents{1}.initialize(dom.center + d, zeros(1,3), 0, 0, geometry1, sensor, commsRadius);
+            tc.agents{2} = tc.agents{2}.initialize(dom.center - d, zeros(1,3), 0, 0, geometry2, sensor, commsRadius);
+
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(dom, dom.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 30, tc.obstacles, false, false);
+            
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+
+            % Assert that at some step, performance decreased
+            % Indicating that the communications constraint pulled agents
+            % together, away from their objectives
+            tc.verifyTrue(any(diff(tc.testClass.performance) < 0));
         end
         function test_obstacle_blocks_comms_LOS(tc)
             % Fixed single obstacle

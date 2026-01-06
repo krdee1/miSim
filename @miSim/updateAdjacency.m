@@ -13,7 +13,7 @@ function obj = updateAdjacency(obj)
     for ii = 2:size(A, 1)
         for jj = 1:(ii - 1)
             % Check that agents are not out of range
-            if norm(obj.agents{ii}.pos - obj.agents{jj}.pos) > min([obj.agents{ii}.comRange, obj.agents{jj}.comRange]);
+            if norm(obj.agents{ii}.pos - obj.agents{jj}.pos) > min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius])
                 A(ii, jj) = false; % comm range violation
                 continue;
             end
@@ -31,6 +31,5 @@ function obj = updateAdjacency(obj)
 
     if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, 'all')
         warning("Eliminated network connections that were necessary");
-        keyboard
     end
 end

@@ -15,7 +15,8 @@ classdef miSim
         constraintAdjacencyMatrix = NaN; % Adjacency matrix representing desired lesser neighbor connections
         sensorPerformanceMinimum = 1e-6; % minimum sensor performance to allow assignment of a point in the domain to a partition
         partitioning = NaN;
-        performance = 0; % cumulative sensor performance
+        perf; % sensor performance timeseries array
+        performance = 0; % simulation performance timeseries vector
         barrierGain = 100; % collision avoidance parameter
         minAlt = 1; % minimum allowed altitude constraint
 
@@ -25,7 +26,6 @@ classdef miSim
     properties (Access = private)
         % Sim
         t = NaN; % current sim time
-        perf; % sensor performance timeseries array
         times;
         partitioningTimes;
 
@@ -61,6 +61,7 @@ classdef miSim
         [obj] = plotGraph(obj);
         [obj] = plotTrails(obj);
         [obj] = updatePlots(obj, updatePartitions);
+        validate(obj);
     end
     methods (Access = private)
         [v] = setupVideoWriter(obj);

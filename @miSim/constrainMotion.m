@@ -102,21 +102,17 @@ function [obj] = constrainMotion(obj)
     for ii = 1:(size(obj.agents, 1) - 1)
         for jj = (ii + 1):size(obj.agents, 1)
             if obj.constraintAdjacencyMatrix(ii, jj)
-                % d = agents(ii).pos - agents(jj).pos;
-                % h = agents(ii).commsGeometry.radius^2 - dot(d,d);
-                % 
-                % A(kk, (3*ii-2):(3*ii)) =  2*d;
-                % A(kk, (3*jj-2):(3*jj)) = -2*d;
-                % b(kk) = obj.barrierGain * h^3;
-                % 
-                % kk = kk + 1;
+                hComms(ii, jj) = min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius])^2 - norm(agents(ii).pos - agents(jj).pos)^2;
 
-                hComms(ii, jj) = agents(ii).commsGeometry.radius^2 - norm(agents(ii).pos - agents(jj).pos)^2;
-
-                A(kk, (3 * ii - 2):(3 * ii)) = 2 * (agents(ii).pos - agents(jj).pos);
+                A(kk, (3 * ii - 2):(3 * ii)) =  2 * (agents(ii).pos - agents(jj).pos);
                 A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-                b(kk) = obj.barrierGain * hComms(ii, jj)^3;
-                kk = kk + 1;
+                b(kk) = obj.barrierGain * hComms(ii, jj);
+
+                % dVNominal = v(ii, 1:3) - v(jj, 1:3); % nominal velocities
+                % h_dot_nom = -2 * (agents(ii).pos - agents(jj).pos) * dVNominal';
+                % b(kk) = -h_dot_nom + obj.barrierGain * hComms(ii, jj)^3;
+
+                kk = kk + 1; 
             end
         end
     end

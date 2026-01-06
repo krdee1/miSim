@@ -18,6 +18,9 @@ function [obj] = run(obj)
         obj.timestepIndex = ii;
         fprintf("Sim Time: %4.2f (%d/%d)\n", obj.t, ii, obj.maxIter + 1);
 
+        % Validate current simulation configuration
+        obj.validate();
+
         % Check if it's time for new partitions
         updatePartitions = false;
         if ismember(obj.t, obj.partitioningTimes)
