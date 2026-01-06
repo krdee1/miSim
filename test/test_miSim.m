@@ -571,7 +571,8 @@ classdef test_miSim < matlab.unittest.TestCase
             % No communications link should be established
             tc.assertEqual(tc.testClass.adjacency, logical(eye(2)));
         end
-        function test_LNA_example_case(tc)
+        function test_LNA_case_1(tc)
+            % based on example in meeting 
             % No obstacles
             % Fixed 5 agents initial conditions
             % unitary communicaitons radius
@@ -586,16 +587,12 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agent collision geometry
             radius = .01;
             d = 1;
-            geometry1 = spherical;
-            geometry2 = geometry1;
-            geometry3 = geometry2;
-            geometry4 = geometry3;
-            geometry5 = geometry4;
-            geometry1 = geometry1.initialize(tc.domain.center + [d, 0, 0], radius, REGION_TYPE.COLLISION);
-            geometry2 = geometry2.initialize(tc.domain.center, radius, REGION_TYPE.COLLISION);
-            geometry3 = geometry2.initialize(tc.domain.center + [-d, d, 0], radius, REGION_TYPE.COLLISION);
-            geometry4 = geometry2.initialize(tc.domain.center + [-2*d, d, 0], radius, REGION_TYPE.COLLISION);
-            geometry5 = geometry2.initialize(tc.domain.center + [0, d, 0], radius, REGION_TYPE.COLLISION);
+            geometry5 = spherical;
+            geometry1 = geometry5.initialize(tc.domain.center + [d, 0, 0], radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry5.initialize(tc.domain.center, radius, REGION_TYPE.COLLISION);
+            geometry3 = geometry5.initialize(tc.domain.center + [-d, d, 0], radius, REGION_TYPE.COLLISION);
+            geometry4 = geometry5.initialize(tc.domain.center + [-2*d, d, 0], radius, REGION_TYPE.COLLISION);
+            geometry5 = geometry5.initialize(tc.domain.center + [0, d, 0], radius, REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -619,8 +616,62 @@ classdef test_miSim < matlab.unittest.TestCase
                 [ 1, 1, 0, 0, 0; ...
                   1, 1, 0, 0, 1; ...
                   0, 0, 1, 1, 1;
-                  0, 0, 1, 0, 0;
-                  0, 1, 1, 0, 0; ]));
+                  0, 0, 1, 1, 0;
+                  0, 1, 1, 0, 1; ]));
+        end
+        function test_LNA_case_2(tc)
+            % based on example in paper Asynchronous Local Construction of Bounded-Degree Network Topologies Using Only Neighborhood Information
+            % No obstacles
+            % Fixed 7 agents initial conditions
+            % unitary communicaitons radius
+            % negligible collision radius
+            % make basic domain
+            l = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+        
+            % Initialize agent collision geometry
+            radius = .01;
+            d = 1;
+            geometry7 = spherical;
+            geometry1 = geometry7.initialize(tc.domain.center + [-0.9 * d/sqrt(2), 0.9 * d/sqrt(2), 0], radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry7.initialize(tc.domain.center + [-0.5 * d, 0.25 * d, 0], radius, REGION_TYPE.COLLISION);
+            geometry3 = geometry7.initialize(tc.domain.center + [0.9 * d, 0, 0], radius, REGION_TYPE.COLLISION);
+            geometry4 = geometry7.initialize(tc.domain.center + [0.9 * d/sqrt(2), -0.9 * d/sqrt(2), 0], radius, REGION_TYPE.COLLISION);
+            geometry5 = geometry7.initialize(tc.domain.center + [0, 0.9 * d, 0], radius, REGION_TYPE.COLLISION);
+            geometry6 = geometry7.initialize(tc.domain.center, radius, REGION_TYPE.COLLISION);
+            geometry7 = geometry7.initialize(tc.domain.center + [d/2, d/2, 0], radius, REGION_TYPE.COLLISION);
+            
+            % Initialize agent sensor model
+            sensor = sigmoidSensor;
+            alphaDist = l/2; % half of domain length/width
+            sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 15, 3);
+
+            % Initialize agents
+            commsRadius = d;
+            tc.agents = {agent; agent; agent; agent; agent; agent; agent;};
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [-0.9 * d/sqrt(2), 0.9 * d/sqrt(2), 0], zeros(1,3), 0, 0, geometry1, sensor, commsRadius);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + [-0.5 * d, 0.25 * d, 0], zeros(1,3), 0, 0, geometry2, sensor, commsRadius);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [0.9 * d, 0, 0], zeros(1,3), 0, 0, geometry3, sensor, commsRadius);
+            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [0.9 * d/sqrt(2), -0.9 * d/sqrt(2), 0], zeros(1,3), 0, 0, geometry4, sensor, commsRadius);
+            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, 0.9 * d, 0], zeros(1,3), 0, 0, geometry5, sensor, commsRadius);
+            tc.agents{6} = tc.agents{6}.initialize(tc.domain.center, zeros(1,3), 0, 0, geometry6, sensor, commsRadius);
+            tc.agents{7} = tc.agents{7}.initialize(tc.domain.center + [d/2, d/2, 0], zeros(1,3), 0, 0, geometry7, sensor, commsRadius);
+
+            % Initialize the simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, 0, tc.timestep, tc.partitoningFreq, 125, tc.obstacles, false, false);
+
+            % Constraint adjacency matrix defined by LNA should be as follows
+            tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
+                [ 1, 1, 0, 0, 0, 0, 0; ...
+                  1, 1, 0, 0, 1, 0, 0; ...
+                  0, 0, 1, 1, 0, 0, 0;
+                  0, 0, 1, 1, 0, 1, 0;
+                  0, 1, 0, 0, 1, 1, 0;
+                  0, 0, 0, 1, 1, 1, 1;
+                  0, 0, 0, 0, 0, 1, 1; ]));
         end
     end
 

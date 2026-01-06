@@ -22,13 +22,14 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     obj.tilt = tilt;
     obj.collisionGeometry = collisionGeometry;
     obj.sensorModel = sensorModel;
+    obj.comRange = comRange;
     obj.guidanceModel = @gradientAscent;
     obj.label = label;
     obj.debug = debug;
     obj.plotCommsGeometry = plotCommsGeometry;
 
     % Add spherical geometry based on com range
-    obj.commsGeometry = obj.commsGeometry.initialize(obj.pos, comRange, REGION_TYPE.COMMS, sprintf("%s Comms Geometry", obj.label));
+    obj.commsGeometry = obj.commsGeometry.initialize(obj.pos, obj.comRange, REGION_TYPE.COMMS, sprintf("%s Comms Geometry", obj.label));
 
     if obj.debug
         obj.debugFig = figure;

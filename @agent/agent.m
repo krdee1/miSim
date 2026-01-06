@@ -28,6 +28,8 @@ classdef agent
         % Communication
         comRange = NaN;
         commsGeometry = spherical;
+        lesserNeighbors = [];
+        
 
         performance = 0;
 
