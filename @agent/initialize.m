@@ -22,7 +22,6 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     obj.tilt = tilt;
     obj.collisionGeometry = collisionGeometry;
     obj.sensorModel = sensorModel;
-    obj.guidanceModel = @gradientAscent;
     obj.label = label;
     obj.debug = debug;
     obj.plotCommsGeometry = plotCommsGeometry;

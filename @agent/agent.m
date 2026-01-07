@@ -7,9 +7,6 @@ classdef agent
         sensorModel;
         sensingLength = 0.05; % length parameter used by sensing function
 
-        % Guidance
-        guidanceModel;
-
         % State
         lastPos = NaN(1, 3); % position from previous timestep
         pos = NaN(1, 3); % current position
