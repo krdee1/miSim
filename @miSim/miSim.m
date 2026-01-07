@@ -46,6 +46,13 @@ classdef miSim
         objectivePlotIndices = [6, 4];
         networkGraphIndex = 5;
         partitionGraphIndex = 1;
+
+        % CBF plotting
+        h; % h function values
+        hf; % h function plotting figure
+        caPlot; % objects for collision avoidance h function plot
+        obsPlot; % objects for obstacle h function plot
+        domPlot; % objects for domain h function plot
     end
 
     methods (Access = public)
@@ -60,6 +67,7 @@ classdef miSim
         [obj] = plotPartitions(obj);
         [obj] = plotGraph(obj);
         [obj] = plotTrails(obj);
+        [obj] = plotH(obj);
         [obj] = updatePlots(obj, updatePartitions);
         validate(obj);
     end

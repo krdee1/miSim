@@ -60,4 +60,15 @@ function [obj] = updatePlots(obj, updatePartitions)
         obj.performancePlot(ii).YData(1:length(obj.performance)) = obj.agents{ii - 1}.performance * normalizingFactor;
         obj.performancePlot(ii).XData(obj.timestepIndex) = obj.t;
     end
+
+    % Update h function plots
+    for ii = 1:size(obj.caPlot, 1)
+        obj.caPlot(ii).YData(obj.timestepIndex) = obj.h(ii, obj.timestepIndex);
+    end
+    for ii = 1:size(obj.obsPlot, 1)
+        obj.obsPlot(ii).YData(obj.timestepIndex) = obj.h(ii + size(obj.caPlot, 1), obj.timestepIndex);
+    end
+    for ii = 1:size(obj.domPlot, 1)
+        obj.domPlot(ii).YData(obj.timestepIndex) = obj.h(ii + size(obj.caPlot, 1) + size(obj.obsPlot, 1), obj.timestepIndex);
+    end
 end

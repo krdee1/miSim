@@ -78,6 +78,9 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
     % Prepare performance data store (at t = 0, all have 0 performance)
     obj.perf = [zeros(size(obj.agents, 1) + 1, 1), NaN(size(obj.agents, 1) + 1, size(obj.partitioningTimes, 1) - 1)];
 
+    % Prepare h function data store
+    obj.h = NaN(size(obj.agents, 1) * (size(obj.agents, 1) - 1) / 2 + size(obj.agents, 1) * size(obj.obstacles, 1) + 6, size(obj.times, 1) - 1);
+
     % Create initial partitioning
     obj = obj.partition();
 

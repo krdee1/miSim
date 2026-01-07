@@ -48,4 +48,7 @@ function obj = plot(obj)
 
     % Plot performance
     obj = obj.plotPerformance();
+
+    % Plot h functions
+    obj = obj.plotH();
 end

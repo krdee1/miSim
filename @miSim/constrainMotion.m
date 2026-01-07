@@ -96,6 +96,9 @@ function [obj] = constrainMotion(obj)
         kk = kk + 1;
     end
 
+    % Save off h function values (ignoring network constraints which may evolve in time)
+    obj.h(:, obj.timestepIndex) = [h(triu(true(size(obj.agents, 1)), 1)); reshape(hObs, [], 1); h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax;]; 
+
     % Add communication network constraints
     hComms = NaN(size(obj.agents, 1));
     hComms(logical(eye(size(obj.agents, 1)))) = 0;
