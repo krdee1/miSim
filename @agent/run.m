@@ -17,22 +17,30 @@ function obj = run(obj, domain, partitioning, t, index)
     % Compute sensor performance across partition
     maskedX = domain.objective.X(partitionMask);
     maskedY = domain.objective.Y(partitionMask);
+    zFactor = 10;
     sensorValues = obj.sensorModel.sensorPerformance(obj.pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
+    sensorValuesLower = obj.sensorModel.sensorPerformance(obj.pos - [0, 0, zFactor * domain.objective.discretizationStep], obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n - [0, 0, z]) on W_n
+    sensorValuesHigher = obj.sensorModel.sensorPerformance(obj.pos + [0, 0, zFactor * domain.objective.discretizationStep], obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n - [0, 0, z]) on W_n
 
     % Put the values back into the form of the partition to enable basic operations on this data
     F = NaN(size(partitionMask));
     F(partitionMask) = objectiveValues;
     S = NaN(size(partitionMask));
+    Slower = S;
+    Shigher = S;
     S(partitionMask) = sensorValues;
+    Slower(partitionMask) = sensorValuesLower;
+    Shigher(partitionMask) = sensorValuesHigher;
 
     % Find agent's performance
-    C = S.* F;
-    obj.performance = [obj.performance, sum(C(~isnan(C)))];
+    C = S .* F;
+    obj.performance = [obj.performance, sum(C(~isnan(C)))]; % at current Z only
+    C = cat(3, Shigher, S, Slower) .* F;
 
     % Compute gradient on agent's performance
-    [gradCX, gradCY] = gradient(C, domain.objective.discretizationStep); % grad C
-    gradC = cat(3, gradCX, gradCY, zeros(size(gradCX))); % temp zeros for gradCZ
-    nGradC = vecnorm(gradC, 2, 3);
+    [gradCX, gradCY, gradCZ] = gradient(C, domain.objective.discretizationStep); % grad C
+    gradC = cat(4, gradCX, gradCY, gradCZ);
+    nGradC = vecnorm(gradC, 2, 4);
 
     if obj.debug
         % Compute additional component-level values for diagnosing issues
@@ -111,14 +119,16 @@ function obj = run(obj, domain, partitioning, t, index)
     end
 
     % Use largest grad(C) value to find the direction of the next position
-    [xNextIdx, yNextIdx] = find(nGradC == max(nGradC, [], 'all'));
+    [xNextIdx, yNextIdx, zNextIdx] = ind2sub(size(nGradC), find(nGradC == max(nGradC, [], 'all')));
+    disp(zNextIdx)
     % switch them
     temp = xNextIdx;
     xNextIdx = yNextIdx;
     yNextIdx = temp;
 
     roundingScale = 10^-log10(domain.objective.discretizationStep);
-    pNext = [floor(roundingScale .* mean(unique(domain.objective.X(:, xNextIdx))))./roundingScale, floor(roundingScale .* mean(unique(domain.objective.Y(yNextIdx, :))))./roundingScale, obj.pos(3)]; % have to do some unfortunate rounding here soemtimes
+    zKey = zFactor * [1; 0; -1];
+    pNext = [floor(roundingScale .* mean(unique(domain.objective.X(:, xNextIdx))))./roundingScale, floor(roundingScale .* mean(unique(domain.objective.Y(yNextIdx, :))))./roundingScale, obj.pos(3) + zKey(zNextIdx)]; % have to do some unfortunate rounding here sometimes
 
     % Determine next position
     vDir = (pNext - obj.pos)./norm(pNext - obj.pos, 2);
