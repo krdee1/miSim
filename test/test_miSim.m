@@ -388,8 +388,13 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], zeros(1, 3), 0, 0, geometry3, sensor, 3*d);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
-            close(tc.testClass.fPerf);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), false, false);
+        
+            tc.verifyEqual(tc.testClass.partitioning(500, 500:502), [2, 3, 1]); % all three near center
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 1, 'all'), sum(tc.testClass.partitioning == 0, 'all')); % more non-assignments than partition 1 assignments
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 2, 'all'), sum(tc.testClass.partitioning == 1, 'all')); % more partition 1 assignments than partition 2 assignments
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 3, 'all'), sum(tc.testClass.partitioning == 2, 'all')); % more partition 3 assignments than partition 2 assignments
+            tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1; 2; 3;]);
         end
         function test_single_partition(tc)
             % make basic domain
@@ -411,15 +416,18 @@ classdef test_miSim < matlab.unittest.TestCase
             sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 20, 3);
 
             % Plot sensor parameters (optional)
-            f = sensor.plotParameters();
+            % f = sensor.plotParameters();
 
             % Initialize agents
             tc.agents = {agent};
             tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], zeros(1,3), 0, 0, geometry1, sensor, 3);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), false, false);
             close(tc.testClass.fPerf);
+
+            tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1]);
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 1, 'all'), sum(tc.testClass.partitioning == 0, 'all'));
         end
         function test_single_partition_basic_GA(tc)
             % make basic domain
@@ -441,17 +449,22 @@ classdef test_miSim < matlab.unittest.TestCase
             sensor = sensor.initialize(alphaDist, 3, NaN, NaN, 20, 3);
 
             % Plot sensor parameters (optional)
-            f = sensor.plotParameters();
+            % f = sensor.plotParameters();
 
             % Initialize agents
             tc.agents = {agent};
             tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, 3, "", true);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 80, cell(0, 1), false, false);
             
             % Run the simulation
-            tc.testClass.run();
+            tc.testClass = tc.testClass.run();
+            if isgraphics(tc.testClass.agents{1}.debugFig)
+                close(tc.testClass.agents{1}.debugFig);
+            end
+
+            tc.verifyGreaterThan(tc.testClass.performance(end)/max(tc.testClass.performance), 0.99); % ends up very near a relative maximum
         end
         function test_collision_avoidance(tc)
             % No obstacles
@@ -481,11 +494,11 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, zeros(1,3), 0, 0, geometry1, sensor, 3);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, 3);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, zeros(1,3), 0, 0, geometry1, sensor, 5);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, zeros(1,3), 0, 0, geometry2, sensor, 5);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), tc.makeVideo, tc.makePlots);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 50, cell(0, 1), tc.makeVideo, tc.makePlots);
             
             % Run the simulation
             tc.testClass.run();
@@ -502,15 +515,20 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [8, 5.2195]), tc.domain, tc.discretizationStep, tc.protectedRange);
         
             % Initialize agent collision geometry
             radius = 1.1;
             d = [3, 0, 0];
+
+            yOffset = 0;
+            % choice of 0 leads to the agents getting stuck attempting to go around the obstacle on both sides
+            % choice of 1 leads to one agent easily going around while the other gets stuck and the communications link is broken
+
             geometry1 = spherical;
             geometry2 = geometry1;
-            geometry1 = geometry1.initialize(tc.domain.center - d + [0.1, radius * 1.1, 0], radius, REGION_TYPE.COLLISION);
-            geometry2 = geometry2.initialize(tc.domain.center - d - [0.1, radius * 1.1, 0], radius, REGION_TYPE.COLLISION);
+            geometry1 = geometry1.initialize(tc.domain.center - d + [0, radius * 1.1 - yOffset, 0], radius, REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center - d - [0, radius * 1.1 + yOffset, 0], radius, REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -525,11 +543,11 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             commsRadius = (2*radius + obstacleLength) * 0.9; % defined such that they cannot go around the obstacle on both sides
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0.1, radius * 1.1, 0], zeros(1,3), 0, 0, geometry1, sensor, commsRadius);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0.1, radius  *1.1, 0], zeros(1,3), 0, 0, geometry2, sensor, commsRadius);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.1 - yOffset, 0], zeros(1,3), 0, 0, geometry1, sensor, commsRadius);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius  *1.1 + yOffset, 0], zeros(1,3), 0, 0, geometry2, sensor, commsRadius);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, 100, tc.obstacles, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, tc.obstacles, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();

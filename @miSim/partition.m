@@ -18,6 +18,9 @@ function obj = partition(obj)
     % Collect agent indices in the same way as performance
     indices = 1:size(obj.agents, 1);
     agentInds = squeeze(tensorprod(indices, ones(size(obj.objective.X))));
+    if size(agentInds, 1) ~= size(obj.agents, 1)
+        agentInds = reshape(agentInds, [size(obj.agents, 1), size(agentInds)]); % needed for cases with 1 agent where prior squeeze is too agressive
+    end
     agentInds = num2cell(agentInds, 2:3);
     agentInds = cellfun(@(x) squeeze(x), agentInds, 'UniformOutput', false);
     agentInds{end + 1} = zeros(size(agentInds{end})); % index for no assignment
