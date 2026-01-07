@@ -17,7 +17,7 @@ function obj = run(obj, domain, partitioning, t, index)
     % Compute sensor performance across partition
     maskedX = domain.objective.X(partitionMask);
     maskedY = domain.objective.Y(partitionMask);
-    zFactor = 10;
+    zFactor = 1;
     sensorValues = obj.sensorModel.sensorPerformance(obj.pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
     sensorValuesLower = obj.sensorModel.sensorPerformance(obj.pos - [0, 0, zFactor * domain.objective.discretizationStep], obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n - [0, 0, z]) on W_n
     sensorValuesHigher = obj.sensorModel.sensorPerformance(obj.pos + [0, 0, zFactor * domain.objective.discretizationStep], obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n - [0, 0, z]) on W_n
@@ -118,9 +118,13 @@ function obj = run(obj, domain, partitioning, t, index)
         end
     end
 
+    % return now if there is no data to work with, and do not move
+    if all(isnan(nGradC), 'all')
+        return;
+    end
+
     % Use largest grad(C) value to find the direction of the next position
     [xNextIdx, yNextIdx, zNextIdx] = ind2sub(size(nGradC), find(nGradC == max(nGradC, [], 'all')));
-    disp(zNextIdx)
     % switch them
     temp = xNextIdx;
     xNextIdx = yNextIdx;

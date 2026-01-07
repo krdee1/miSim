@@ -7,15 +7,15 @@ function [obj] = constrainMotion(obj)
     end
 
     if size(obj.agents, 1) < 2
-        return;
-        % this doesn't work right now with only one agent
+        nAAPairs = 0;
+    else
+        nAAPairs = nchoosek(size(obj.agents, 1), 2); % unique agent/agent pairs
     end
 
     agents = [obj.agents{:}];
     v = reshape(([agents.pos] - [agents.lastPos])./obj.timestep, 3, size(obj.agents, 1))';
 
     % Initialize QP based on number of agents and obstacles
-    nAAPairs = nchoosek(size(obj.agents, 1), 2); % unique agent/agent pairs
     nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
     nADPairs = size(obj.agents, 1) * 5; % agents x (4 walls + 1 ceiling)
     nLNAPairs = sum(obj.constraintAdjacencyMatrix, 'all') - size(obj.agents, 1);
