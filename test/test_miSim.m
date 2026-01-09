@@ -679,7 +679,7 @@ classdef test_miSim < matlab.unittest.TestCase
                   1, 1, 0, 0, 1; ...
                   0, 0, 1, 1, 1;
                   0, 0, 1, 1, 0;
-                  0, 1, 1, 0, 1; ]));
+                  0, 1, 1, 0, 1;]));
         end
         function test_LNA_case_2(tc)
             % based on example in paper Asynchronous Local Construction of Bounded-Degree Network Topologies Using Only Neighborhood Information
