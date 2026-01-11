@@ -59,6 +59,9 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
         C_delta(ii) = sum(C(~isnan(C)));
     end
 
+    % Store agent performance at current time and place
+    obj.performance(timestepIndex + 1) = C_delta(1);
+
     % Compute gradient by finite central differences
     gradC = [(C_delta(2)-C_delta(3))/(2*delta), (C_delta(4)-C_delta(5))/(2*delta), (C_delta(6)-C_delta(7))/(2*delta)];
 

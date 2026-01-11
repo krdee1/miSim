@@ -53,12 +53,12 @@ function [obj] = updatePlots(obj, updatePartitions)
     
     % Update performance plot
     % Re-normalize performance plot
-    normalizingFactor = 1/max(obj.performance(end));
-    obj.performancePlot(1).YData(1:length(obj.performance)) = obj.performance * normalizingFactor;
-    obj.performancePlot(1).XData(obj.timestepIndex) = obj.t;
-    for ii = 2:(size(obj.agents, 1) + 1)
-        obj.performancePlot(ii).YData(1:length(obj.performance)) = obj.agents{ii - 1}.performance * normalizingFactor;
-        obj.performancePlot(ii).XData(obj.timestepIndex) = obj.t;
+    normalizingFactor = 1/max(obj.performance);
+    obj.performancePlot(1).YData(1:(length(obj.performance) + 1)) = [obj.performance, 0] * normalizingFactor;
+    obj.performancePlot(1).XData([obj.timestepIndex, obj.timestepIndex + 1]) = [obj.t, obj.t + obj.timestep];
+    for ii = 1:(size(obj.agents, 1))
+        obj.performancePlot(ii + 1).YData(1:(length(obj.performance) + 1)) = [obj.agents{ii}.performance(1:length(obj.performance)), 0] * normalizingFactor;
+        obj.performancePlot(ii + 1).XData([obj.timestepIndex, obj.timestepIndex + 1]) = [obj.t, obj.t + obj.timestep];
     end
 
     % Update h function plots

@@ -46,7 +46,7 @@ function [obj] = run(obj)
         obj.posHist(1:size(obj.agents, 1), obj.timestepIndex + 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, 'UniformOutput', false)), size(obj.agents, 1), 1, 3);
 
         % Update total performance
-        obj.performance = [obj.performance, sum(cellfun(@(x) x.performance(end), obj.agents))];
+        obj.performance = [obj.performance, sum(cellfun(@(x) x.performance(obj.timestepIndex+1), obj.agents))];
 
         % Update adjacency matrix
         obj = obj.updateAdjacency();
