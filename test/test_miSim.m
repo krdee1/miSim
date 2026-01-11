@@ -435,11 +435,11 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [2, 8]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(@(x, y) mvnpdf([x(:), y(:)], [5, 7]), tc.domain, tc.discretizationStep, tc.protectedRange);
         
             % Initialize agent collision geometry
             geometry1 = rectangularPrism;
-            geometry1 = geometry1.initialize([[tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
+            geometry1 = geometry1.initialize([[tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model
             sensor = sigmoidSensor;
@@ -453,7 +453,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent};
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, 3, tc.maxIter);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], zeros(1,3), 0, 0, geometry1, sensor, 3, tc.maxIter);
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1));
