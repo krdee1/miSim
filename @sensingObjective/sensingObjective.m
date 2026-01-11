@@ -10,10 +10,11 @@ classdef sensingObjective
         Y = [];
         values = [];
         protectedRange = 1; % keep obstacles from crowding objective
+        sensorPerformanceMinimum = 1e-6; % minimum sensor performance to allow assignment of a point in the domain to a partition
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange);
+        [obj] = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange, sensorPerformanceMinimum);
         [obj] = initializeRandomMvnpdf(obj, domain, protectedRange, discretizationStep, protectedRange);
         [f  ] = plot(obj, ind, f);
     end

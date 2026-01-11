@@ -1,10 +1,11 @@
-function obj = run(obj, domain, partitioning, t, index)
+function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'agent')};
         domain (1, 1) {mustBeGeometry};
         partitioning (:, :) double;
-        t (1, 1) double;
+        timestepIndex (1, 1) double;
         index (1, 1) double;
+        agents (:, 1) {mustBeA(agents, 'cell')};
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'agent')};
@@ -14,134 +15,63 @@ function obj = run(obj, domain, partitioning, t, index)
     partitionMask = partitioning == index;
     objectiveValues = domain.objective.values(partitionMask); % f(omega) on W_n
 
-    % Compute sensor performance across partition
+    % Compute sensor performance on partition
     maskedX = domain.objective.X(partitionMask);
     maskedY = domain.objective.Y(partitionMask);
-    zFactor = 1;
-    sensorValues = obj.sensorModel.sensorPerformance(obj.pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
-    sensorValuesLower = obj.sensorModel.sensorPerformance(obj.pos - [0, 0, zFactor * domain.objective.discretizationStep], obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n - [0, 0, z]) on W_n
-    sensorValuesHigher = obj.sensorModel.sensorPerformance(obj.pos + [0, 0, zFactor * domain.objective.discretizationStep], obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n - [0, 0, z]) on W_n
 
-    % Put the values back into the form of the partition to enable basic operations on this data
-    F = NaN(size(partitionMask));
-    F(partitionMask) = objectiveValues;
-    S = NaN(size(partitionMask));
-    Slower = S;
-    Shigher = S;
-    S(partitionMask) = sensorValues;
-    Slower(partitionMask) = sensorValuesLower;
-    Shigher(partitionMask) = sensorValuesHigher;
-
-    % Find agent's performance
-    C = S .* F;
-    obj.performance = [obj.performance, sum(C(~isnan(C)))]; % at current Z only
-    C = cat(3, Shigher, S, Slower) .* F;
-
-    % Compute gradient on agent's performance
-    [gradCX, gradCY, gradCZ] = gradient(C, domain.objective.discretizationStep); % grad C
-    gradC = cat(4, gradCX, gradCY, gradCZ);
-    nGradC = vecnorm(gradC, 2, 4);
-
-    if obj.debug
-        % Compute additional component-level values for diagnosing issues
-        [gradSensorPerformanceX, gradSensorPerformanceY] = gradient(S, domain.objective.discretizationStep); % grad S_n
-        [gradObjectiveX, gradObjectiveY] = gradient(F, domain.objective.discretizationStep); % grad f
-        gradS = cat(3, gradSensorPerformanceX, gradSensorPerformanceY, zeros(size(gradSensorPerformanceX))); % grad S_n
-        gradF = cat(3, gradObjectiveX, gradObjectiveY, zeros(size(gradObjectiveX))); % grad f
-
-        ii = 8;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), F./max(F, [], 'all'));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
-        ii = ii - 1;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), S./max(S, [], 'all'));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
-        ii = ii - 1;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), vecnorm(gradF, 2, 3)./max(vecnorm(gradF, 2, 3), [], 'all'));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
-        ii = ii - 1;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), vecnorm(gradS, 2, 3)./max(vecnorm(gradS, 2, 3), [], 'all'));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
-        ii = ii - 1;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), S .* vecnorm(gradF, 2, 3)./max(vecnorm(gradF, 2, 3), [], 'all'));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
-        ii = ii - 1;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), F .* vecnorm(gradS, 2, 3)./max(vecnorm(gradS, 2, 3), [], 'all')./(max(F .* vecnorm(gradS, 2, 3)./max(vecnorm(gradS, 2, 3), [], 'all'))));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
+    % Compute agent performance at the current position and each delta position +/- X, Y, Z
+    delta = domain.objective.discretizationStep; % smallest possible step size that gets different results
+    deltaApplicator = [0, 0, 0; 1, 0, 0; -1, 0, 0; 0, 1, 0; 0, -1, 0; 0, 0, 1; 0, 0, -1]; % none, +X, -X, +Y, -Y, +Z, -Z
+    C_delta = NaN(7, 1); % agent performance at delta steps in each direction
+    for ii = 1:7
+        % Apply delta to position
+        pos = obj.pos + delta * deltaApplicator(ii, 1:3);
         
-        ii = ii - 1;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), C./max(C, [], 'all'));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
-        ii = ii - 1;
-        hold(obj.debugFig.Children(1).Children(ii), "on");
-        cla(obj.debugFig.Children(1).Children(ii));
-        imagesc(obj.debugFig.Children(1).Children(ii), nGradC./max(nGradC, [], 'all'));
-        hold(obj.debugFig.Children(1).Children(ii), "off");
-        [x, y] = find(nGradC == max(nGradC, [], "all"));
+        % Compute performance values on partition
+        if ii < 5
+            % Compute sensing performance
+            sensorValues = obj.sensorModel.sensorPerformance(obj.pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
+            % Objective performance does not change for 0, +/- X, Y steps.
+            % Those values are computed once before the loop and are only
+            % recomputed when +/- Z steps are applied
+        else
+            % Redo partitioning for Z stepping only
+            partitioning = obj.partition(agents, domain.objective);
 
-        % just pick one
-        r = randi([1, size(x, 1)]);
-        x = x(r); y = y(r);
+            % Recompute partiton-derived performance values for objective
+            partitionMask = partitioning == index;
+            objectiveValues = domain.objective.values(partitionMask); % f(omega) on W_n
 
-        % switch them
-        temp = x;
-        x = y;
-        y = temp;
-        
-        % find objective location in discrete domain
-        [~, xIdx] = find(domain.objective.groundPos(1) == domain.objective.X);
-        xIdx = unique(xIdx);
-        [yIdx, ~] = find(domain.objective.groundPos(2) == domain.objective.Y);
-        yIdx = unique(yIdx);
-        for ii = 8:-1:1
-            hold(obj.debugFig.Children(1).Children(ii), "on");
-            % plot GA selection
-            scatter(obj.debugFig.Children(1).Children(ii), x, y, 'go');
-            scatter(obj.debugFig.Children(1).Children(ii), x, y, 'g+');
-            % plot objective center
-            scatter(obj.debugFig.Children(1).Children(ii), xIdx, yIdx, 'ro');
-            scatter(obj.debugFig.Children(1).Children(ii), xIdx, yIdx, 'r+');
-            hold(obj.debugFig.Children(1).Children(ii), "off");
+            % Recompute partiton-derived performance values for sensing
+            maskedX = domain.objective.X(partitionMask);
+            maskedY = domain.objective.Y(partitionMask);
+            sensorValues = obj.sensorModel.sensorPerformance(pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
         end
+
+        % Rearrange data into image arrays
+        F = NaN(size(partitionMask));
+        F(partitionMask) = objectiveValues;
+        S = NaN(size(partitionMask));
+        S(partitionMask) = sensorValues;
+
+        % Compute agent performance
+        C = S .* F;
+        C_delta(ii) = sum(C(~isnan(C)));
     end
 
-    % return now if there is no data to work with, and do not move
-    if all(isnan(nGradC), 'all')
-        return;
-    end
+    % Compute gradient by finite central differences
+    gradC = [(C_delta(2)-C_delta(3))/(2*delta), (C_delta(4)-C_delta(5))/(2*delta), (C_delta(6)-C_delta(7))/(2*delta)];
 
-    % Use largest grad(C) value to find the direction of the next position
-    [xNextIdx, yNextIdx, zNextIdx] = ind2sub(size(nGradC), find(nGradC == max(nGradC, [], 'all')));
-    % switch them
-    temp = xNextIdx;
-    xNextIdx = yNextIdx;
-    yNextIdx = temp;
+    % Compute scaling factor
+    targetRate = 0.2 - 0.0008 * timestepIndex; % slow down as you get closer
+    rateFactor = targetRate / norm(gradC); 
 
-    roundingScale = 10^-log10(domain.objective.discretizationStep);
-    zKey = zFactor * [1; 0; -1];
-    pNext = [floor(roundingScale .* mean(unique(domain.objective.X(:, xNextIdx))))./roundingScale, floor(roundingScale .* mean(unique(domain.objective.Y(yNextIdx, :))))./roundingScale, obj.pos(3) + zKey(zNextIdx)]; % have to do some unfortunate rounding here sometimes
-
-    % Determine next position
-    vDir = (pNext - obj.pos)./norm(pNext - obj.pos, 2);
-    rate = 0.1 - 0.0004 * t; % slow down as you get closer, coming to a stop by the end
-    nextPos = obj.pos + vDir * rate;
+    % Compute unconstrained next position
+    pNext = obj.pos + rateFactor * gradC;
 
     % Move to next position
     obj.lastPos = obj.pos;
-    obj.pos = nextPos;
+    obj.pos = pNext;
 
     % Reinitialize collision geometry in the new position
     d = obj.pos - obj.collisionGeometry.center;

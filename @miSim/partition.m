@@ -9,7 +9,7 @@ function obj = partition(obj)
     % Assess sensing performance of each agent at each sample point
     % in the domain
     agentPerformances = cellfun(@(x) reshape(x.sensorModel.sensorPerformance(x.pos, x.pan, x.tilt, [obj.objective.X(:), obj.objective.Y(:), zeros(size(obj.objective.X(:)))]), size(obj.objective.X)), obj.agents, 'UniformOutput', false);
-    agentPerformances{end + 1} = obj.sensorPerformanceMinimum * ones(size(agentPerformances{end})); % add additional layer to represent the threshold that has to be cleared for assignment to any partiton
+    agentPerformances{end + 1} = obj.domain.objective.sensorPerformanceMinimum * ones(size(agentPerformances{end})); % add additional layer to represent the threshold that has to be cleared for assignment to any partiton
     agentPerformances = cat(3, agentPerformances{:});
     
     % Get highest performance value at each point

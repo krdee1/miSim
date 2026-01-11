@@ -1,16 +1,19 @@
-function obj = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange)
+function obj = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange, sensorPerformanceMinimum)
     arguments (Input)
         obj (1,1) {mustBeA(obj, 'sensingObjective')};
         objectiveFunction (1, 1) {mustBeA(objectiveFunction, 'function_handle')};
         domain (1, 1) {mustBeGeometry};
         discretizationStep (1, 1) double = 1;
         protectedRange (1, 1) double = 1;
+        sensorPerformanceMinimum (1, 1) double = 1e-6;
     end
     arguments (Output)
         obj (1,1) {mustBeA(obj, 'sensingObjective')};
     end
 
     obj.discretizationStep = discretizationStep;
+
+    obj.sensorPerformanceMinimum = sensorPerformanceMinimum;
 
     obj.groundAlt = domain.minCorner(3);
     obj.protectedRange = protectedRange;

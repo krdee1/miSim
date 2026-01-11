@@ -456,13 +456,10 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/3, 3], zeros(1,3), 0, 0, geometry1, sensor, 3, "", false);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1), true, false);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, tc.minAlt, tc.timestep, tc.partitoningFreq, tc.maxIter, cell(0, 1));
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
-            if isgraphics(tc.testClass.agents{1}.debugFig)
-                close(tc.testClass.agents{1}.debugFig);
-            end
 
             % tc.verifyGreaterThan(tc.testClass.performance(end)/max(tc.testClass.performance), 0.99); % ends up very near a relative maximum
         end
