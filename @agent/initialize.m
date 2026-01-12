@@ -24,6 +24,7 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     obj.sensorModel = sensorModel;
     obj.label = label;
     obj.plotCommsGeometry = plotCommsGeometry;
+    obj.stepDecayRate = obj.initialStepSize / maxIter;
 
     % Initialize performance vector
     obj.performance = [0, NaN(1, maxIter), 0];

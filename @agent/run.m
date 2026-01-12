@@ -66,7 +66,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
     gradC = [(C_delta(2)-C_delta(3))/(2*delta), (C_delta(4)-C_delta(5))/(2*delta), (C_delta(6)-C_delta(7))/(2*delta)];
 
     % Compute scaling factor
-    targetRate = 0.2 - 0.0008 * timestepIndex; % slow down as you get closer
+    targetRate = obj.initialStepSize - obj.stepDecayRate * timestepIndex; % slow down as you get closer
     rateFactor = targetRate / norm(gradC);
 
     % Compute unconstrained next position

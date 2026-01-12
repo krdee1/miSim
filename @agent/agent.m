@@ -34,6 +34,11 @@ classdef agent
         plotCommsGeometry = true;
     end
 
+    properties (SetAccess = private, GetAccess = public)
+        initialStepSize = 0.2;
+        stepDecayRate = NaN;
+    end
+
     methods (Access = public)
         [obj] = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label);
         [obj] = run(obj, domain, partitioning, t, index, agents);
