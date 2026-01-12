@@ -30,7 +30,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
         % Compute performance values on partition
         if ii < 5
             % Compute sensing performance
-            sensorValues = obj.sensorModel.sensorPerformance(obj.pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
+            sensorValues = obj.sensorModel.sensorPerformance(pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
             % Objective performance does not change for 0, +/- X, Y steps.
             % Those values are computed once before the loop and are only
             % recomputed when +/- Z steps are applied
