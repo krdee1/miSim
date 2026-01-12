@@ -39,6 +39,7 @@ function updatePlots(obj)
     % Update FOV geometry surfaces
     for jj = 1:size(obj.fovGeometry.surface, 2)
         % Update each plot
+        % obj.fovGeometry = obj.fovGeometry.plot(obj.spatialPlotIndices)
         obj.fovGeometry.surface(jj).XData = obj.fovGeometry.surface(jj).XData + deltaPos(1);
         obj.fovGeometry.surface(jj).YData = obj.fovGeometry.surface(jj).YData + deltaPos(2);
         obj.fovGeometry.surface(jj).ZData = obj.fovGeometry.surface(jj).ZData + deltaPos(3);

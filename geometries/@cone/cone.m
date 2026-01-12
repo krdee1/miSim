@@ -17,6 +17,6 @@ classdef cone
 
     methods (Access = public)
         [obj   ] = initialize(obj, center, radius, height, tag, label);
-        [obj, f] = plot(obj, ind, f);
+        [obj, f] = plot(obj, ind, f, maxAlt);
     end
 end

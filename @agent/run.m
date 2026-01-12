@@ -67,7 +67,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
 
     % Compute scaling factor
     targetRate = 0.2 - 0.0008 * timestepIndex; % slow down as you get closer
-    rateFactor = targetRate / norm(gradC); 
+    rateFactor = targetRate / norm(gradC);
 
     % Compute unconstrained next position
     pNext = obj.pos + rateFactor * gradC;

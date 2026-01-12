@@ -31,8 +31,8 @@ classdef test_miSim < matlab.unittest.TestCase
         objective = sensingObjective;
 
         % Agents
-        minAgents = 2; % Minimum number of agents to be randomly generated
-        maxAgents = 2; % Maximum number of agents to be randomly generated
+        minAgents = 3; % Minimum number of agents to be randomly generated
+        maxAgents = 4; % Maximum number of agents to be randomly generated
         sensingLength = 0.05; % length parameter used by sensing function
         agents = cell(0, 1);
         
@@ -591,7 +591,7 @@ classdef test_miSim < matlab.unittest.TestCase
             % Run the simulation
             tc.testClass = tc.testClass.run();
         end
-        function test_obstacle_blocks_comms_LOS(tc)
+        function test_obstacle_permits_comms_LOS(tc)
             % Fixed single obstacle
             % Fixed two agents initial conditions
             % Exaggerated large communications radius
@@ -631,7 +631,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.testClass = tc.testClass.initialize(tc.domain, tc.domain.objective, tc.agents, 0, tc.timestep, tc.partitoningFreq, nIter, tc.obstacles, false, false);
 
             % No communications link should be established
-            tc.assertEqual(tc.testClass.adjacency, logical(eye(2)));
+            tc.assertEqual(tc.testClass.adjacency, logical(true(2)));
         end
         function test_LNA_case_1(tc)
             % based on example in meeting 

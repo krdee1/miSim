@@ -36,5 +36,6 @@ function [obj, f] = plot(obj, ind, f)
     end
 
     % Plot FOV geometry
-    [obj.fovGeometry, f] = obj.fovGeometry.plot(ind, f);
+    maxAlt = f.Children(1).Children(end).ZLim(2); % to avoid scaling the FOV geometry as the sim runs, let's just make it really big and hide the excess under the floor of the domain. Check the domain altitude to figure out how big it needs to be to achieve this deception.
+    [obj.fovGeometry, f] = obj.fovGeometry.plot(ind, f, maxAlt);
 end

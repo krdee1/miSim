@@ -1,8 +1,9 @@
-function [obj, f] = plot(obj, ind, f)
+function [obj, f] = plot(obj, ind, f, maxAlt)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'cone')};
         ind (1, :) double = NaN;
         f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
+        maxAlt (1, 1) = 10;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'cone')};
@@ -12,16 +13,18 @@ function [obj, f] = plot(obj, ind, f)
     % Create axes if they don't already exist
     f = firstPlotSetup(f);
     
+    scalingFactor = (maxAlt / obj.height);
+
     % Plot cone
-    [X, Y, Z] = cylinder([obj.radius, 0], obj.n);
+    [X, Y, Z] = cylinder([scalingFactor * obj.radius, 0], obj.n);
     
     % Scale to match height
-    Z = Z * obj.height;
+    Z = Z * maxAlt;
     
     % Move to center location
     X = X + obj.center(1);
     Y = Y + obj.center(2);
-    Z = Z + obj.center(3);
+    Z = Z + obj.center(3) - maxAlt;
     
     % Plot
     if isnan(ind)
