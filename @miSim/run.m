@@ -18,19 +18,18 @@ function [obj] = run(obj)
         obj.timestepIndex = ii;
         fprintf("Sim Time: %4.2f (%d/%d)\n", obj.t, ii, obj.maxIter + 1);
 
+        % Before moving
         % Validate current simulation configuration
         obj.validate();
 
-        % Check if it's time for new partitions
-        updatePartitions = false;
-        if ismember(obj.t, obj.partitioningTimes)
-            updatePartitions = true;
-            obj = obj.partition();
-        end
+        % Update partitioning before moving (this one is strictly for
+        % plotting purposes, the real partitioning is done by the agents)
+        obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
         % Determine desired communications links
         obj = obj.lesserNeighbor();
 
+        % Moving
         % Iterate over agents to simulate their unconstrained motion
         for jj = 1:size(obj.agents, 1)
             obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.timestepIndex, jj, obj.agents);
@@ -40,8 +39,7 @@ function [obj] = run(obj)
         % CBF constraints solved by QP
         obj = constrainMotion(obj);
 
-        % Finished simulation for this timestep, do accounting
-
+        % After moving
         % Update agent position history array
         obj.posHist(1:size(obj.agents, 1), obj.timestepIndex + 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, 'UniformOutput', false)), size(obj.agents, 1), 1, 3);
 
@@ -52,7 +50,7 @@ function [obj] = run(obj)
         obj = obj.updateAdjacency();
 
         % Update plots
-        obj = obj.updatePlots(updatePartitions);
+        obj = obj.updatePlots();
 
         % Write frame in to video
         if obj.makeVideo

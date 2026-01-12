@@ -1,7 +1,6 @@
-function [obj] = updatePlots(obj, updatePartitions)
+function [obj] = updatePlots(obj)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
-        updatePartitions (1, 1) logical = false;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'miSim')};
@@ -30,10 +29,8 @@ function [obj] = updatePlots(obj, updatePartitions)
     obj = obj.plotGraph();
 
     % Update partitioning plot
-    if updatePartitions
-        delete(obj.partitionPlot);
-        obj = obj.plotPartitions();
-    end
+    delete(obj.partitionPlot);
+    obj = obj.plotPartitions();
 
     % reset plot limits to fit domain
     for ii = 1:size(obj.spatialPlotIndices, 2)

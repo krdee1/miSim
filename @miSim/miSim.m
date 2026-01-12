@@ -67,7 +67,7 @@ classdef miSim
         [obj] = plotGraph(obj);
         [obj] = plotTrails(obj);
         [obj] = plotH(obj);
-        [obj] = updatePlots(obj, updatePartitions);
+        [obj] = updatePlots(obj);
         validate(obj);
     end
     methods (Access = private)

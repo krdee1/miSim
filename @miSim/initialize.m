@@ -1,4 +1,4 @@
-function obj = initialize(obj, domain, objective, agents, minAlt, timestep, partitoningFreq, maxIter, obstacles, makePlots, makeVideo)
+function obj = initialize(obj, domain, objective, agents, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
         domain (1, 1) {mustBeGeometry};
@@ -6,7 +6,6 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
         agents (:, 1) cell;
         minAlt (1, 1) double = 1;
         timestep (:, 1) double = 0.05;
-        partitoningFreq (:, 1) double = 0.25
         maxIter (:, 1) double = 1000;
         obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
         makePlots(1, 1) logical = true;
@@ -33,7 +32,6 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
 
     % Define domain
     obj.domain = domain;
-    obj.partitioningFreq = partitoningFreq;
 
     % Add geometries representing obstacles within the domain
     obj.obstacles = obstacles;
@@ -73,7 +71,6 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
 
     % Set up times to iterate over
     obj.times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
-    obj.partitioningTimes = obj.times(obj.partitioningFreq:obj.partitioningFreq:size(obj.times, 1));
 
     % Prepare performance data store (at t = 0, all have 0 performance)
     obj.perf = [zeros(size(obj.agents, 1) + 1, 1), NaN(size(obj.agents, 1) + 1, size(obj.partitioningTimes, 1) - 1)];
@@ -82,7 +79,7 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, part
     obj.h = NaN(size(obj.agents, 1) * (size(obj.agents, 1) - 1) / 2 + size(obj.agents, 1) * size(obj.obstacles, 1) + 6, size(obj.times, 1) - 1);
 
     % Create initial partitioning
-    obj = obj.partition();
+    obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
     % Initialize variable that will store agent positions for trail plots
     obj.posHist = NaN(size(obj.agents, 1), obj.maxIter + 1, 3);
