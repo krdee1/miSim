@@ -17,19 +17,8 @@ function obj = updateAdjacency(obj)
                 A(ii, jj) = false; % comm range violation
                 continue;
             end
-
-            % % Check that agents do not have their line of sight obstructed
-            % for kk = 1:size(obj.obstacles, 1)
-            %     if obj.obstacles{kk}.containsLine(obj.agents{jj}.pos, obj.agents{ii}.pos)
-            %         A(ii, jj) = false;
-            %     end
-            % end
         end
     end
 
     obj.adjacency = A & A';
-
-    if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, 'all')
-        warning("Eliminated network connections that were necessary");
-    end
 end

@@ -5,8 +5,15 @@ function validate(obj)
     arguments (Output)
     end
 
+    %% Communications Network Validators
     if max(conncomp(graph(obj.adjacency))) ~= 1
         warning("Network is not connected");
     end
+
+    if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, 'all')
+        warning("Eliminated network connections that were necessary");
+    end
+
+    %% 
 
 end

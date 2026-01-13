@@ -503,8 +503,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.testClass.run();
         end
         function test_obstacle_avoidance(tc)
-            % Right now this seems to prove that the communications
-            % constraints are working, but the result is dissatisfying
+            % Right now, the communications constraint is violated here
 
             % Fixed single obstacle
             % Fixed two agents initial conditions
