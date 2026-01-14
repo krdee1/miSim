@@ -14,6 +14,11 @@ function [obj] = constrainMotion(obj)
 
     agents = [obj.agents{:}];
     v = reshape(([agents.pos] - [agents.lastPos])./obj.timestep, 3, size(obj.agents, 1))';
+    if all(isnan(v)) || all(v == zeros(1, 3))
+        % Agents are not attempting to move, so there is no motion to be
+        % constrained
+        return;
+    end
 
     % Initialize QP based on number of agents and obstacles
     nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs

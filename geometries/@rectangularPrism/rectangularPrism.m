@@ -20,10 +20,6 @@ classdef rectangularPrism
 
         % Plotting
         lines;
-
-        % collision
-        barrierFunction;
-        dBarrierFunction;
     end
     properties (SetAccess = public, GetAccess = public)
         label = "";

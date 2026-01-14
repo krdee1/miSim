@@ -55,7 +55,7 @@ classdef miSim
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, domain, objective, agents, timestep, partitoningFreq, maxIter, obstacles);
+        [obj] = initialize(obj, domain, agents, timestep, partitoningFreq, maxIter, obstacles);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);
         [obj] = constrainMotion(obj);
@@ -69,6 +69,7 @@ classdef miSim
         [obj] = plotH(obj);
         [obj] = updatePlots(obj);
         validate(obj);
+        teardown(obj);
     end
     methods (Access = private)
         [v] = setupVideoWriter(obj);

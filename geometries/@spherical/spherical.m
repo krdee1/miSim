@@ -11,10 +11,6 @@ classdef spherical
 
         % Plotting
         lines;
-
-        % collision
-        barrierFunction;
-        dBarrierFunction;
     end
     properties (SetAccess = public, GetAccess = public)
         % Meta

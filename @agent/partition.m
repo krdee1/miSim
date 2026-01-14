@@ -10,7 +10,7 @@ function [partitioning] = partition(obj, agents, objective)
     
     % Assess sensing performance of each agent at each sample point
     % in the domain
-    agentPerformances = cellfun(@(x) reshape(x.sensorModel.sensorPerformance(x.pos, x.pan, x.tilt, [objective.X(:), objective.Y(:), zeros(size(objective.X(:)))]), size(objective.X)), agents, 'UniformOutput', false);
+    agentPerformances = cellfun(@(x) reshape(x.sensorModel.sensorPerformance(x.pos, [objective.X(:), objective.Y(:), zeros(size(objective.X(:)))]), size(objective.X)), agents, 'UniformOutput', false);
     agentPerformances{end + 1} = objective.sensorPerformanceMinimum * ones(size(agentPerformances{end})); % add additional layer to represent the threshold that has to be cleared for assignment to any partiton
     agentPerformances = cat(3, agentPerformances{:});
 

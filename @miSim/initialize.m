@@ -1,8 +1,7 @@
-function obj = initialize(obj, domain, objective, agents, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo)
+function obj = initialize(obj, domain, agents, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
         domain (1, 1) {mustBeGeometry};
-        objective (1, 1) {mustBeA(objective, 'sensingObjective')};
         agents (:, 1) cell;
         minAlt (1, 1) double = 1;
         timestep (:, 1) double = 0.05;
@@ -44,9 +43,6 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, maxI
         obj.obstacles{end, 1} = obj.obstacles{end, 1}.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), obj.minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
     end
 
-    % Define objective
-    obj.objective = objective;
-
     % Define agents
     obj.agents = agents;
     obj.constraintAdjacencyMatrix = logical(eye(size(agents, 1)));
@@ -76,7 +72,7 @@ function obj = initialize(obj, domain, objective, agents, minAlt, timestep, maxI
     obj.perf = [zeros(size(obj.agents, 1) + 1, 1), NaN(size(obj.agents, 1) + 1, size(obj.partitioningTimes, 1) - 1)];
 
     % Prepare h function data store
-    obj.h = NaN(size(obj.agents, 1) * (size(obj.agents, 1) - 1) / 2 + size(obj.agents, 1) * size(obj.obstacles, 1) + 6, size(obj.times, 1) - 1);
+    obj.h = NaN(size(obj.agents, 1) * (size(obj.agents, 1) - 1) / 2 + size(obj.agents, 1) * size(obj.obstacles, 1) + 6, size(obj.times, 1));
 
     % Create initial partitioning
     obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);

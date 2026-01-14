@@ -48,13 +48,4 @@ function obj = initialize(obj, bounds, tag, label, objectiveFunction, discretiza
     if tag == REGION_TYPE.DOMAIN
         obj.objective = sensingObjective;
     end
-
-    % Initialize CBF
-    % first part evaluates to +/-1 if the point is outside/inside the collision geometry
-    % Second part determines the distance from the point to the boundary of the collision geometry
-    obj.barrierFunction = @(x) (1 - 2 * obj.collisionGeometry.contains(x)) * obj.collisionGeometry.distance(x); % x is 1x3
-    % gradient of barrier function 
-    obj.dBarrierFunction = @(x) obj.collisionGeometry.distanceGradient(x); % x is 1x3
-    % as long as the collisionGeometry object is updated during runtime,
-    % these functions never have to be updated again
 end

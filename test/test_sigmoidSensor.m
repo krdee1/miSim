@@ -21,7 +21,7 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
         function tc = setup(tc)
             % Reinitialize sensor with random parameters
             tc.testClass = sigmoidSensor;
-            tc.testClass = tc.testClass.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), NaN, NaN, tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
+            tc.testClass = tc.testClass.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
         end
     end
 
@@ -34,28 +34,28 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
             alphaTilt = 15; % degrees
             betaTilt = 3;
             h = 1e-6;
-            tc.testClass = tc.testClass.initialize(alphaDist, betaDist, NaN, NaN, alphaTilt, betaTilt);
+            tc.testClass = tc.testClass.initialize(alphaDist, betaDist, alphaTilt, betaTilt);
             
             % Plot (optional)
             % tc.testClass.plotParameters();
 
             % Anticipate perfect performance for a point directly below and
             % extremely close
-            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], NaN, 0, [0, 0, 0]), 1, 'RelTol', 1e-3); 
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], 0, [0, 0, 0]), 1, 'RelTol', 1e-3); 
             % It looks like mu_t can max out at really low values like 0.37
             % when alphaTilt and betaTilt are small, which seems wrong
 
             % Performance at nadir point, distance alphaDist should be 1/2 exactly
-            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, alphaDist], NaN, 0, [0, 0, 0]), 1/2);
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, alphaDist], 0, [0, 0, 0]), 1/2);
 
             % Performance at (almost) 0 distance, alphaTilt should be 1/2
-            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], NaN, 0, [tand(alphaTilt)*h, 0, 0]), 1/2, 'RelTol', 1e-3);
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], 0, [tand(alphaTilt)*h, 0, 0]), 1/2, 'RelTol', 1e-3);
 
             % Performance at great distance should be 0
-            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, 10], NaN, 0, [0, 0, 0]), 0, 'AbsTol', 1e-9);
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, 10], 0, [0, 0, 0]), 0, 'AbsTol', 1e-9);
 
             % Performance at great tilt should be 0
-            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], NaN, 0, [5, 5, 0]), 0, 'AbsTol', 1e-9);
+            tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], 0, [5, 5, 0]), 0, 'AbsTol', 1e-9);
         end
     end
 

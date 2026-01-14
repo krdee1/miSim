@@ -5,15 +5,19 @@ function updatePlots(obj)
     arguments (Output)
     end
 
+    % Find change in agent position since last timestep
+    deltaPos = obj.pos - obj.lastPos;
+    if all(isnan(deltaPos)) || all(deltaPos == zeros(1, 3))
+        % Agent did not move, so nothing has to move on the plots
+        return;
+    end
+
     % Scatterplot point positions
     for ii = 1:size(obj.scatterPoints, 1)
         obj.scatterPoints(ii).XData = obj.pos(1);
         obj.scatterPoints(ii).YData = obj.pos(2);
         obj.scatterPoints(ii).ZData = obj.pos(3);
     end
-
-    % Find change in agent position since last timestep
-    deltaPos = obj.pos - obj.lastPos;
 
     % Collision geometry edges
     for jj = 1:size(obj.collisionGeometry.lines, 2)

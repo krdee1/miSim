@@ -18,11 +18,6 @@ function obj = initialize(obj, center, radius, tag, label)
     obj.radius = radius;
     obj.diameter = 2 * obj.radius;
 
-    % Initialize CBF
-    obj.barrierFunction = @(x) NaN;
-    % gradient of barrier function 
-    obj.dBarrierFunction = @(x) NaN;
-
     % fake vertices in a cross pattern
     obj.vertices = [obj.center + [obj.radius, 0, 0]; ...
                     obj.center - [obj.radius, 0, 0]; ...

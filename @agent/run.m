@@ -13,6 +13,10 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
 
     % Collect objective function values across partition
     partitionMask = partitioning == index;
+    if ~unique(partitionMask)
+        % This agent has no partition, maintain current state
+        return;
+    end
     objectiveValues = domain.objective.values(partitionMask); % f(omega) on W_n
 
     % Compute sensor performance on partition
@@ -30,7 +34,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
         % Compute performance values on partition
         if ii < 5
             % Compute sensing performance
-            sensorValues = obj.sensorModel.sensorPerformance(pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
+            sensorValues = obj.sensorModel.sensorPerformance(pos, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
             % Objective performance does not change for 0, +/- X, Y steps.
             % Those values are computed once before the loop and are only
             % recomputed when +/- Z steps are applied
@@ -45,7 +49,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
             % Recompute partiton-derived performance values for sensing
             maskedX = domain.objective.X(partitionMask);
             maskedY = domain.objective.Y(partitionMask);
-            sensorValues = obj.sensorModel.sensorPerformance(pos, obj.pan, obj.tilt, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
+            sensorValues = obj.sensorModel.sensorPerformance(pos, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
         end
 
         % Rearrange data into image arrays

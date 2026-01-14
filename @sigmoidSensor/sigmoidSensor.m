@@ -3,15 +3,12 @@ classdef sigmoidSensor
         % Sensor parameters
         alphaDist = NaN;
         betaDist = NaN;
-        alphaPan = NaN;
-        betaPan = NaN;
         alphaTilt = NaN; % degrees
         betaTilt = NaN;
     end
 
     methods (Access = public)
-        [obj]               = initialize(obj, alphaDist, betaDist, alphaPan, betaPan, alphaTilt, betaTilt);
-        [values, positions] = sense(obj, agent, sensingObjective, domain, partitioning);
+        [obj]               = initialize(obj, alphaDist, betaDist, alphaTilt, betaTilt);
         [value]             = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos);
         [f] = plotParameters(obj);
     end

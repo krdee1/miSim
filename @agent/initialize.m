@@ -1,10 +1,7 @@
-function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorModel, comRange, maxIter, label, plotCommsGeometry)
+function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, label, plotCommsGeometry)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'agent')};
         pos (1, 3) double;
-        vel (1, 3) double;
-        pan (1, 1) double;
-        tilt (1, 1) double;
         collisionGeometry (1, 1) {mustBeGeometry};
         sensorModel (1, 1) {mustBeSensor};
         comRange (1, 1) double;
@@ -17,9 +14,6 @@ function obj = initialize(obj, pos, vel, pan, tilt, collisionGeometry, sensorMod
     end
 
     obj.pos = pos;
-    obj.vel = vel;
-    obj.pan = pan;
-    obj.tilt = tilt;
     obj.collisionGeometry = collisionGeometry;
     obj.sensorModel = sensorModel;
     obj.label = label;

@@ -1,9 +1,7 @@
-function value = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos)
+function value = sensorPerformance(obj, agentPos, targetPos)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'sigmoidSensor')};
         agentPos (1, 3) double;
-        agentPan (1, 1) double;
-        agentTilt (1, 1) double;
         targetPos (:, 3) double;
     end
     arguments (Output)
@@ -15,7 +13,7 @@ function value = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos
     x = vecnorm(agentPos(1:2) - targetPos(:, 1:2), 2, 2); % distance from sensor nadir to target nadir (i.e. distance ignoring height difference)
 
     % compute tilt angle
-    tiltAngle = (180 - atan2d(x, targetPos(:, 3) - agentPos(3))) - agentTilt; % degrees
+    tiltAngle = (180 - atan2d(x, targetPos(:, 3) - agentPos(3))); % degrees
 
     % Membership functions
     mu_d = obj.distanceMembership(d);
