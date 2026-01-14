@@ -5,7 +5,6 @@ classdef miSim
     properties (SetAccess = private, GetAccess = public)
         timestep = NaN; % delta time interval for simulation iterations
         timestepIndex = NaN; % index of the current timestep (useful for time-indexed arrays)
-        partitioningFreq = NaN; % number of simulation timesteps at which the partitioning routine is re-run
         maxIter = NaN; % maximum number of simulation iterations
         domain = rectangularPrism;
         objective = sensingObjective;
@@ -16,9 +15,9 @@ classdef miSim
         partitioning = NaN;
         perf; % sensor performance timeseries array
         performance = 0; % simulation performance timeseries vector
-        barrierGain = 100; % collision avoidance parameter
-        minAlt = 1; % minimum allowed altitude constraint
-
+        barrierGain = 100; % CBF gain parameter
+        barrierExponent = 3; % CBF exponent parameter
+        artifactName = "";
         fPerf; % performance plot figure
     end
 
@@ -55,7 +54,7 @@ classdef miSim
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, domain, agents, timestep, partitoningFreq, maxIter, obstacles);
+        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);
         [obj] = constrainMotion(obj);

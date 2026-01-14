@@ -1,8 +1,10 @@
-function obj = initialize(obj, domain, agents, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo)
+function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'miSim')};
         domain (1, 1) {mustBeGeometry};
         agents (:, 1) cell;
+        barrierGain (1, 1) double = 100;
+        barrierExponent (1, 1) double = 3;
         minAlt (1, 1) double = 1;
         timestep (:, 1) double = 0.05;
         maxIter (:, 1) double = 1000;
@@ -24,6 +26,9 @@ function obj = initialize(obj, domain, agents, minAlt, timestep, maxIter, obstac
     end
     obj.makeVideo = makeVideo;
 
+    % Generate artifact(s) name
+    obj.artifactName = strcat(string(datetime('now'), 'yyyy_MM_dd_HH_mm_ss'));
+
     % Define simulation time parameters
     obj.timestep = timestep;
     obj.timestepIndex = 0;
@@ -37,10 +42,9 @@ function obj = initialize(obj, domain, agents, minAlt, timestep, maxIter, obstac
 
     % Add an additional obstacle spanning the domain's footprint to 
     % represent the minimum allowable altitude
-    obj.minAlt = minAlt;
-    if obj.minAlt > 0
+    if minAlt > 0
         obj.obstacles{end + 1, 1} = rectangularPrism;
-        obj.obstacles{end, 1} = obj.obstacles{end, 1}.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), obj.minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
+        obj.obstacles{end, 1} = obj.obstacles{end, 1}.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
     end
 
     % Define agents
@@ -60,6 +64,10 @@ function obj = initialize(obj, domain, agents, minAlt, timestep, maxIter, obstac
             obj.agents{ii}.collisionGeometry.label = sprintf("Agent %d Collision Geometry", ii);
         end
     end
+
+    % Set CBF parameters
+    obj.barrierGain = barrierGain;
+    obj.barrierExponent = barrierExponent;
 
     % Compute adjacency matrix and lesser neighbors
     obj = obj.updateAdjacency();
@@ -83,4 +91,7 @@ function obj = initialize(obj, domain, agents, minAlt, timestep, maxIter, obstac
 
     % Set up plots showing initialized state
     obj = obj.plot();
+
+    % Run validations
+    obj.validate();
 end

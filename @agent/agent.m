@@ -3,12 +3,12 @@ classdef agent
         % Identifiers
         label = "";
 
-        % Sensor
-        sensorModel;
-
         % State
         lastPos = NaN(1, 3); % position from previous timestep
         pos = NaN(1, 3); % current position
+
+        % Sensor
+        sensorModel;
 
         % Collision
         collisionGeometry;
@@ -17,10 +17,10 @@ classdef agent
         fovGeometry;
 
         % Communication
-        comRange = NaN;
         commsGeometry = spherical;
         lesserNeighbors = [];
 
+        % Performance
         performance = 0;
 
         % Plotting
@@ -29,7 +29,7 @@ classdef agent
     end
 
     properties (SetAccess = private, GetAccess = public)
-        initialStepSize = 0.2;
+        initialStepSize = NaN;
         stepDecayRate = NaN;
     end
 

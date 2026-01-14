@@ -1,4 +1,4 @@
-function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, label, plotCommsGeometry)
+function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, initialStepSize, label, plotCommsGeometry)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, 'agent')};
         pos (1, 3) double;
@@ -6,6 +6,7 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
         sensorModel (1, 1) {mustBeSensor};
         comRange (1, 1) double;
         maxIter (1, 1) double;
+        initialStepSize (1, 1) double = 0.2;
         label (1, 1) string = "";
         plotCommsGeometry (1, 1) logical = false;
     end
@@ -18,6 +19,7 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
     obj.sensorModel = sensorModel;
     obj.label = label;
     obj.plotCommsGeometry = plotCommsGeometry;
+    obj.initialStepSize = initialStepSize;
     obj.stepDecayRate = obj.initialStepSize / maxIter;
 
     % Initialize performance vector

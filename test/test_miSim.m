@@ -9,7 +9,7 @@ classdef test_miSim < matlab.unittest.TestCase
         plotCommsGeometry = false; % disable plotting communications geometries
 
         % Sim
-        maxIter = 250;
+        maxIter = 50;
         timestep = 0.05;
 
         % Domain
@@ -30,6 +30,7 @@ classdef test_miSim < matlab.unittest.TestCase
         objective = sensingObjective;
 
         % Agents
+        initialStepSize = 0.2; % gradient ascent step size at the first iteration. Decreases linearly to 0 based on maxIter.
         minAgents = 3; % Minimum number of agents to be randomly generated
         maxAgents = 4; % Maximum number of agents to be randomly generated
         agents = cell(0, 1);
@@ -51,6 +52,10 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Communications
         comRange = 8; % Maximum range between agents that forms a communications link
+
+        % Constraints
+        barrierGain = 100;
+        barrierExponent = 3;
     end
 
     % Setup for each test
@@ -160,7 +165,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, sensor, tc.comRange, tc.maxIter); 
+                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, sensor, tc.comRange, tc.maxIter, tc.initialStepSize); 
 
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -208,7 +213,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makeVideo);
         end
         function misim_run(tc)
             % randomly create obstacles
@@ -294,7 +299,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     sensor = sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, sensor, tc.comRange, tc.maxIter);
+                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, sensor, tc.comRange, tc.maxIter, tc.initialStepSize);
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -342,7 +347,10 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makeVideo);
+
+            % Write out parameters
+            tc.testClass.writeParams();
 
             % Run simulation loop
             tc.testClass = tc.testClass.run();
@@ -376,17 +384,17 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent; agent};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + dh + [d, 0, 0], geometry1, sensor, 3*d, tc.maxIter);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + dh - [d, 0, 0], geometry2, sensor, 3*d, tc.maxIter);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + dh + [d, 0, 0], geometry1, sensor, 3*d, tc.maxIter, tc.initialStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + dh - [d, 0, 0], geometry2, sensor, 3*d, tc.maxIter, tc.initialStepSize);
 
             % Optional third agent along the +Y axis
             geometry3 = rectangularPrism;
             geometry3 = geometry3.initialize([tc.domain.center + dh - [0, d, 0] - tc.collisionRanges(1) * ones(1, 3); tc.domain.center + dh - [0, d, 0] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
             tc.agents{3} = agent;
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], geometry3, sensor, 3*d, tc.maxIter);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dh - [0, d, 0], geometry3, sensor, 3*d, tc.maxIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.minAlt, tc.timestep, tc.maxIter, cell(0, 1), false, false);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, cell(0, 1), false, false);
         
             tc.verifyEqual(tc.testClass.partitioning(500, 500:502), [2, 3, 1]); % all three near center
             tc.verifyLessThan(sum(tc.testClass.partitioning == 1, 'all'), sum(tc.testClass.partitioning == 0, 'all')); % more non-assignments than partition 1 assignments
@@ -418,10 +426,10 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.agents = {agent};
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], geometry1, sensor, 3, tc.maxIter);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], geometry1, sensor, 3, tc.maxIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.minAlt, tc.timestep, tc.maxIter, cell(0, 1), false, false);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, cell(0, 1), false, false);
             close(tc.testClass.fPerf);
 
             tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1]);
@@ -450,12 +458,12 @@ classdef test_miSim < matlab.unittest.TestCase
             % f = sensor.plotParameters();
 
             % Initialize agents
-            nIter = 100;
+            nIter = 75;
             tc.agents = {agent};
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, sensor, 3, nIter);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, sensor, 3, nIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.minAlt, tc.timestep, nIter, cell(0, 1));
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, nIter, cell(0, 1));
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
@@ -489,13 +497,13 @@ classdef test_miSim < matlab.unittest.TestCase
             sensor = sensor.initialize(alphaDist, 3, 15, 3);
 
             % Initialize agents
-            nIter = 50;
+            nIter = 25;
             tc.agents = {agent; agent};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, sensor, 5, nIter);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, sensor, 5, nIter);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, sensor, 5, nIter, tc.initialStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, sensor, 5, nIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.minAlt, tc.timestep, nIter, cell(0, 1), tc.makeVideo, tc.makePlots);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, nIter, cell(0, 1), tc.makeVideo, tc.makePlots);
             
             % Run the simulation
             tc.testClass.run();
@@ -517,7 +525,7 @@ classdef test_miSim < matlab.unittest.TestCase
             radius = 1.1;
             d = [3, 0, 0];
 
-            yOffset = 0;
+            yOffset = 1;
             % choice of 0 leads to the agents getting stuck attempting to go around the obstacle on both sides
             % choice of 1 leads to one agent easily going around while the other gets stuck and the communications link is broken
 
@@ -539,10 +547,10 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             commsRadius = (2*radius + obstacleLength) * 0.9; % defined such that they cannot go around the obstacle on both sides
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.1 - yOffset, 0], geometry1, sensor, commsRadius, tc.maxIter);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius  *1.1 + yOffset, 0], geometry2, sensor, commsRadius, tc.maxIter);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, radius * 1.1 - yOffset, 0], geometry1, sensor, commsRadius, tc.maxIter, tc.initialStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, radius  *1.1 + yOffset, 0], geometry2, sensor, commsRadius, tc.maxIter, tc.initialStepSize);
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makeVideo);
             
             % Run the simulation
             tc.testClass.run();
@@ -576,14 +584,14 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.obstacles = {};
             
             % Initialize agents
-            nIter = 75;
+            nIter = 50;
             commsRadius = 4; % defined such that they cannot reach their objective without breaking connectivity
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(dom.center + d, geometry1, sensor, commsRadius, nIter);
-            tc.agents{2} = tc.agents{2}.initialize(dom.center - d, geometry2, sensor, commsRadius, nIter);
+            tc.agents{1} = tc.agents{1}.initialize(dom.center + d, geometry1, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(dom.center - d, geometry2, sensor, commsRadius, nIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(dom, tc.agents, tc.minAlt, tc.timestep, nIter, tc.obstacles, true, false);
+            tc.testClass = tc.testClass.initialize(dom, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, nIter, tc.obstacles, true, false);
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
@@ -616,8 +624,8 @@ classdef test_miSim < matlab.unittest.TestCase
             nIter = 125;
             commsRadius = 5;
             tc.agents = {agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - [d, 0, 0], geometry1, sensor, commsRadius, nIter);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [0, d, 0], geometry2, sensor, commsRadius, nIter);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - [d, 0, 0], geometry1, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [0, d, 0], geometry2, sensor, commsRadius, nIter, tc.initialStepSize);
             
             % Initialize obstacles
             obstacleLength = 1.5;
@@ -625,7 +633,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.obstacles{1} = tc.obstacles{1}.initialize([tc.domain.center(1:2) - obstacleLength, 0; tc.domain.center(1:2) + obstacleLength, tc.domain.maxCorner(3)], REGION_TYPE.OBSTACLE, "Obstacle 1");
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, 0, tc.timestep, nIter, tc.obstacles, false, false);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, 0, tc.timestep, nIter, tc.obstacles, false, false);
 
             % No communications link should be established
             tc.assertEqual(tc.testClass.adjacency, logical(true(2)));
@@ -662,14 +670,14 @@ classdef test_miSim < matlab.unittest.TestCase
             nIter = 125;
             commsRadius = d;
             tc.agents = {agent; agent; agent; agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], geometry1, sensor, commsRadius, nIter);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, 0, 0, geometry2, sensor, commsRadius, nIter);
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [-d, d, 0], geometry3, sensor, commsRadius, nIter);
-            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], geometry4, sensor, commsRadius, nIter);
-            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], geometry5, sensor, commsRadius, nIter);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], geometry1, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, geometry2, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [-d, d, 0], geometry3, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], geometry4, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], geometry5, sensor, commsRadius, nIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, 0, tc.timestep, nIter, tc.obstacles, false, false);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, 0, tc.timestep, nIter, tc.obstacles, false, false);
 
             % Constraint adjacency matrix defined by LNA should be as follows
             tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
@@ -713,16 +721,16 @@ classdef test_miSim < matlab.unittest.TestCase
             nIter = 125;
             commsRadius = d;
             tc.agents = {agent; agent; agent; agent; agent; agent; agent;};
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [-0.9 * d/sqrt(2), 0.9 * d/sqrt(2), 0], geometry1, sensor, commsRadius, nIter);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + [-0.5 * d, 0.25 * d, 0], geometry2, sensor, commsRadius, nIter);
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [0.9 * d, 0, 0], geometry3, sensor, commsRadius, nIter);
-            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [0.9 * d/sqrt(2), -0.9 * d/sqrt(2), 0], geometry4, sensor, commsRadius, nIter);
-            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, 0.9 * d, 0], geometry5, sensor, commsRadius, nIter);
-            tc.agents{6} = tc.agents{6}.initialize(tc.domain.center, geometry6, sensor, commsRadius, nIter);
-            tc.agents{7} = tc.agents{7}.initialize(tc.domain.center + [d/2, d/2, 0], geometry7, sensor, commsRadius, nIter);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [-0.9 * d/sqrt(2), 0.9 * d/sqrt(2), 0], geometry1, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + [-0.5 * d, 0.25 * d, 0], geometry2, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [0.9 * d, 0, 0], geometry3, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [0.9 * d/sqrt(2), -0.9 * d/sqrt(2), 0], geometry4, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, 0.9 * d, 0], geometry5, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{6} = tc.agents{6}.initialize(tc.domain.center, geometry6, sensor, commsRadius, nIter, tc.initialStepSize);
+            tc.agents{7} = tc.agents{7}.initialize(tc.domain.center + [d/2, d/2, 0], geometry7, sensor, commsRadius, nIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, 0, tc.timestep, nIter, tc.obstacles, false, false);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, 0, tc.timestep, nIter, tc.obstacles, false, false);
 
             % Constraint adjacency matrix defined by LNA should be as follows
             tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...

@@ -14,7 +14,7 @@ function [obj] = constrainMotion(obj)
 
     agents = [obj.agents{:}];
     v = reshape(([agents.pos] - [agents.lastPos])./obj.timestep, 3, size(obj.agents, 1))';
-    if all(isnan(v)) || all(v == zeros(1, 3))
+    if all(isnan(v), 'all') || all(v == zeros(size(obj.agents, 1), 3), 'all')
         % Agents are not attempting to move, so there is no motion to be
         % constrained
         return;
@@ -39,7 +39,7 @@ function [obj] = constrainMotion(obj)
             
             A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (agents(ii).pos - agents(jj).pos);
             A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-            b(kk) = obj.barrierGain * h(ii, jj)^3;
+            b(kk) = obj.barrierGain * h(ii, jj)^obj.barrierExponent;
             kk = kk + 1;
         end
     end
@@ -54,7 +54,7 @@ function [obj] = constrainMotion(obj)
             hObs(ii, jj) = dot(agents(ii).pos - cPos, agents(ii).pos - cPos) - agents(ii).collisionGeometry.radius^2;
 
             A(kk, (3 * ii - 2):(3 * ii)) = -2 * (agents(ii).pos - cPos);
-            b(kk) = obj.barrierGain * hObs(ii, jj)^3;
+            b(kk) = obj.barrierGain * hObs(ii, jj)^obj.barrierExponent;
            
             kk = kk + 1;
         end
@@ -67,37 +67,37 @@ function [obj] = constrainMotion(obj)
         % X minimum
         h_xMin = (agents(ii).pos(1) - obj.domain.minCorner(1)) - agents(ii).collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [-1, 0, 0];
-        b(kk) = obj.barrierGain * h_xMin^3;
+        b(kk) = obj.barrierGain * h_xMin^obj.barrierExponent;
         kk = kk + 1;
     
         % X maximum
         h_xMax = (obj.domain.maxCorner(1) - agents(ii).pos(1)) - agents(ii).collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [1, 0, 0];
-        b(kk) = obj.barrierGain * h_xMax^3;
+        b(kk) = obj.barrierGain * h_xMax^obj.barrierExponent;
         kk = kk + 1;
     
         % Y minimum
         h_yMin = (agents(ii).pos(2) - obj.domain.minCorner(2)) - agents(ii).collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, -1, 0];
-        b(kk) = obj.barrierGain * h_yMin^3;
+        b(kk) = obj.barrierGain * h_yMin^obj.barrierExponent;
         kk = kk + 1;
     
         % Y maximum
         h_yMax = (obj.domain.maxCorner(2) - agents(ii).pos(2)) - agents(ii).collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 1, 0];
-        b(kk) = obj.barrierGain * h_yMax^3;
+        b(kk) = obj.barrierGain * h_yMax^obj.barrierExponent;
         kk = kk + 1;
     
         % Z minimum
         h_zMin = (agents(ii).pos(3) - obj.domain.minCorner(3)) - agents(ii).collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, -1];
-        b(kk) = obj.barrierGain * h_zMin^3;
+        b(kk) = obj.barrierGain * h_zMin^obj.barrierExponent;
         kk = kk + 1;
     
         % Z maximum
         h_zMax = (obj.domain.maxCorner(2) - agents(ii).pos(2)) - agents(ii).collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, 1];
-        b(kk) = obj.barrierGain * h_zMax^3;
+        b(kk) = obj.barrierGain * h_zMax^obj.barrierExponent;
         kk = kk + 1;
     end
 
@@ -114,11 +114,7 @@ function [obj] = constrainMotion(obj)
 
                 A(kk, (3 * ii - 2):(3 * ii)) =  2 * (agents(ii).pos - agents(jj).pos);
                 A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-                b(kk) = obj.barrierGain * hComms(ii, jj);
-
-                % dVNominal = v(ii, 1:3) - v(jj, 1:3); % nominal velocities
-                % h_dot_nom = -2 * (agents(ii).pos - agents(jj).pos) * dVNominal';
-                % b(kk) = -h_dot_nom + obj.barrierGain * hComms(ii, jj)^3;
+                b(kk) = obj.barrierGain * hComms(ii, jj)^obj.barrierExponent;
 
                 kk = kk + 1; 
             end

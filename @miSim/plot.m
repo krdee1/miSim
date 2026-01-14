@@ -51,4 +51,7 @@ function obj = plot(obj)
 
     % Plot h functions
     obj = obj.plotH();
+
+    % Switch back to primary figure
+    figure(obj.f);
 end

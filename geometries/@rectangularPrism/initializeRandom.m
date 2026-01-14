@@ -6,7 +6,7 @@ function [obj] = initializeRandom(obj, tag, label, minDimension, maxDimension, d
         minDimension (1, 1) double = 10;
         maxDimension (1, 1) double = 20;
         domain (1, 1) {mustBeGeometry} = rectangularPrism;
-        minAlt (1, 1) double = 0;
+        minAlt (1, 1) double = 1;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, 'rectangularPrism')};

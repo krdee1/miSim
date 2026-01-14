@@ -14,6 +14,14 @@ function validate(obj)
         warning("Eliminated network connections that were necessary");
     end
 
-    %% 
+    %% Obstacle Validators
+    AO_collisions = cellfun(@(a) cellfun(@(o) o.contains(a.pos), obj.obstacles), obj.agents, 'UniformOutput', false);
+    AO_collisions = vertcat(AO_collisions{:});
+    if any(AO_collisions)
+        [idx, idy] = find(AO_collisions);
+        for ii = 1:size(idx, 1)
+            error("Agent(s) %d colliding with obstacle(s) %d", idx(ii), idy(ii));
+        end
+    end
 
 end
