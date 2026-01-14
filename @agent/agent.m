@@ -5,7 +5,6 @@ classdef agent
 
         % Sensor
         sensorModel;
-        sensingLength = 0.05; % length parameter used by sensing function
 
         % State
         lastPos = NaN(1, 3); % position from previous timestep

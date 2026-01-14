@@ -10,8 +10,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Sim
         maxIter = 250;
-        timestep = 0.05
-        partitoningFreq = 5;
+        timestep = 0.05;
 
         % Domain
         domain = rectangularPrism; % domain geometry
@@ -33,7 +32,6 @@ classdef test_miSim < matlab.unittest.TestCase
         % Agents
         minAgents = 3; % Minimum number of agents to be randomly generated
         maxAgents = 4; % Maximum number of agents to be randomly generated
-        sensingLength = 0.05; % length parameter used by sensing function
         agents = cell(0, 1);
         
         % Collision
@@ -429,7 +427,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1]);
             tc.verifyLessThan(sum(tc.testClass.partitioning == 1, 'all'), sum(tc.testClass.partitioning == 0, 'all'));
         end
-        function test_single_partition_basic_GA(tc)
+        function test_single_agent_gradient_ascent(tc)
             % make basic domain
             l = 10; % domain size
             tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
