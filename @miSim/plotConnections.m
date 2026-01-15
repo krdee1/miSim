@@ -32,10 +32,8 @@ function obj = plotConnections(obj)
     end
 
     % Copy to other plots
-    if size(obj.spatialPlotIndices, 2) > 1
-        for ii = 2:size(obj.spatialPlotIndices, 2)
-            o = [o, copyobj(o(:, 1), obj.f.Children(1).Children(obj.spatialPlotIndices(ii)))];
-        end 
+    for ii = 2:size(obj.spatialPlotIndices, 2)
+        o = [o, copyobj(o(:, 1), obj.f.Children(1).Children(obj.spatialPlotIndices(ii)))];
     end
 
     obj.connectionsPlot = o;

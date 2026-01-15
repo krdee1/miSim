@@ -14,13 +14,12 @@ function obj = initializeRandomMvnpdf(obj, domain, discretizationStep, protected
     while domain.distance(mu) < protectedRange
         mu = domain.random();
     end
-    mu = mu(1:2);
 
     % Set random distribution parameters
     sig = [2 + rand * 2, 1; 1, 2 + rand * 2];
 
     % Set up random bivariate normal distribution function
-    objectiveFunction = @(x, y) mvnpdf([x(:), y(:)], mu, sig);
+    objectiveFunction = objectiveFunctionWrapper(mu(1:2), sig);
 
     % Regular initialization
     obj = obj.initialize(objectiveFunction, domain, discretizationStep, protectedRange);
