@@ -75,7 +75,7 @@ classdef test_miSim < matlab.unittest.TestCase
                 tc.agents{ii, 1} = agent;
             end
 
-            % Define random collision ranges for each agent
+            % Random collision ranges for each agent
             tc.collisionRanges = tc.minCollisionRange + rand(size(tc.agents, 1), 1) * (tc.maxCollisionRange - tc.minCollisionRange);
         end
     end
