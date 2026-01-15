@@ -19,8 +19,12 @@ function obj = plotTrails(obj)
         hold(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), 'off');
     end
 
-    % Copy trails to other figures?
-    obj.trailPlot = o;
+    % Copy to other plots
+    for ii = 2:size(obj.spatialPlotIndices, 2)
+        o = [o, copyobj(o(:, 1), obj.f.Children(1).Children(obj.spatialPlotIndices(ii)))];
+    end 
 
     % Add legend?
+
+    obj.trailPlot = o;
 end

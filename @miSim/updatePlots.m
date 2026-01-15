@@ -40,10 +40,12 @@ function [obj] = updatePlots(obj)
     end
 
     % Update agent trails
-    for ii = 1:size(obj.agents, 1)
-        obj.trailPlot(ii).XData(obj.timestepIndex) = obj.posHist(ii, obj.timestepIndex, 1);
-        obj.trailPlot(ii).YData(obj.timestepIndex) = obj.posHist(ii, obj.timestepIndex, 2);
-        obj.trailPlot(ii).ZData(obj.timestepIndex) = obj.posHist(ii, obj.timestepIndex, 3);
+    for jj = 1:size(obj.spatialPlotIndices, 2)
+        for ii = 1:size(obj.agents, 1)
+            obj.trailPlot((jj - 1) * size(obj.agents, 1) + ii).XData(obj.timestepIndex) = obj.posHist(ii, obj.timestepIndex, 1);
+            obj.trailPlot((jj - 1) * size(obj.agents, 1) + ii).YData(obj.timestepIndex) = obj.posHist(ii, obj.timestepIndex, 2);
+            obj.trailPlot((jj - 1) * size(obj.agents, 1) + ii).ZData(obj.timestepIndex) = obj.posHist(ii, obj.timestepIndex, 3);
+        end
     end
 
     drawnow;
