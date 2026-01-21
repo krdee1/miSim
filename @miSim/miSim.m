@@ -67,8 +67,8 @@ classdef miSim
         [obj] = plotTrails(obj);
         [obj] = plotH(obj);
         [obj] = updatePlots(obj);
+        [obj] = teardown(obj);
         validate(obj);
-        teardown(obj);
     end
     methods (Access = private)
         [v] = setupVideoWriter(obj);
