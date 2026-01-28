@@ -15,12 +15,14 @@ function validate(obj)
     end
 
     %% Obstacle Validators
-    AO_collisions = cellfun(@(a) cellfun(@(o) o.contains(a.pos), obj.obstacles), obj.agents, "UniformOutput", false);
-    AO_collisions = vertcat(AO_collisions{:});
-    if any(AO_collisions)
-        [idx, idy] = find(AO_collisions);
-        for ii = 1:size(idx, 1)
-            error("Agent(s) %d colliding with obstacle(s) %d", idx(ii), idy(ii));
+    % Agent-Obstacle Collision Detection
+    for jj = 1:size(obj.obstacles, 1)
+        for kk = 1:size(obj.agents, 1)
+            P = min(max(obj.agents{kk}.pos, obj.obstacles{jj}.minCorner), obj.obstacles{jj}.maxCorner);
+            d = obj.agents{kk}.pos - P;
+            if dot(d, d) <= obj.agents{kk}.collisionGeometry.radius^2
+                error("%s colliding with %s", obj.agents{kk}.label, obj.obstacles{jj}.label); % this will cause quadprog to fail
+            end
         end
     end
 
