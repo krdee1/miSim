@@ -3,10 +3,9 @@ classdef parametricTestSuite < matlab.unittest.TestCase
         % System under test
         testClass = miSim;
         domain = rectangularPrism;
-        obstacles = cell(1, 0);
 
         % RNG control
-        seed = 1234567890;
+        seed = 1;
 
         %% Diagnostic Parameters
         % No effect on simulation dynamics
@@ -41,7 +40,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
             % Read file
             csv = readtable(csvPath, "TextType", "String", "NumHeaderLines", 0, "VariableNamingRule", "Preserve");
-            csv.Properties.VariableNames = ["timestep", "maxIter", "minAlt", "discretizationStep", "sensorPerformanceMinimum", "initialStepSize", "barrierGain", "barrierExponent", "numObstacles", "numAgents", "collisionRadius", "comRange", "alphaDist", "betaDist", "alphaTilt", "betaTilt"];
+            csv.Properties.VariableNames = ["timestep", "maxIter", "minAlt", "discretizationStep", "protectedRange", "sensorPerformanceMinimum", "initialStepSize", "barrierGain", "barrierExponent", "numObstacles", "numAgents", "collisionRadius", "comRange", "alphaDist", "betaDist", "alphaTilt", "betaTilt"];
 
             for ii = 1:size(csv.Properties.VariableNames, 2)
                 csv.(csv.Properties.VariableNames{ii}) = cell2mat(cellfun(@(x) str2num(x), csv.(csv.Properties.VariableNames{ii}), "UniformOutput", false));
@@ -49,7 +48,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
         
             % Put params into standard structure
             params = struct("timestep", csv.timestep, "maxIter", csv.maxIter, "minAlt", csv.minAlt, "discretizationStep", csv.discretizationStep, ...
-                            "sensorPerformanceMinimum", csv.sensorPerformanceMinimum, "initialStepSize", csv.initialStepSize, ...
+                            "protectedRange", csv.protectedRange, "sensorPerformanceMinimum", csv.sensorPerformanceMinimum, "initialStepSize", csv.initialStepSize, ...
                             "barrierGain", csv.barrierGain, "barrierExponent", csv.barrierExponent, "numObstacles", csv.numObstacles,...
                             "numAgents", csv.numAgents, "collisionRadius", csv.collisionRadius, "comRange", csv.comRange, "alphaDist", csv.alphaDist, "betaDist", csv.betaDist, "alphaTilt", csv.alphaTilt, "betaTilt", csv.betaTilt);
         end
@@ -70,7 +69,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
             for ii = 1:size(params.timestep, 1)
                 % Set up square domain
                 tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
-                tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([.75 * l, 0.75 * l]), tc.domain, params.discretizationStep(ii), tc.protectedRange, params.sensorPerformanceMinimum(ii));
+                tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([.75 * l, 0.75 * l]), tc.domain, params.discretizationStep(ii), params.protectedRange(ii), params.sensorPerformanceMinimum(ii));
                 
                 % Initialize agents
                 agents = cell(params.numAgents(ii), 1);
@@ -105,29 +104,27 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                     retry = true;
                     while retry
                         agentPos = agents{baseAgentIdx}.commsGeometry.random();
+                        retry = false;
 
                         % Check that the agent's greatest sensor
                         % performance clears the threshold for partitioning
                         if sensorModel.sensorPerformance(agentPos, [agentPos(1:2), 0]) < params.sensorPerformanceMinimum(ii)
                             retry = true;
-                            continue;
                         end
 
                         % Check that candidate position is well inside the domain
                         bounds = [params.collisionRadius(ii, jj) * ones(1, 2), max([params.collisionRadius(ii, jj), params.minAlt(ii)]); l / 2 * ones(1, 2), l - params.collisionRadius(ii, jj)];
-                        if ~isequal(agentPos < bounds, [false, false, false; true, true, true])
+                        if ~retry && ~isequal(agentPos < bounds, [false, false, false; true, true, true])
                             retry = true;
-                            continue;
                         end
 
                         % Check that candidate position does not collide with existing agents
                         for kk = 1:(jj - 1)
-                            if norm(agents{kk}.pos - agentPos, 2) < agents{kk}.collisionGeometry.radius + params.collisionRadius(ii, jj)
+                            if ~retry && norm(agents{kk}.pos - agentPos, 2) < agents{kk}.collisionGeometry.radius + params.collisionRadius(ii, jj)
                                 retry = true;
-                                continue;
+                                break;
                             end
                         end
-                        retry = false;
                     end
 
                     % Initialize agent
@@ -135,9 +132,66 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                     agents{jj} = agents{jj}.initialize(agentPos, collisionGeometry, sensorModel, params.comRange(ii, jj), params.maxIter(ii), params.initialStepSize(ii), sprintf("Agent %d", jj), tc.plotCommsGeometry);
                 end
 
+                % randomly shuffle agents to make the network more interesting (probably)
+                agents = agents(randperm(numel(agents))); 
+
+                % Set up obstacles
+                obstacles = cell(params.numObstacles(ii), 1);
+                [obstacles{:}] = deal(rectangularPrism);
+
+                % Define ranges to permit obstacles (relies on certain
+                % assumptions about agent and objective placement)
+                bounds = [max(cell2mat(cellfun(@(x) x.pos(1:2), agents, "UniformOutput", false))) + max(cellfun(@(x) x.collisionGeometry.radius, agents)); ...
+                          tc.domain.objective.groundPos - tc.domain.objective.protectedRange];
+
+                for jj = 1:size(obstacles, 1)
+                    % randomly place obstacles in at least the X or Y or X
+                    % and Y range defined by the objective region and the 
+                    % agents initial region
+                    retry = true;
+                    while retry
+                        retry = false;
+
+                        % candidate corners for obstacle
+                        corners = [sort(tc.domain.maxCorner(1, 1:2) .* rand(2), 1, "ascend"), [params.minAlt(ii); params.minAlt(ii) + rand * (tc.domain.maxCorner(3) - params.minAlt(ii))]];
+
+                        % Check X falls into bucket in at least one vertex
+                        if ~retry && ~(any(corners(:, 1) > bounds(1, 1) & corners(:, 1) < bounds(2, 1)) || any(corners(:, 2) > bounds(1, 2) & corners(:, 2) < bounds(2, 2)))
+                            retry = true;
+                        end
+
+                        % Initialize obstacle using proposed coordinates
+                        if ~retry
+                            obstacles{jj} = obstacles{jj}.initialize(corners, REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", jj));
+                        end
+
+
+                        % Make sure the obstacle doesn't crowd the objective
+                        if ~retry && obstacles{jj}.distance([tc.domain.objective.groundPos, params.minAlt(ii)]) <= tc.domain.objective.protectedRange
+                            retry = true;
+                        end
+
+                        % Check if the obstacle collides with an existing obstacle
+                        if ~retry && jj > 1 && tc.obstacleCollisionCheck(obstacles(1:(jj - 1)), obstacles{jj})
+                            retry = true;
+                        end
+
+                        % Check if the obstacle collides with an agent
+                        if ~retry
+                            AO_collisions = cellfun(@(a) cellfun(@(o) o.contains(a.pos), obstacles), agents, "UniformOutput", false);
+                            if any(vertcat(AO_collisions{:}))
+                                retry = true;
+                            end
+                        end
+
+                        if retry
+                            continue;
+                        end
+                    end
+                end
+
                 % Set up simulation
-                agents = agents(randperm(numel(agents))); % randomly shuffle agents to make the network more interesting (probably)
-                tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain(ii), params.barrierExponent(ii), params.minAlt(ii), params.timestep(ii), params.maxIter(ii), tc.obstacles, tc.makePlots, tc.makeVideo);
+                tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain(ii), params.barrierExponent(ii), params.minAlt(ii), params.timestep(ii), params.maxIter(ii), obstacles, tc.makePlots, tc.makeVideo);
     
                 % Save simulation parameters to output file
                 tc.testClass.writeParams();
@@ -148,7 +202,19 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 % Cleanup
                 tc.testClass = tc.testClass.teardown();
             end
-            
+        end
+    end
+
+    methods
+        function c = obstacleCollisionCheck(~, obstacles, obstacle)
+            % Check if the obstacle intersects with any other obstacles
+            c = false;
+            for ii = 1:size(obstacles, 1)
+                if geometryIntersects(obstacles{ii}, obstacle)
+                    c = true;
+                    return;
+                end
+            end
         end
     end
 end
