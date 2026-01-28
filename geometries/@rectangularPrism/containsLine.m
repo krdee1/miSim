@@ -21,7 +21,7 @@ function c = containsLine(obj, pos1, pos2)
     tMax = 1;
     for ii = 1:3
         % line is parallel to geometry
-        if abs(d(ii)) < 1e-12
+        if abs(d(ii)) < 1e-9
             if pos1(ii) < obj.minCorner(ii) || pos1(ii) > obj.maxCorner(ii)
                 c = false;
                 return;
