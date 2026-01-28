@@ -80,7 +80,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
                 % Place first agent randomly in the quadrant opposite the objective
                 % not too close to the domain boundaries
-                bounds = [params.collisionRadius(ii, 1) * ones(1, 2), max([params.collisionRadius(ii, 1), params.minAlt(ii)]); l / 2 * ones(1, 2), l - params.collisionRadius(ii, 1)];
+                bounds = [params.collisionRadius(ii, 1) * ones(1, 2), params.collisionRadius(ii, 1) + params.minAlt(ii); l / 2 * ones(1, 2), l - params.collisionRadius(ii, 1)];
                 agentPos = bounds(1, :) + (bounds(2, :) - bounds(1, :)) .* rand(1, 3);
                 
                 % Keep trying new positions until the greatest possible
@@ -106,9 +106,14 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                         agentPos = agents{baseAgentIdx}.commsGeometry.random();
                         retry = false;
 
+                        % Check that altitude clears minimum
+                        if agentPos(3) <= params.minAlt(ii) + params.collisionRadius(ii, jj)
+                            retry = true;
+                        end
+
                         % Check that the agent's greatest sensor
                         % performance clears the threshold for partitioning
-                        if sensorModel.sensorPerformance(agentPos, [agentPos(1:2), 0]) < params.sensorPerformanceMinimum(ii)
+                        if ~retry && sensorModel.sensorPerformance(agentPos, [agentPos(1:2), 0]) < params.sensorPerformanceMinimum(ii)
                             retry = true;
                         end
 
