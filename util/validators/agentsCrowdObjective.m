@@ -1,6 +1,6 @@
 function c = agentsCrowdObjective(objective, positions, protectedRange)
     arguments (Input)
-        objective (1, 1) {mustBeA(objective, 'sensingObjective')};
+        objective (1, 1) {mustBeA(objective, "sensingObjective")};
         positions (:, 3) double; % this could be expanded to handle n obstacles in 1 call
         protectedRange (1, 1) double;
     end

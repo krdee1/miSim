@@ -88,7 +88,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
     methods (Test)
         % Test methods
-        function misim_initialization(tc)
+        function miSim_initialization(tc)
             % randomly create obstacles
             nGeom = tc.minNumObstacles + randi(tc.maxNumObstacles - tc.minNumObstacles);
             tc.obstacles = cell(nGeom, 1);
@@ -123,7 +123,7 @@ classdef test_miSim < matlab.unittest.TestCase
                             candidatePos(3) = tc.minAlt  + rand * 3; % place agents at decent altitudes for sensing
                         end
                     else
-                        candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
+                        candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.commsRanges(ii)/sqrt(2));
                         candidatePos(3) = tc.minAlt  + rand * 3; % place agents at decent altitudes for sensing
                     end
 
@@ -144,7 +144,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     % graph between the agents
                     connections = false(1, ii - 1);
                     for jj = 1:(ii - 1)
-                        if norm(tc.agents{jj}.pos - candidatePos) <= tc.comRange
+                        if norm(tc.agents{jj}.pos - candidatePos) <= min(tc.commsRanges([ii, jj]))
                             % Check new agent position against all existing
                             % agent positions for communications range
                             connections(jj) = true;
@@ -170,7 +170,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     tc.sensor = tc.sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.comRange, tc.maxIter, tc.initialStepSize); 
+                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize); 
 
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -220,7 +220,7 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
         end
-        function misim_run(tc)
+        function miSim_run(tc)
             % randomly create obstacles
             nGeom = tc.minNumObstacles + randi(tc.maxNumObstacles - tc.minNumObstacles);
             tc.obstacles = cell(nGeom, 1);
@@ -254,7 +254,7 @@ classdef test_miSim < matlab.unittest.TestCase
                             candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, tc.minAlt + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
                         end
                     else
-                        candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.comRange/sqrt(2));
+                        candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.commsRanges(ii)/sqrt(2));
                         candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, tc.minAlt + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
                     end
 
@@ -275,7 +275,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     % graph between the agents
                     connections = false(1, ii - 1);
                     for jj = 1:(ii - 1)
-                        if norm(tc.agents{jj}.pos - candidatePos) <= tc.comRange
+                        if norm(tc.agents{jj}.pos - candidatePos) <= min(tc.commsRanges([ii, jj]))
                             % Check new agent position against all existing
                             % agent positions for communications range
                             connections(jj) = true;
@@ -303,7 +303,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     tc.sensor = tc.sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.comRange, tc.maxIter, tc.initialStepSize);
+                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize);
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -389,9 +389,9 @@ classdef test_miSim < matlab.unittest.TestCase
         
             centerIdx = floor(size(tc.testClass.partitioning, 1) / 2);
             tc.verifyEqual(tc.testClass.partitioning(centerIdx, centerIdx:(centerIdx + 2)), [2, 3, 1]); % all three near center
-            tc.verifyLessThan(sum(tc.testClass.partitioning == 1, 'all'), sum(tc.testClass.partitioning == 0, 'all')); % more non-assignments than partition 1 assignments
-            tc.verifyLessThan(sum(tc.testClass.partitioning == 2, 'all'), sum(tc.testClass.partitioning == 1, 'all')); % more partition 1 assignments than partition 2 assignments
-            tc.verifyLessThan(sum(tc.testClass.partitioning == 3, 'all'), sum(tc.testClass.partitioning == 2, 'all')); % more partition 3 assignments than partition 2 assignments
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 1, "all"), sum(tc.testClass.partitioning == 0, "all")); % more non-assignments than partition 1 assignments
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 2, "all"), sum(tc.testClass.partitioning == 1, "all")); % more partition 1 assignments than partition 2 assignments
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 3, "all"), sum(tc.testClass.partitioning == 2, "all")); % more partition 3 assignments than partition 2 assignments
             tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1; 2; 3;]);
         end
         function test_single_partition(tc)
@@ -414,7 +414,7 @@ classdef test_miSim < matlab.unittest.TestCase
             close(tc.testClass.fPerf);
 
             tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1]);
-            tc.verifyLessThan(sum(tc.testClass.partitioning == 1, 'all'), sum(tc.testClass.partitioning == 0, 'all'));
+            tc.verifyLessThan(sum(tc.testClass.partitioning == 1, "all"), sum(tc.testClass.partitioning == 0, "all"));
         end
         function test_single_agent_gradient_ascent(tc)
             % make basic domain

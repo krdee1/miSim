@@ -1,6 +1,6 @@
 function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, initialStepSize, label, plotCommsGeometry)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'agent')};
+        obj (1, 1) {mustBeA(obj, "agent")};
         pos (1, 3) double;
         collisionGeometry (1, 1) {mustBeGeometry};
         sensorModel (1, 1) {mustBeSensor};
@@ -11,7 +11,7 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
         plotCommsGeometry (1, 1) logical = false;
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'agent')};
+        obj (1, 1) {mustBeA(obj, "agent")};
     end
 
     obj.pos = pos;

@@ -1,6 +1,6 @@
 function c = containsLine(obj, pos1, pos2)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
+        obj (1, 1) {mustBeA(obj, "rectangularPrism")};
         pos1 (1, 3) double;
         pos2 (1, 3) double;
     end

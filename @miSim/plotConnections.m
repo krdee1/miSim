@@ -1,9 +1,9 @@
 function obj = plotConnections(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
     % Iterate over lower triangle off-diagonal region of the 
@@ -23,11 +23,11 @@ function obj = plotConnections(obj)
     % Plot the connections
     if isnan(obj.spatialPlotIndices)
         hold(obj.f.CurrentAxes, "on");
-        o = plot3(obj.f.CurrentAxes, X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
+        o = plot3(obj.f.CurrentAxes, X, Y, Z, "Color", "g", "LineWidth", 2, "LineStyle", "--");
         hold(obj.f.CurrentAxes, "off");
     else
         hold(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), "on");
-        o = plot3(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), X, Y, Z, 'Color', 'g', 'LineWidth', 2, 'LineStyle', '--');
+        o = plot3(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), X, Y, Z, "Color", "g", "LineWidth", 2, "LineStyle", "--");
         hold(obj.f.Children(1).Children(obj.spatialPlotIndices(1)), "off");
     end
 

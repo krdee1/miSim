@@ -1,6 +1,6 @@
 function c = contains(obj, pos)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'spherical')};
+        obj (1, 1) {mustBeA(obj, "spherical")};
         pos (:, 3) double;
     end
     arguments (Output)

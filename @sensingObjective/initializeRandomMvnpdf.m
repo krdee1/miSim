@@ -1,12 +1,12 @@
 function obj = initializeRandomMvnpdf(obj, domain, discretizationStep, protectedRange)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'sensingObjective')};
+        obj (1, 1) {mustBeA(obj, "sensingObjective")};
         domain (1, 1) {mustBeGeometry};
         discretizationStep (1, 1) double = 1;
         protectedRange (1, 1) double = 1;
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'sensingObjective')};
+        obj (1, 1) {mustBeA(obj, "sensingObjective")};
     end
 
     % Set random objective position

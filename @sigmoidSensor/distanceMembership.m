@@ -1,6 +1,6 @@
 function x = distanceMembership(obj, d)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'sigmoidSensor')};
+        obj (1, 1) {mustBeA(obj, "sigmoidSensor")};
         d (:, 1) double;
     end
     arguments (Output)

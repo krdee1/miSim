@@ -8,9 +8,9 @@ function c = domainContainsObstacle(domain, obstacle)
     end
 
     switch class(domain)
-        case 'rectangularPrism'
+        case "rectangularPrism"
             switch class(obstacle)
-                case 'rectangularPrism'
+                case "rectangularPrism"
                     c = all(domain.minCorner <= obstacle.minCorner) && all(domain.maxCorner >= obstacle.maxCorner);
                 otherwise
                     error("%s not implemented for obstacles of class %s", coder.mfunctionname, class(domain));

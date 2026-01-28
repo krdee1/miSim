@@ -1,14 +1,14 @@
 function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'agent')};
+        obj (1, 1) {mustBeA(obj, "agent")};
         domain (1, 1) {mustBeGeometry};
         partitioning (:, :) double;
         timestepIndex (1, 1) double;
         index (1, 1) double;
-        agents (:, 1) {mustBeA(agents, 'cell')};
+        agents (:, 1) {mustBeA(agents, "cell")};
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'agent')};
+        obj (1, 1) {mustBeA(obj, "agent")};
     end
 
     % Collect objective function values across partition
@@ -82,9 +82,9 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
 
     % Reinitialize collision geometry in the new position
     d = obj.pos - obj.collisionGeometry.center;
-    if isa(obj.collisionGeometry, 'rectangularPrism')
+    if isa(obj.collisionGeometry, "rectangularPrism")
         obj.collisionGeometry = obj.collisionGeometry.initialize([obj.collisionGeometry.minCorner; obj.collisionGeometry.maxCorner] + d, obj.collisionGeometry.tag, obj.collisionGeometry.label);
-    elseif isa(obj.collisionGeometry, 'spherical')
+    elseif isa(obj.collisionGeometry, "spherical")
         obj.collisionGeometry = obj.collisionGeometry.initialize(obj.collisionGeometry.center + d, obj.collisionGeometry.radius, obj.collisionGeometry.tag, obj.collisionGeometry.label);
     else
         error("?");

@@ -1,6 +1,6 @@
 function c = obstacleCoversObjective(objective, obstacle)
     arguments (Input)
-        objective (1, 1) {mustBeA(objective, 'sensingObjective')};
+        objective (1, 1) {mustBeA(objective, "sensingObjective")};
         obstacle (1, 1) {mustBeGeometry}; % this could be expanded to handle n obstacles in 1 call
     end
     arguments (Output)

@@ -1,9 +1,9 @@
 function [obj] = constrainMotion(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
     if size(obj.agents, 1) < 2
@@ -14,7 +14,7 @@ function [obj] = constrainMotion(obj)
 
     agents = [obj.agents{:}];
     v = reshape(([agents.pos] - [agents.lastPos])./obj.timestep, 3, size(obj.agents, 1))';
-    if all(isnan(v), 'all') || all(v == zeros(size(obj.agents, 1), 3), 'all')
+    if all(isnan(v), "all") || all(v == zeros(size(obj.agents, 1), 3), "all")
         % Agents are not attempting to move, so there is no motion to be
         % constrained
         return;
@@ -23,7 +23,7 @@ function [obj] = constrainMotion(obj)
     % Initialize QP based on number of agents and obstacles
     nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
     nADPairs = size(obj.agents, 1) * 5; % agents x (4 walls + 1 ceiling)
-    nLNAPairs = sum(obj.constraintAdjacencyMatrix, 'all') - size(obj.agents, 1);
+    nLNAPairs = sum(obj.constraintAdjacencyMatrix, "all") - size(obj.agents, 1);
     total = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
     kk = 1;
     A = zeros(total, 3 * size(obj.agents, 1));
@@ -130,9 +130,9 @@ function [obj] = constrainMotion(obj)
     assert(size(A,2) == size(H,1))
     assert(size(A,1) == size(b,1))
     assert(size(H,1) == length(f))
-    opt = optimoptions('quadprog', 'Display', 'off');
+    opt = optimoptions("quadprog", "Display", "off");
     [vNew, ~, exitflag, m] = quadprog(sparse(H), double(f), A, b, [],[], [], [], [], opt);
-    assert(exitflag == 1, sprintf('quadprog failure... %s%s', newline, m.message));
+    assert(exitflag == 1, sprintf("quadprog failure... %s%s", newline, m.message));
     vNew = reshape(vNew, 3, size(obj.agents, 1))';
 
     if exitflag <= 0

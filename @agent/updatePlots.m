@@ -1,6 +1,6 @@
 function updatePlots(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'agent')};
+        obj (1, 1) {mustBeA(obj, "agent")};
     end
     arguments (Output)
     end

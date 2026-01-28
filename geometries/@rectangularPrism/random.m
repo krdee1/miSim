@@ -1,6 +1,6 @@
 function r = random(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
+        obj (1, 1) {mustBeA(obj, "rectangularPrism")};
     end
     arguments (Output)
         r (1, 3) double

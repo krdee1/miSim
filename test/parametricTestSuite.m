@@ -16,7 +16,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
         protectedRange = 0;
 
         %% Test iterations
-        csvPath = fullfile(matlab.project.rootProject().RootFolder, 'test', 'testIterations.csv');
+        csvPath = fullfile(matlab.project.rootProject().RootFolder, "test", "testIterations.csv");
     end
 
     methods (TestMethodSetup)
@@ -37,20 +37,21 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
             % File input validation
             assert(isfile(csvPath), "%s is not a valid filepath.");
-            assert(endsWith(csvPath, '.csv'), "%s is not a CSV file.");
+            assert(endsWith(csvPath, ".csv"), "%s is not a CSV file.");
 
             % Read file
-            csv = readtable(csvPath, 'TextType', 'string', 'NumHeaderLines', 0, "VariableNamingRule", "Preserve");
-            csv.Properties.VariableNames = ["timestep", "maxIter", "minAlt", "discretizationStep", "sensorPerformanceMinimum", "initialStepSize", "barrierGain", "barrierExponent", "numAgents", "collisionRadius", "comRange", "alphaDist", "betaDist", "alphaTilt", "betaTilt"];
+            csv = readtable(csvPath, "TextType", "String", "NumHeaderLines", 0, "VariableNamingRule", "Preserve");
+            csv.Properties.VariableNames = ["timestep", "maxIter", "minAlt", "discretizationStep", "sensorPerformanceMinimum", "initialStepSize", "barrierGain", "barrierExponent", "numObstacles", "numAgents", "collisionRadius", "comRange", "alphaDist", "betaDist", "alphaTilt", "betaTilt"];
 
             for ii = 1:size(csv.Properties.VariableNames, 2)
-                csv.(csv.Properties.VariableNames{ii}) = cell2mat(cellfun(@(x) str2num(x), csv.(csv.Properties.VariableNames{ii}), 'UniformOutput', false));
+                csv.(csv.Properties.VariableNames{ii}) = cell2mat(cellfun(@(x) str2num(x), csv.(csv.Properties.VariableNames{ii}), "UniformOutput", false));
             end
         
             % Put params into standard structure
-            params = struct('timestep', csv.timestep, 'maxIter', csv.maxIter, 'minAlt', csv.minAlt, 'discretizationStep', csv.discretizationStep, ...
-                            'sensorPerformanceMinimum', csv.sensorPerformanceMinimum, 'initialStepSize', csv.initialStepSize, 'barrierGain', csv.barrierGain, 'barrierExponent', csv.barrierExponent, ...
-                            'numAgents', csv.numAgents, 'collisionRadius', csv.collisionRadius, 'comRange', csv.comRange, 'alphaDist', csv.alphaDist, 'betaDist', csv.betaDist, 'alphaTilt', csv.alphaTilt, 'betaTilt', csv.betaTilt);
+            params = struct("timestep", csv.timestep, "maxIter", csv.maxIter, "minAlt", csv.minAlt, "discretizationStep", csv.discretizationStep, ...
+                            "sensorPerformanceMinimum", csv.sensorPerformanceMinimum, "initialStepSize", csv.initialStepSize, ...
+                            "barrierGain", csv.barrierGain, "barrierExponent", csv.barrierExponent, "numObstacles", csv.numObstacles,...
+                            "numAgents", csv.numAgents, "collisionRadius", csv.collisionRadius, "comRange", csv.comRange, "alphaDist", csv.alphaDist, "betaDist", csv.betaDist, "alphaTilt", csv.alphaTilt, "betaTilt", csv.betaTilt);
         end
     end
 
