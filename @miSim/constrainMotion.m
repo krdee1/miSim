@@ -130,8 +130,9 @@ function [obj] = constrainMotion(obj)
     assert(size(A,2) == size(H,1))
     assert(size(A,1) == size(b,1))
     assert(size(H,1) == length(f))
-    opt = optimoptions("quadprog", "Display", "off");
-    [vNew, ~, exitflag, m] = quadprog(sparse(H), double(f), A, b, [],[], [], [], [], opt);
+    opt = optimoptions("quadprog", "Display", "off", "Algorithm", "active-set", "UseCodegenSolver", true);
+    x0 = zeros(size(H, 1), 1);
+    [vNew, ~, exitflag, m] = quadprog(H, double(f), A, b, [], [], [], [], x0, opt);
     assert(exitflag == 1, sprintf("quadprog failure... %s%s", newline, m.message));
     vNew = reshape(vNew, 3, size(obj.agents, 1))';
 
