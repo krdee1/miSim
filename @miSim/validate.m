@@ -1,6 +1,6 @@
 function validate(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
     arguments (Output)
     end
@@ -10,12 +10,12 @@ function validate(obj)
         warning("Network is not connected");
     end
 
-    if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, 'all')
+    if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, "all")
         warning("Eliminated network connections that were necessary");
     end
 
     %% Obstacle Validators
-    AO_collisions = cellfun(@(a) cellfun(@(o) o.contains(a.pos), obj.obstacles), obj.agents, 'UniformOutput', false);
+    AO_collisions = cellfun(@(a) cellfun(@(o) o.contains(a.pos), obj.obstacles), obj.agents, "UniformOutput", false);
     AO_collisions = vertcat(AO_collisions{:});
     if any(AO_collisions)
         [idx, idy] = find(AO_collisions);

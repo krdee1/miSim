@@ -1,12 +1,12 @@
 function [obj, f] = plot(obj, ind, f)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'agent')};
+        obj (1, 1) {mustBeA(obj, "agent")};
         ind (1, :) double = NaN;
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
+        f (1, 1) {mustBeA(f, "matlab.ui.Figure")} = figure;
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'agent')};
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
+        obj (1, 1) {mustBeA(obj, "agent")};
+        f (1, 1) {mustBeA(f, "matlab.ui.Figure")};
     end
 
     % Create axes if they don't already exist
@@ -14,11 +14,11 @@ function [obj, f] = plot(obj, ind, f)
 
     % Plot points representing the agent position
     hold(f.Children(1).Children(end), "on");
-    o = scatter3(f.Children(1).Children(end), obj.pos(1), obj.pos(2), obj.pos(3), 'filled', 'ko', 'SizeData', 25);
+    o = scatter3(f.Children(1).Children(end), obj.pos(1), obj.pos(2), obj.pos(3), "filled", "ko", "SizeData", 25);
     hold(f.Children(1).Children(end), "off");
 
     % Check if this is a tiled layout figure
-    if strcmp(f.Children(1).Type, 'tiledlayout')
+    if strcmp(f.Children(1).Type, "tiledlayout")
         % Add to other perspectives
         o = [o; copyobj(o(1), f.Children(1).Children(2))];
         o = [o; copyobj(o(1), f.Children(1).Children(3))];

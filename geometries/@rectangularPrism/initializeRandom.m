@@ -1,6 +1,6 @@
 function [obj] = initializeRandom(obj, tag, label, minDimension, maxDimension, domain, minAlt)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
+        obj (1, 1) {mustBeA(obj, "rectangularPrism")};
         tag (1, 1) REGION_TYPE = REGION_TYPE.INVALID;
         label (1, 1) string = "";
         minDimension (1, 1) double = 10;
@@ -9,7 +9,7 @@ function [obj] = initializeRandom(obj, tag, label, minDimension, maxDimension, d
         minAlt (1, 1) double = 1;
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
+        obj (1, 1) {mustBeA(obj, "rectangularPrism")};
     end
     
     % Produce random bounds based on region type

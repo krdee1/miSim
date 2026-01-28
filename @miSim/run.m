@@ -1,9 +1,9 @@
 function [obj] = run(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
     % Start video writer
@@ -41,7 +41,7 @@ function [obj] = run(obj)
 
         % After moving
         % Update agent position history array
-        obj.posHist(1:size(obj.agents, 1), obj.timestepIndex + 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, 'UniformOutput', false)), size(obj.agents, 1), 1, 3);
+        obj.posHist(1:size(obj.agents, 1), obj.timestepIndex + 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, "UniformOutput", false)), size(obj.agents, 1), 1, 3);
 
         % Update total performance
         obj.performance = [obj.performance, sum(cellfun(@(x) x.performance(obj.timestepIndex+1), obj.agents))];

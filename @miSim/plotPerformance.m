@@ -1,9 +1,9 @@
 function obj = plotPerformance(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
     % fast exit when plotting is disabled
@@ -15,31 +15,31 @@ function obj = plotPerformance(obj)
 
     axes(obj.fPerf);
     title(obj.fPerf.Children(1), "Sensor Performance");
-    xlabel(obj.fPerf.Children(1), 'Time (s)');
-    ylabel(obj.fPerf.Children(1), 'Sensor Performance');
-    grid(obj.fPerf.Children(1), 'on');
+    xlabel(obj.fPerf.Children(1), "Time (s)");
+    ylabel(obj.fPerf.Children(1), "Sensor Performance");
+    grid(obj.fPerf.Children(1), "on");
 
     % Plot current cumulative performance
-    hold(obj.fPerf.Children(1), 'on');
+    hold(obj.fPerf.Children(1), "on");
     o = plot(obj.fPerf.Children(1), obj.perf(end, :));
-    warning('off', 'MATLAB:gui:array:InvalidArrayShape'); % suppress this warning to avoid polluting output
+    warning("off", "MATLAB:gui:array:InvalidArrayShape"); % suppress this warning to avoid polluting output
     o.XData = NaN(1, obj.maxIter); % correct time will be set at runtime
     o.YData = [0, NaN(1, obj.maxIter - 1)];
-    hold(obj.fPerf.Children(1), 'off');
+    hold(obj.fPerf.Children(1), "off");
 
     % Plot current agent performance
     for ii = 1:(size(obj.perf, 1) - 1)
-        hold(obj.fPerf.Children(1), 'on');
+        hold(obj.fPerf.Children(1), "on");
         o = [o; plot(obj.fPerf.Children(1), obj.perf(ii, :))];
         o(end).XData = NaN(1, obj.maxIter); % correct time will be set at runtime
         o(end).YData = [0, NaN(1, obj.maxIter - 1)];
-        hold(obj.fPerf.Children(1), 'off');
+        hold(obj.fPerf.Children(1), "off");
     end
 
     % Add legend
-    agentStrings = string(cellfun(@(x) x.label, obj.agents, 'UniformOutput', false));
+    agentStrings = string(cellfun(@(x) x.label, obj.agents, "UniformOutput", false));
     agentStrings = ["Total"; agentStrings];
-    legend(obj.fPerf.Children(1), agentStrings, 'Location', 'northwest');
+    legend(obj.fPerf.Children(1), agentStrings, "Location", "northwest");
 
     obj.performancePlot = o;
 end

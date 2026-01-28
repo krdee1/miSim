@@ -7,9 +7,9 @@ function f = objectiveFunctionWrapper(center, sigma)
         sigma (2, 2) double = eye(2);
     end
     arguments (Output)
-        f (1, 1) {mustBeA(f, 'function_handle')};
+        f (1, 1) {mustBeA(f, "function_handle")};
     end
     
-    f = @(x,y) sum(cell2mat(arrayfun(@(i) mvnpdf([x(:), y(:)], center(i,:), sigma), 1:size(center,1), 'UniformOutput', false)), 2);
+    f = @(x,y) sum(cell2mat(arrayfun(@(i) mvnpdf([x(:), y(:)], center(i,:), sigma), 1:size(center,1), "UniformOutput", false)), 2);
 
 end

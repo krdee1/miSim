@@ -1,6 +1,6 @@
 function value = sensorPerformance(obj, agentPos, targetPos)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'sigmoidSensor')};
+        obj (1, 1) {mustBeA(obj, "sigmoidSensor")};
         agentPos (1, 3) double;
         targetPos (:, 3) double;
     end

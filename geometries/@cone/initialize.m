@@ -1,6 +1,6 @@
 function obj = initialize(obj, center, radius, height, tag, label)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'cone')};
+        obj (1, 1) {mustBeA(obj, "cone")};
         center (1, 3) double;
         radius (1, 1) double;
         height (1, 1) double;
@@ -8,7 +8,7 @@ function obj = initialize(obj, center, radius, height, tag, label)
         label (1, 1) string = "";
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'cone')};
+        obj (1, 1) {mustBeA(obj, "cone")};
     end
 
     obj.center = center;

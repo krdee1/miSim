@@ -1,9 +1,9 @@
 function f = plotParameters(obj)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'sigmoidSensor')};
+        obj (1, 1) {mustBeA(obj, "sigmoidSensor")};
     end
     arguments (Output)
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
+        f (1, 1) {mustBeA(f, "matlab.ui.Figure")};
     end
 
     % Distance and tilt sample points
@@ -24,9 +24,9 @@ function f = plotParameters(obj)
     title("Distance Membership Sigmoid");
     xlabel("Distance (m)");
     ylabel("Membership");
-    hold('on');
-    plot(d, d_x, 'LineWidth', 2);
-    hold('off');
+    hold("on");
+    plot(d, d_x, "LineWidth", 2);
+    hold("off");
     ylim([0, 1]);
 
     % Tilt
@@ -35,8 +35,8 @@ function f = plotParameters(obj)
     title("Tilt Membership Sigmoid");
     xlabel("Tilt (deg)");
     ylabel("Membership");
-    hold('on');
-    plot(t, t_x, 'LineWidth', 2);
-    hold('off');
+    hold("on");
+    plot(t, t_x, "LineWidth", 2);
+    hold("off");
     ylim([0, 1]);
 end

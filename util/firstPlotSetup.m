@@ -1,9 +1,9 @@
 function f = firstPlotSetup(f)
     arguments (Input)
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')} = figure;
+        f (1, 1) {mustBeA(f, "matlab.ui.Figure")} = figure;
     end
     arguments (Output)
-        f (1, 1) {mustBeA(f, 'matlab.ui.Figure')};
+        f (1, 1) {mustBeA(f, "matlab.ui.Figure")};
     end
     if isempty(f.CurrentAxes)
         tiledlayout(f, 5, 5, "TileSpacing", "tight", "Padding", "compact");
@@ -24,14 +24,14 @@ function f = firstPlotSetup(f)
         grid(f.Children(1).Children(1), "off");
         view(f.Children(1).Children(1), 0, 90);
         title(f.Children(1).Children(1), "Network Graph");
-        set(f.Children(1).Children(1), 'XTickLabelMode', 'manual');
-        set(f.Children(1).Children(1), 'YTickLabelMode', 'manual');
-        set(f.Children(1).Children(1), 'XTickLabel', {});
-        set(f.Children(1).Children(1), 'YTickLabel', {});
-        set(f.Children(1).Children(1), 'XTick', []);
-        set(f.Children(1).Children(1), 'YTick', []);
-        set(f.Children(1).Children(1), 'XColor', 'none');
-        set(f.Children(1).Children(1), 'YColor', 'none');
+        set(f.Children(1).Children(1), "XTickLabelMode", "manual");
+        set(f.Children(1).Children(1), "YTickLabelMode", "manual");
+        set(f.Children(1).Children(1), "XTickLabel", {});
+        set(f.Children(1).Children(1), "YTickLabel", {});
+        set(f.Children(1).Children(1), "XTick", []);
+        set(f.Children(1).Children(1), "YTick", []);
+        set(f.Children(1).Children(1), "XColor", "none");
+        set(f.Children(1).Children(1), "YColor", "none");
         
         % Top-down view
         nexttile(22, [1, 1]);
@@ -68,11 +68,11 @@ function f = firstPlotSetup(f)
         view(f.Children(1).Children(1), 0, 90);
         xlabel(f.Children(1).Children(1), "X"); ylabel(f.Children(1).Children(1), "Y");
         title(f.Children(1).Children(1), "Domain Partitioning");
-        set(f.Children(1).Children(1), 'XTickLabelMode', 'manual');
-        set(f.Children(1).Children(1), 'YTickLabelMode', 'manual');
-        set(f.Children(1).Children(1), 'XTickLabel', {});
-        set(f.Children(1).Children(1), 'YTickLabel', {});
-        set(f.Children(1).Children(1), 'XTick', []);
-        set(f.Children(1).Children(1), 'YTick', []);
+        set(f.Children(1).Children(1), "XTickLabelMode", "manual");
+        set(f.Children(1).Children(1), "YTickLabelMode", "manual");
+        set(f.Children(1).Children(1), "XTickLabel", {});
+        set(f.Children(1).Children(1), "YTickLabel", {});
+        set(f.Children(1).Children(1), "XTick", []);
+        set(f.Children(1).Children(1), "YTick", []);
     end
 end

@@ -1,6 +1,6 @@
 function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
         domain (1, 1) {mustBeGeometry};
         agents (:, 1) cell;
         barrierGain (1, 1) double = 100;
@@ -13,7 +13,7 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         makeVideo (1, 1) logical = true;
     end
     arguments (Output)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
     % enable/disable plotting and video writer
@@ -27,7 +27,7 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.makeVideo = makeVideo;
 
     % Generate artifact(s) name
-    obj.artifactName = strcat(string(datetime('now'), 'yyyy_MM_dd_HH_mm_ss'));
+    obj.artifactName = strcat(string(datetime("now"), "yyyy_MM_dd_HH_mm_ss"));
 
     % Define simulation time parameters
     obj.timestep = timestep;
@@ -87,7 +87,7 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
 
     % Initialize variable that will store agent positions for trail plots
     obj.posHist = NaN(size(obj.agents, 1), obj.maxIter + 1, 3);
-    obj.posHist(1:size(obj.agents, 1), 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, 'UniformOutput', false)), size(obj.agents, 1), 1, 3);
+    obj.posHist(1:size(obj.agents, 1), 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, "UniformOutput", false)), size(obj.agents, 1), 1, 3);
 
     % Set up plots showing initialized state
     obj = obj.plot();

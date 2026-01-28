@@ -1,6 +1,6 @@
 function cPos = closestToPoint(obj, pos)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'rectangularPrism')};
+        obj (1, 1) {mustBeA(obj, "rectangularPrism")};
         pos (:, 3) double;
     end
     arguments (Output)
