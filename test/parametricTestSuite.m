@@ -178,9 +178,13 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
                         % Check if the obstacle collides with an agent
                         if ~retry
-                            AO_collisions = cellfun(@(a) cellfun(@(o) o.contains(a.pos), obstacles), agents, "UniformOutput", false);
-                            if any(vertcat(AO_collisions{:}))
-                                retry = true;
+                            for kk = 1:size(agents, 1)
+                                P = min(max(agents{kk}.pos, obstacles{jj}.minCorner), obstacles{jj}.maxCorner);
+                                d = agents{kk}.pos - P;
+                                if dot(d, d) <= agents{kk}.collisionGeometry.radius^2
+                                    retry = true;
+                                    break;
+                                end
                             end
                         end
 
