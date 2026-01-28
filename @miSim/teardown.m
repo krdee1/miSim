@@ -11,13 +11,20 @@ function obj = teardown(obj)
     close(obj.fPerf);
     close(obj.f);
 
-    % Reset accumulators
+    % reset parameters
+    obj.timestep = NaN;
+    obj.timestepIndex = NaN;
+    obj.maxIter = NaN;
+    obj.domain = rectangularPrism;
+    obj.objective = sensingObjective;
+    obj.obstacles = cell(0, 1);
+    obj.agents = cell(0, 1);
+    obj.adjacency = NaN;
+    obj.constraintAdjacencyMatrix = NaN;
+    obj.partitioning = NaN;
     obj.performance = 0;
-
-    % Reset agents
-    for ii = 1:size(obj.agents, 1)
-        obj.agents{ii} = agent;
-    end
-
+    obj.barrierGain = NaN;
+    obj.barrierExponent = NaN;
+    obj.artifactName = "";
 
 end

@@ -14,8 +14,7 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
     obj.discretizationStep = discretizationStep;
 
     obj.sensorPerformanceMinimum = sensorPerformanceMinimum;
-
-    obj.groundAlt = domain.minCorner(3);
+    
     obj.protectedRange = protectedRange;
 
     % Extract footprint limits
