@@ -15,8 +15,8 @@ classdef miSim
         partitioning = NaN;
         perf; % sensor performance timeseries array
         performance = 0; % simulation performance timeseries vector
-        barrierGain = 100; % CBF gain parameter
-        barrierExponent = 3; % CBF exponent parameter
+        barrierGain = NaN; % CBF gain parameter
+        barrierExponent = NaN; % CBF exponent parameter
         artifactName = "";
         fPerf; % performance plot figure
     end

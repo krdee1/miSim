@@ -2,7 +2,6 @@ classdef sensingObjective
     % Sensing objective definition parent class
     properties (SetAccess = private, GetAccess = public)
         label = "";
-        groundAlt = NaN;
         groundPos = [NaN, NaN];
         discretizationStep = NaN;
         objectiveFunction = @(x, y) NaN; % define objective functions over a grid in this manner

@@ -14,13 +14,13 @@ function f = plot(obj, ind, f)
     % Plot gradient on the "floor" of the domain
     if isnan(ind)
         hold(f.CurrentAxes, "on");
-        o = surf(f.CurrentAxes, obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
+        o = surf(f.CurrentAxes, obj.X, obj.Y, zeros(size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
         o.HitTest = 'off';
         o.PickableParts = 'none';
         hold(f.CurrentAxes, "off");
     else
         hold(f.Children(1).Children(ind(1)), "on");
-        o = surf(f.Children(1).Children(ind(1)), obj.X, obj.Y, repmat(obj.groundAlt, size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
+        o = surf(f.Children(1).Children(ind(1)), obj.X, obj.Y, zeros(size(obj.X)), obj.values ./ max(obj.values, [], "all"), 'EdgeColor', 'none');
         o.HitTest = 'off';
         o.PickableParts = 'none';
         hold(f.Children(1).Children(ind(1)), "off");
