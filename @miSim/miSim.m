@@ -68,6 +68,7 @@ classdef miSim
         [obj] = plotH(obj);
         [obj] = updatePlots(obj);
         [obj] = teardown(obj);
+        writeParams(obj);
         validate(obj);
     end
     methods (Access = private)
