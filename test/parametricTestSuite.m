@@ -50,7 +50,8 @@ classdef parametricTestSuite < matlab.unittest.TestCase
             params = struct("timestep", csv.timestep, "maxIter", csv.maxIter, "minAlt", csv.minAlt, "discretizationStep", csv.discretizationStep, ...
                             "protectedRange", csv.protectedRange, "sensorPerformanceMinimum", csv.sensorPerformanceMinimum, "initialStepSize", csv.initialStepSize, ...
                             "barrierGain", csv.barrierGain, "barrierExponent", csv.barrierExponent, "numObstacles", csv.numObstacles,...
-                            "numAgents", csv.numAgents, "collisionRadius", csv.collisionRadius, "comRange", csv.comRange, "alphaDist", csv.alphaDist, "betaDist", csv.betaDist, "alphaTilt", csv.alphaTilt, "betaTilt", csv.betaTilt);
+                            "numAgents", csv.numAgents, "collisionRadius", csv.collisionRadius, "comRange", csv.comRange, "alphaDist", csv.alphaDist, ...
+                            "betaDist", csv.betaDist, "alphaTilt", csv.alphaTilt, "betaTilt", csv.betaTilt);
         end
     end
 
@@ -203,7 +204,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain(ii), params.barrierExponent(ii), params.minAlt(ii), params.timestep(ii), params.maxIter(ii), obstacles, tc.makePlots, tc.makeVideo);
     
                 % Save simulation parameters to output file
-                tc.testClass.writeParams();
+                tc.testClass.writeInits();
     
                 % Run
                 tc.testClass = tc.testClass.run();
