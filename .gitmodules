@@ -1,0 +1,3 @@
+[submodule "aerpaw/aerpawlib"]
+	path = aerpaw/aerpawlib
+	url = https://github.com/morzack/aerpawlib-vehicle-control.git
