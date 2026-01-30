@@ -9,6 +9,8 @@
 #define SERVER_PORT 5000
 #define SERVER_IP "127.0.0.1"
 
+#define OPCODE_SHUTDOWN 0xFF
+
 // Socket init
 void initSockets() {}
 void cleanupSockets() {}
