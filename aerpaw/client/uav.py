@@ -170,7 +170,8 @@ async def run_uav_client(client_id: int):
 
     # Load configuration
     origin_path = CONFIG_DIR / "origin.txt"
-    connection_path = CONFIG_DIR / "connection.txt"
+    connection_testbed_path = CONFIG_DIR / "connection_testbed.txt"
+    connection_local_path = CONFIG_DIR / "connection.txt"
     server_testbed_path = CONFIG_DIR / "server_testbed.txt"
     server_local_path = CONFIG_DIR / "server.txt"
 
@@ -178,11 +179,18 @@ async def run_uav_client(client_id: int):
     origin_lat, origin_lon, origin_alt = load_origin(origin_path)
     print(f"UAV {client_id}: Origin: lat={origin_lat}, lon={origin_lon}, alt={origin_alt}")
 
-    print(f"UAV {client_id}: Loading connection from {connection_path}")
-    conn_str = load_connection(connection_path)
+    # Load both connection configs
+    testbed_conn = load_connection(connection_testbed_path)
+    local_conn = load_connection(connection_local_path)
 
-    # Auto-detect mode based on flight controller availability
-    drone = try_connect_drone(conn_str)
+    # Try testbed flight controller first (AERPAW MAVLink filter)
+    print(f"UAV {client_id}: Trying testbed flight controller: {testbed_conn}...")
+    drone = try_connect_drone(testbed_conn)
+
+    if not drone:
+        print(f"UAV {client_id}: Testbed not available, trying local: {local_conn}...")
+        drone = try_connect_drone(local_conn)
+
     real_mode = drone is not None
 
     if real_mode:
