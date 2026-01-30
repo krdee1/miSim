@@ -29,10 +29,6 @@ from typing import Optional, Tuple
 AERPAW_DIR = Path(__file__).parent.parent
 CONFIG_DIR = AERPAW_DIR / "config"
 
-# Server configuration
-SERVER_IP = "127.0.0.1"
-SERVER_PORT = 5000
-
 
 def load_origin(path: Path) -> Tuple[float, float, float]:
     """
@@ -62,6 +58,22 @@ def load_connection(path: Path) -> str:
                 continue
             return line
     raise ValueError(f"No valid connection string found in {path}")
+
+
+def load_server(path: Path) -> Tuple[str, int]:
+    """
+    Load controller server address from config file.
+    Returns (ip, port) tuple.
+    """
+    with open(path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split(',')
+            if len(parts) == 2:
+                return parts[0].strip(), int(parts[1].strip())
+    raise ValueError(f"No valid server address found in {path}")
 
 
 def parse_target(message: str) -> Tuple[float, float, float]:
@@ -116,6 +128,21 @@ def try_connect_drone(conn_str: str, timeout: float = 10.0):
         return None
 
 
+def try_connect_server(ip: str, port: int, timeout: float = 2.0) -> Optional[socket.socket]:
+    """
+    Try to connect to controller server with timeout.
+    Returns socket if successful, None if connection fails.
+    """
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect((ip, port))
+        s.settimeout(None)  # Reset to blocking mode after connect
+        return s
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        return None
+
+
 def move_to_target_test(enu_x: float, enu_y: float, enu_z: float,
                         lat: float, lon: float, alt: float):
     """
@@ -144,6 +171,8 @@ async def run_uav_client(client_id: int):
     # Load configuration
     origin_path = CONFIG_DIR / "origin.txt"
     connection_path = CONFIG_DIR / "connection.txt"
+    server_testbed_path = CONFIG_DIR / "server_testbed.txt"
+    server_local_path = CONFIG_DIR / "server.txt"
 
     print(f"UAV {client_id}: Loading origin from {origin_path}")
     origin_lat, origin_lon, origin_alt = load_origin(origin_path)
@@ -161,10 +190,25 @@ async def run_uav_client(client_id: int):
     else:
         print(f"UAV {client_id}: Running in TEST mode (no flight controller)")
 
-    # Connect to controller server
-    print(f"UAV {client_id}: Connecting to controller at {SERVER_IP}:{SERVER_PORT}")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((SERVER_IP, SERVER_PORT))
+    # Try testbed server first, fall back to local
+    testbed_ip, testbed_port = load_server(server_testbed_path)
+    local_ip, local_port = load_server(server_local_path)
+
+    print(f"UAV {client_id}: Trying testbed server at {testbed_ip}:{testbed_port}...")
+    s = try_connect_server(testbed_ip, testbed_port)
+
+    if s:
+        print(f"UAV {client_id}: Connected to testbed server")
+    else:
+        print(f"UAV {client_id}: Testbed server not available, trying local server at {local_ip}:{local_port}...")
+        s = try_connect_server(local_ip, local_port)
+        if s:
+            print(f"UAV {client_id}: Connected to local server")
+        else:
+            print(f"UAV {client_id}: ERROR - Could not connect to any server")
+            if drone:
+                drone.close()
+            return
 
     try:
         # Receive TARGET command
