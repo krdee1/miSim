@@ -14,15 +14,15 @@ targets = zeros(MAX_CLIENTS, 3);
 % Load targets from file
 if coder.target('MATLAB')
     disp('Loading targets from file (simulation)...');
-    targetsLoaded = readmatrix('targets.txt');
+    targetsLoaded = readmatrix('config/targets.txt');
     numTargets = min(size(targetsLoaded, 1), numClients);
     targets(1:numTargets, :) = targetsLoaded(1:numTargets, :);
     disp(['Loaded ', num2str(numTargets), ' targets']);
 else
     coder.cinclude('controller_impl.h');
     % Define filename as null-terminated character array for C compatibility
-    filename = ['targets.txt', char(0)];
-    % loadTargets fills targets array (row-major: x1,y1,z1,x2,y2,z2,...)
+    filename = ['config/targets.txt', char(0)];
+    % loadTargets fills targets array (column-major for MATLAB compatibility)
     coder.ceval('loadTargets', coder.ref(filename), ...
                 coder.ref(targets), int32(MAX_CLIENTS));
 end

@@ -48,3 +48,7 @@ sandbox/*
 
 # Figures
 *.fig
+
+# Python Virtual Environment
+aerpaw/venv/
+aerpaw/venv/*
