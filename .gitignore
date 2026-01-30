@@ -52,3 +52,6 @@ sandbox/*
 # Python Virtual Environment
 aerpaw/venv/
 aerpaw/venv/*
+
+# Pycache
+__pycache__
