@@ -229,6 +229,18 @@ static int waitForAllMessage(int numClients, const char* expectedMessage) {
     return 1;
 }
 
+// Wait for ACK:TARGET from ALL clients simultaneously
+// Returns 1 if all clients acknowledged, 0 otherwise
+int waitForAllTargetAck(int numClients) {
+    return waitForAllMessage(numClients, "ACK:TARGET");
+}
+
+// Wait for READY from ALL clients simultaneously
+// Returns 1 if all clients are ready, 0 otherwise
+int waitForAllReady(int numClients) {
+    return waitForAllMessage(numClients, "READY");
+}
+
 // Wait for RTL_COMPLETE from ALL clients simultaneously
 // Returns 1 if all clients completed RTL, 0 otherwise
 int waitForAllRTLComplete(int numClients) {

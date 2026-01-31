@@ -18,11 +18,15 @@ int receiveTargetAck(int clientId);
 int waitForReady(int clientId);
 void sendFinished(int clientId);
 
+// Parallel wait functions (using select() for simultaneous processing)
+int waitForAllTargetAck(int numClients);
+int waitForAllReady(int numClients);
+int waitForAllRTLComplete(int numClients);
+int waitForAllLANDComplete(int numClients);
+
 // RTL and LAND protocol functions
 void sendRTL(int clientId);
 void sendLAND(int clientId);
-int waitForAllRTLComplete(int numClients);
-int waitForAllLANDComplete(int numClients);
 void waitForUserInput();
 
 #ifdef __cplusplus
