@@ -12,9 +12,16 @@ Protocol:
     Server sends: TARGET:x,y,z (ENU coordinates in meters)
     Client sends: ACK:TARGET
     Client (after moving): READY
+    Server sends: RTL
+    Client sends: ACK:RTL
+    Client (after returning home): RTL_COMPLETE
+    Server sends: LAND
+    Client sends: ACK:LAND
+    Client (after landing): LAND_COMPLETE
     Server sends: FINISHED
 """
 from pathlib import Path
+import asyncio
 import socket
 
 from aerpawlib.runner import BasicRunner, entrypoint
@@ -89,10 +96,27 @@ class UAVRunner(BasicRunner):
     async def run_mission(self, drone: Drone):
         """Main mission entry point."""
         print(f"[UAV] Connecting to controller at {self.server_ip}:{self.server_port}")
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(30)
-        sock.connect((self.server_ip, self.server_port))
-        sock.settimeout(None)
+
+        # Retry connection up to 10 times (~30 seconds total)
+        sock = None
+        for attempt in range(10):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5)
+                sock.connect((self.server_ip, self.server_port))
+                sock.settimeout(None)
+                print(f"[UAV] Connected to controller")
+                break
+            except (ConnectionRefusedError, socket.timeout, OSError) as e:
+                if sock:
+                    sock.close()
+                print(f"[UAV] Connection attempt {attempt + 1}/10 failed: {e}")
+                if attempt < 9:
+                    await asyncio.sleep(3)
+
+        if sock is None or sock.fileno() == -1:
+            print("[UAV] Failed to connect to controller after 10 attempts")
+            return
 
         try:
             # Takeoff to above AERPAW minimum altitude
@@ -124,23 +148,51 @@ class UAVRunner(BasicRunner):
 
             # Signal ready
             sock.sendall(b"READY")
-            print("[UAV] Sent READY")
+            print("[UAV] Sent READY, waiting for commands...")
 
-            # Wait for FINISHED
-            data = sock.recv(1024).decode().strip()
-            if data == "FINISHED":
-                print("[UAV] Received FINISHED - mission complete")
-            else:
-                print(f"[UAV] Unexpected: {data}")
+            # Command loop - handle RTL, LAND, FINISHED from controller
+            while True:
+                data = sock.recv(1024).decode().strip()
+                print(f"[UAV] Received: {data}")
+
+                if data == "RTL":
+                    sock.sendall(b"ACK:RTL")
+                    print("[UAV] Returning to home...")
+                    # Navigate to home lat/lon but stay at current altitude
+                    # (AERPAW blocks goto_coordinates below 20m, but land() mode is allowed)
+                    home = drone.home_coords
+                    current_alt = drone.position.alt
+                    safe_alt = 25  # Set to 25m alt for RTL motion
+                    rtl_target = Coordinate(home.lat, home.lon, safe_alt)
+                    print(f"[UAV] RTL to {home.lat:.6f}, {home.lon:.6f} at {safe_alt:.1f}m")
+                    await drone.goto_coordinates(rtl_target)
+                    print("[UAV] Arrived at home position")
+                    sock.sendall(b"RTL_COMPLETE")
+                    print("[UAV] Sent RTL_COMPLETE")
+
+                elif data == "LAND":
+                    sock.sendall(b"ACK:LAND")
+                    print("[UAV] Landing...")
+                    await drone.land()
+                    print("[UAV] Landed and disarmed")
+                    sock.sendall(b"LAND_COMPLETE")
+                    print("[UAV] Sent LAND_COMPLETE")
+
+                elif data == "FINISHED":
+                    print("[UAV] Received FINISHED - mission complete")
+                    break
+
+                else:
+                    print(f"[UAV] Unknown command: {data}")
 
         except ValueError as e:
             error_msg = f"ERROR:{str(e)}"
-            sock.sendall(error_msg.encode())
+            try:
+                sock.sendall(error_msg.encode())
+            except Exception:
+                pass
             print(f"[UAV] Error: {e}")
-            raise
 
         finally:
             sock.close()
             print("[UAV] Socket closed")
-
-        # aerpawlib handles landing automatically
