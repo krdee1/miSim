@@ -56,37 +56,20 @@ for i = 1:numClients
     end
 end
 
-% Receive TARGET acknowledgments
-targetAcks = zeros(1, numClients, 'int32');
-for i = 1:numClients
-    if coder.target('MATLAB')
-        disp(['Waiting for ACK:TARGET from client ', num2str(i)]);
-        targetAcks(i) = 1;  % Simulate successful ACK
-    else
-        targetAcks(i) = coder.ceval('receiveTargetAck', int32(i));
-    end
-end
-
-% Check all ACKs received
+% Wait for TARGET acknowledgments from all clients (simultaneously using select())
 if coder.target('MATLAB')
-    disp(['Target ACKs received: ', num2str(targetAcks)]);
+    disp('Waiting for ACK:TARGET from all clients...');
+    disp('All TARGET acknowledgments received.');
+else
+    coder.ceval('waitForAllTargetAck', int32(numClients));
 end
 
-% Wait for READY signals (UAVs have reached their targets)
-readySignals = zeros(1, numClients, 'int32');
-for i = 1:numClients
-    if coder.target('MATLAB')
-        disp(['Waiting for READY from client ', num2str(i)]);
-        readySignals(i) = 1;  % Simulate READY
-    else
-        readySignals(i) = coder.ceval('waitForReady', int32(i));
-    end
-end
-
-% Check all READY signals received
+% Wait for READY signals from all clients (simultaneously using select())
 if coder.target('MATLAB')
-    disp(['Ready signals received: ', num2str(readySignals)]);
+    disp('Waiting for READY from all clients...');
     disp('All UAVs at target positions.');
+else
+    coder.ceval('waitForAllReady', int32(numClients));
 end
 
 % Wait for user input before closing experiment
