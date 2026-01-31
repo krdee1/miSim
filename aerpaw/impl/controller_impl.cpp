@@ -1,9 +1,12 @@
 #include "controller_impl.h"
 #include <iostream>
 #include <vector>
+#include <string>
 #include <cstring>
 #include <cstdio>
+#include <limits>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
@@ -157,4 +160,89 @@ void sendFinished(int clientId) {
     const char* msg = "FINISHED";
     send(clientSockets[clientId - 1], msg, strlen(msg), 0);
     std::cout << "Sent FINISHED to client " << clientId << "\n";
+}
+
+// Send RTL (Return-To-Launch) command to a client
+void sendRTL(int clientId) {
+    if (clientId <= 0 || clientId > (int)clientSockets.size()) return;
+
+    const char* msg = "RTL";
+    send(clientSockets[clientId - 1], msg, strlen(msg), 0);
+    std::cout << "Sent RTL to client " << clientId << "\n";
+}
+
+// Send LAND command to a client
+void sendLAND(int clientId) {
+    if (clientId <= 0 || clientId > (int)clientSockets.size()) return;
+
+    const char* msg = "LAND";
+    send(clientSockets[clientId - 1], msg, strlen(msg), 0);
+    std::cout << "Sent LAND to client " << clientId << "\n";
+}
+
+// Wait for a specific message from ALL clients simultaneously using select()
+// Returns 1 if all clients sent the expected message, 0 otherwise
+static int waitForAllMessage(int numClients, const char* expectedMessage) {
+    if (numClients <= 0 || numClients > (int)clientSockets.size()) return 0;
+
+    std::vector<std::string> accumulated(numClients);
+    std::vector<bool> completed(numClients, false);
+    int completedCount = 0;
+    char buffer[512];
+
+    while (completedCount < numClients) {
+        // Build fd_set for select()
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        int maxfd = -1;
+
+        for (int i = 0; i < numClients; i++) {
+            if (!completed[i]) {
+                FD_SET(clientSockets[i], &readfds);
+                if (clientSockets[i] > maxfd) maxfd = clientSockets[i];
+            }
+        }
+
+        // Wait for any socket to have data
+        int ready = select(maxfd + 1, &readfds, nullptr, nullptr, nullptr);
+        if (ready <= 0) return 0;
+
+        // Check each socket
+        for (int i = 0; i < numClients; i++) {
+            if (!completed[i] && FD_ISSET(clientSockets[i], &readfds)) {
+                int len = recv(clientSockets[i], buffer, sizeof(buffer) - 1, 0);
+                if (len <= 0) return 0;
+                buffer[len] = '\0';
+                std::cout << "Received from client " << (i + 1) << ": " << buffer << "\n";
+                accumulated[i] += buffer;
+
+                // Check if expected message received
+                if (accumulated[i].find(expectedMessage) != std::string::npos) {
+                    completed[i] = true;
+                    completedCount++;
+                    std::cout << "Client " << (i + 1) << " completed " << expectedMessage << "\n";
+                }
+            }
+        }
+    }
+
+    return 1;
+}
+
+// Wait for RTL_COMPLETE from ALL clients simultaneously
+// Returns 1 if all clients completed RTL, 0 otherwise
+int waitForAllRTLComplete(int numClients) {
+    return waitForAllMessage(numClients, "RTL_COMPLETE");
+}
+
+// Wait for LAND_COMPLETE from ALL clients simultaneously
+// Returns 1 if all clients completed LAND, 0 otherwise
+int waitForAllLANDComplete(int numClients) {
+    return waitForAllMessage(numClients, "LAND_COMPLETE");
+}
+
+// Wait for user to press Enter
+void waitForUserInput() {
+    std::cout << "Press Enter to close experiment (RTL + LAND)...\n";
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }

@@ -14,7 +14,7 @@ targets = zeros(MAX_CLIENTS, 3);
 % Load targets from file
 if coder.target('MATLAB')
     disp('Loading targets from file (simulation)...');
-    targetsLoaded = readmatrix('config/targets.txt');
+    targetsLoaded = readmatrix('aerpaw/config/targets.txt');
     numTargets = min(size(targetsLoaded, 1), numClients);
     targets(1:numTargets, :) = targetsLoaded(1:numTargets, :);
     disp(['Loaded ', num2str(numTargets), ' targets']);
@@ -89,10 +89,51 @@ if coder.target('MATLAB')
     disp('All UAVs at target positions.');
 end
 
-% Send COMPLETE to all clients before closing
+% Wait for user input before closing experiment
+if coder.target('MATLAB')
+    input('Press Enter to close experiment (RTL + LAND): ', 's');
+else
+    coder.ceval('waitForUserInput');
+end
+
+% Send RTL command to all clients
 for i = 1:numClients
     if coder.target('MATLAB')
-        disp(['Sending COMPLETE to client ', num2str(i)]);
+        disp(['Sending RTL to client ', num2str(i)]);
+    else
+        coder.ceval('sendRTL', int32(i));
+    end
+end
+
+% Wait for RTL_COMPLETE from all clients (simultaneously using select())
+if coder.target('MATLAB')
+    disp('Waiting for RTL_COMPLETE from all clients...');
+    disp('All UAVs returned to home.');
+else
+    coder.ceval('waitForAllRTLComplete', int32(numClients));
+end
+
+% Send LAND command to all clients
+for i = 1:numClients
+    if coder.target('MATLAB')
+        disp(['Sending LAND to client ', num2str(i)]);
+    else
+        coder.ceval('sendLAND', int32(i));
+    end
+end
+
+% Wait for LAND_COMPLETE from all clients (simultaneously using select())
+if coder.target('MATLAB')
+    disp('Waiting for LAND_COMPLETE from all clients...');
+    disp('All UAVs landed and disarmed.');
+else
+    coder.ceval('waitForAllLANDComplete', int32(numClients));
+end
+
+% Send FINISHED to all clients before closing
+for i = 1:numClients
+    if coder.target('MATLAB')
+        disp(['Sending FINISHED to client ', num2str(i)]);
     else
         coder.ceval('sendFinished', int32(i));
     end
@@ -102,5 +143,7 @@ end
 if ~coder.target('MATLAB')
     coder.ceval('closeServer');
 end
+
+disp('Experiment complete.');
 
 end
