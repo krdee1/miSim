@@ -1,4 +1,0 @@
-# Origin for ENU coordinate system (AERPAW Lake Wheeler Road Field)
-# Format: lat,lon,alt (degrees, degrees, meters)
-# Alt=0 means ENU z directly becomes the target altitude above home
-35.727436,-78.696471,0.0

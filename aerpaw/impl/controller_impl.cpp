@@ -82,22 +82,47 @@ void closeServer() {
 int loadTargets(const char* filename, double* targets, int maxClients) {
     FILE* file = fopen(filename, "r");
     if (!file) {
-        std::cerr << "Failed to open targets file: " << filename << "\n";
+        std::cerr << "Failed to open config file: " << filename << "\n";
         return 0;
     }
 
     int count = 0;
-    double x, y, z;
-    // MATLAB uses column-major order, so for a maxClients x 3 matrix:
-    // Column 1 (x): indices 0, 1, 2, ...
-    // Column 2 (y): indices maxClients, maxClients+1, ...
-    // Column 3 (z): indices 2*maxClients, 2*maxClients+1, ...
-    while (count < maxClients && fscanf(file, "%lf,%lf,%lf", &x, &y, &z) == 3) {
-        targets[count + 0 * maxClients] = x;  // Column 1
-        targets[count + 1 * maxClients] = y;  // Column 2
-        targets[count + 2 * maxClients] = z;  // Column 3
-        std::cout << "Loaded target " << (count + 1) << ": " << x << "," << y << "," << z << "\n";
-        count++;
+    char line[256];
+    bool inTargets = false;
+
+    // Simple YAML parser for targets section
+    // Expects format:
+    //   targets:
+    //     - [x, y, z]
+    //     - [x, y, z]
+    while (fgets(line, sizeof(line), file) && count < maxClients) {
+        // Check if we've entered the targets section
+        if (strstr(line, "targets:") != nullptr) {
+            inTargets = true;
+            continue;
+        }
+
+        // If we hit another top-level key (no leading whitespace), exit targets section
+        if (inTargets && line[0] != ' ' && line[0] != '\t' && line[0] != '\n' && line[0] != '#') {
+            break;
+        }
+
+        // Parse target entries: "  - [x, y, z]"
+        if (inTargets) {
+            double x, y, z;
+            // Try to match the array format
+            if (sscanf(line, " - [%lf, %lf, %lf]", &x, &y, &z) == 3) {
+                // MATLAB uses column-major order, so for a maxClients x 3 matrix:
+                // Column 1 (x): indices 0, 1, 2, ...
+                // Column 2 (y): indices maxClients, maxClients+1, ...
+                // Column 3 (z): indices 2*maxClients, 2*maxClients+1, ...
+                targets[count + 0 * maxClients] = x;
+                targets[count + 1 * maxClients] = y;
+                targets[count + 2 * maxClients] = z;
+                std::cout << "Loaded target " << (count + 1) << ": " << x << "," << y << "," << z << "\n";
+                count++;
+            }
+        }
     }
 
     fclose(file);
