@@ -1,2 +1,0 @@
-# AERPAW testbed - connect to MAVLink filter on E-VM
-192.168.32.26:14550

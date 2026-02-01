@@ -3,7 +3,7 @@ arguments (Input)
     numClients (1, 1) int32;
 end
 
-coder.extrinsic('disp', 'readmatrix');
+coder.extrinsic('disp', 'loadTargetsFromYaml');
 
 % Maximum clients supported
 MAX_CLIENTS = 4;
@@ -11,17 +11,17 @@ MAX_CLIENTS = 4;
 % Allocate targets array (MAX_CLIENTS x 3)
 targets = zeros(MAX_CLIENTS, 3);
 
-% Load targets from file
+% Load targets from YAML config file
 if coder.target('MATLAB')
-    disp('Loading targets from file (simulation)...');
-    targetsLoaded = readmatrix('aerpaw/config/targets.txt');
+    disp('Loading targets from config.yaml (simulation)...');
+    targetsLoaded = loadTargetsFromYaml('aerpaw/config/config.yaml');
     numTargets = min(size(targetsLoaded, 1), numClients);
     targets(1:numTargets, :) = targetsLoaded(1:numTargets, :);
     disp(['Loaded ', num2str(numTargets), ' targets']);
 else
     coder.cinclude('controller_impl.h');
     % Define filename as null-terminated character array for C compatibility
-    filename = ['config/targets.txt', char(0)];
+    filename = ['config/config.yaml', char(0)];
     % loadTargets fills targets array (column-major for MATLAB compatibility)
     coder.ceval('loadTargets', coder.ref(filename), ...
                 coder.ref(targets), int32(MAX_CLIENTS));

@@ -1,7 +1,0 @@
-# Drone connection string for aerpawlib/dronekit
-# Examples:
-#   tcp:127.0.0.1:5760     - SITL TCP
-#   udp:127.0.0.1:14550    - SITL UDP (default MAVProxy output)
-#   /dev/ttyUSB0           - Serial connection
-#   /dev/ttyACM0           - Serial connection (Pixhawk USB)
-udp:127.0.0.1:14550

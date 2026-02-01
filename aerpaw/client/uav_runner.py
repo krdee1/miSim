@@ -22,40 +22,41 @@ Protocol:
 """
 from pathlib import Path
 import asyncio
+import os
 import socket
+
+import yaml
 
 from aerpawlib.runner import BasicRunner, entrypoint
 from aerpawlib.util import Coordinate, VectorNED
 from aerpawlib.vehicle import Drone
 
 AERPAW_DIR = Path(__file__).parent.parent
-CONFIG_DIR = AERPAW_DIR / "config"
+CONFIG_FILE = AERPAW_DIR / "config" / "config.yaml"
 
 
-def load_origin(path: Path):
-    """Load ENU origin from config file. Returns (lat, lon, alt)."""
-    with open(path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            parts = line.split(',')
-            if len(parts) == 3:
-                return float(parts[0]), float(parts[1]), float(parts[2])
-    raise ValueError(f"No valid origin found in {path}")
+def load_config():
+    """Load configuration from YAML file."""
+    with open(CONFIG_FILE, 'r') as f:
+        return yaml.safe_load(f)
 
 
-def load_server(path: Path):
-    """Load server address from config file. Returns (ip, port)."""
-    with open(path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            parts = line.split(',')
-            if len(parts) == 2:
-                return parts[0].strip(), int(parts[1].strip())
-    raise ValueError(f"No valid server address found in {path}")
+def detect_environment():
+    """Detect whether we're on the AERPAW testbed or running locally."""
+    # Check for AERPAW_ENV environment variable first
+    env = os.environ.get('AERPAW_ENV')
+    if env in ('local', 'testbed'):
+        return env
+
+    # Auto-detect based on network (testbed uses 192.168.122.x)
+    import subprocess
+    try:
+        result = subprocess.run(['ip', 'addr'], capture_output=True, text=True, timeout=5)
+        if '192.168.122' in result.stdout:
+            return 'testbed'
+    except Exception:
+        pass
+    return 'local'
 
 
 def parse_target(message: str):
@@ -71,26 +72,21 @@ def parse_target(message: str):
 
 class UAVRunner(BasicRunner):
     def initialize_args(self, extra_args):
-        """Load configuration from config files."""
+        """Load configuration from YAML config file."""
+        config = load_config()
+        env = detect_environment()
+        print(f"[UAV] Environment: {env}")
+
         # Load origin
-        origin_lat, origin_lon, origin_alt = load_origin(CONFIG_DIR / "origin.txt")
-        self.origin = Coordinate(origin_lat, origin_lon, origin_alt)
-        print(f"[UAV] Origin: {origin_lat}, {origin_lon}, {origin_alt}")
+        origin = config['origin']
+        self.origin = Coordinate(origin['lat'], origin['lon'], origin['alt'])
+        print(f"[UAV] Origin: {origin['lat']}, {origin['lon']}, {origin['alt']}")
 
-        # Load server address - try testbed first, fall back to local
-        testbed_path = CONFIG_DIR / "server_testbed.txt"
-        local_path = CONFIG_DIR / "server.txt"
-
-        if testbed_path.exists():
-            try:
-                self.server_ip, self.server_port = load_server(testbed_path)
-                print(f"[UAV] Loaded testbed server config: {self.server_ip}:{self.server_port}")
-            except ValueError:
-                self.server_ip, self.server_port = load_server(local_path)
-                print(f"[UAV] Loaded local server config: {self.server_ip}:{self.server_port}")
-        else:
-            self.server_ip, self.server_port = load_server(local_path)
-            print(f"[UAV] Loaded local server config: {self.server_ip}:{self.server_port}")
+        # Load controller address for this environment
+        env_config = config['environments'][env]
+        self.server_ip = env_config['controller']['ip']
+        self.server_port = env_config['controller']['port']
+        print(f"[UAV] Controller: {self.server_ip}:{self.server_port}")
 
     @entrypoint
     async def run_mission(self, drone: Drone):

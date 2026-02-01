@@ -17,38 +17,43 @@ if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 
-# Connection strings
-# AERPAW testbed: E-VM LISTENS on port 14550, MAVLink Filter connects TO us
-# See: https://sites.google.com/ncsu.edu/aerpaw-user-manual/6-sample-experiments-repository/6-2-vehicle-control-software/vcs1-preplanned-trajectory
-# "the IP address corresponds to the E-VM IP address and the port is where
-# the MAVLink filter expects to find the vehicle control script"
-TESTBED_CONN="udp:0.0.0.0:14550"
-LOCAL_CONN="udp:127.0.0.1:14550"
-
 # Function to check if we're in testbed environment
 check_testbed() {
-    # Check if we're on the AERPAW testbed network (192.168.122.X)
     ip addr | grep -q "192.168.122"
     return $?
 }
 
-# Determine connection based on argument or auto-detection
+# Determine environment based on argument or auto-detection
 if [ "$1" = "testbed" ]; then
-    CONN="$TESTBED_CONN"
-    echo "[run_uav] Forced testbed mode: $CONN"
+    ENV="testbed"
+    echo "[run_uav] Forced testbed mode"
 elif [ "$1" = "local" ]; then
-    CONN="$LOCAL_CONN"
-    echo "[run_uav] Forced local mode: $CONN"
+    ENV="local"
+    echo "[run_uav] Forced local mode"
 else
     echo "[run_uav] Auto-detecting environment..."
     if check_testbed; then
-        CONN="$TESTBED_CONN"
-        echo "[run_uav] Testbed detected, using: $CONN"
+        ENV="testbed"
+        echo "[run_uav] Testbed detected"
     else
-        CONN="$LOCAL_CONN"
-        echo "[run_uav] Local mode (testbed not reachable), using: $CONN"
+        ENV="local"
+        echo "[run_uav] Local mode"
     fi
 fi
+
+# Export environment for Python to use
+export AERPAW_ENV="$ENV"
+
+# Read MAVLink connection from config.yaml using Python
+CONN=$(python3 -c "
+import yaml
+with open('config/config.yaml') as f:
+    cfg = yaml.safe_load(f)
+env = cfg['environments']['$ENV']['mavlink']
+print(f\"udp:{env['ip']}:{env['port']}\")
+")
+
+echo "[run_uav] MAVLink connection: $CONN"
 
 # Run via aerpawlib
 echo "[run_uav] Starting UAV runner..."
