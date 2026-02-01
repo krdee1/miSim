@@ -41,22 +41,19 @@ def load_config():
         return yaml.safe_load(f)
 
 
-def detect_environment():
-    """Detect whether we're on the AERPAW testbed or running locally."""
-    # Check for AERPAW_ENV environment variable first
+def get_environment():
+    """Get environment from AERPAW_ENV variable. Fails if not set."""
     env = os.environ.get('AERPAW_ENV')
-    if env in ('local', 'testbed'):
-        return env
-
-    # Auto-detect based on network (testbed uses 192.168.122.x)
-    import subprocess
-    try:
-        result = subprocess.run(['ip', 'addr'], capture_output=True, text=True, timeout=5)
-        if '192.168.122' in result.stdout:
-            return 'testbed'
-    except Exception:
-        pass
-    return 'local'
+    if env is None:
+        raise RuntimeError(
+            "AERPAW_ENV environment variable not set. "
+            "Set to 'local' or 'testbed', or use: ./run_uav.sh [local|testbed]"
+        )
+    if env not in ('local', 'testbed'):
+        raise RuntimeError(
+            f"Invalid AERPAW_ENV '{env}'. Must be 'local' or 'testbed'."
+        )
+    return env
 
 
 def parse_target(message: str):
@@ -74,7 +71,7 @@ class UAVRunner(BasicRunner):
     def initialize_args(self, extra_args):
         """Load configuration from YAML config file."""
         config = load_config()
-        env = detect_environment()
+        env = get_environment()
         print(f"[UAV] Environment: {env}")
 
         # Load origin
