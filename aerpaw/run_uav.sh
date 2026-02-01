@@ -1,11 +1,10 @@
 #!/bin/bash
-# run_uav.sh - Auto-detecting wrapper for UAV runner
-# Detects testbed vs local environment and launches with appropriate connection
+# run_uav.sh - Wrapper for UAV runner
+# Launches UAV client with environment-specific configuration
 #
 # Usage:
-#   ./run_uav.sh           # Auto-detect and run
-#   ./run_uav.sh testbed   # Force testbed mode
-#   ./run_uav.sh local     # Force local mode
+#   ./run_uav.sh local     # Use local/simulation configuration
+#   ./run_uav.sh testbed   # Use AERPAW testbed configuration
 
 set -e
 
@@ -17,29 +16,21 @@ if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 
-# Function to check if we're in testbed environment
-check_testbed() {
-    ip addr | grep -q "192.168.122"
-    return $?
-}
-
-# Determine environment based on argument or auto-detection
+# Determine environment from argument (required)
 if [ "$1" = "testbed" ]; then
     ENV="testbed"
-    echo "[run_uav] Forced testbed mode"
 elif [ "$1" = "local" ]; then
     ENV="local"
-    echo "[run_uav] Forced local mode"
 else
-    echo "[run_uav] Auto-detecting environment..."
-    if check_testbed; then
-        ENV="testbed"
-        echo "[run_uav] Testbed detected"
-    else
-        ENV="local"
-        echo "[run_uav] Local mode"
-    fi
+    echo "Error: Environment not specified."
+    echo "Usage: $0 [local|testbed]"
+    echo ""
+    echo "  local   - Use local/simulation configuration"
+    echo "  testbed - Use AERPAW testbed configuration"
+    exit 1
 fi
+
+echo "[run_uav] Environment: $ENV"
 
 # Export environment for Python to use
 export AERPAW_ENV="$ENV"
