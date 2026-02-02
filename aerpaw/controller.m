@@ -49,27 +49,29 @@ for i = 1:numClients
     target = targets(i, :);
 
     if coder.target('MATLAB')
-        disp(['Sending TARGET to client ', num2str(i), ': ', ...
+        disp(['Sending ', char(MESSAGE_TYPE.TARGET), ' to client ', num2str(i), ': ', ...
               num2str(target(1)), ',', num2str(target(2)), ',', num2str(target(3))]);
     else
         coder.ceval('sendTarget', int32(i), coder.ref(target));
     end
 end
 
-% Wait for TARGET acknowledgments from all clients (simultaneously using select())
+% Wait for ACK from all clients
 if coder.target('MATLAB')
-    disp('Waiting for ACK:TARGET from all clients...');
-    disp('All TARGET acknowledgments received.');
+    disp(['Waiting for ', char(MESSAGE_TYPE.ACK), ' from all clients...']);
+    disp('All acknowledgments received.');
 else
-    coder.ceval('waitForAllTargetAck', int32(numClients));
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.ACK));
 end
 
-% Wait for READY signals from all clients (simultaneously using select())
+% Wait for READY signals from all clients
 if coder.target('MATLAB')
-    disp('Waiting for READY from all clients...');
+    disp(['Waiting for ', char(MESSAGE_TYPE.READY), ' from all clients...']);
     disp('All UAVs at target positions.');
 else
-    coder.ceval('waitForAllReady', int32(numClients));
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.READY));
 end
 
 % Wait for user input before closing experiment
@@ -82,43 +84,61 @@ end
 % Send RTL command to all clients
 for i = 1:numClients
     if coder.target('MATLAB')
-        disp(['Sending RTL to client ', num2str(i)]);
+        disp(['Sending ', char(MESSAGE_TYPE.RTL), ' to client ', num2str(i)]);
     else
-        coder.ceval('sendRTL', int32(i));
+        coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.RTL));
     end
 end
 
-% Wait for RTL_COMPLETE from all clients (simultaneously using select())
+% Wait for ACK from all clients
 if coder.target('MATLAB')
-    disp('Waiting for RTL_COMPLETE from all clients...');
+    disp(['Waiting for ', char(MESSAGE_TYPE.ACK), ' from all clients...']);
+else
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.ACK));
+end
+
+% Wait for READY from all clients (returned to home)
+if coder.target('MATLAB')
+    disp(['Waiting for ', char(MESSAGE_TYPE.READY), ' from all clients...']);
     disp('All UAVs returned to home.');
 else
-    coder.ceval('waitForAllRTLComplete', int32(numClients));
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.READY));
 end
 
 % Send LAND command to all clients
 for i = 1:numClients
     if coder.target('MATLAB')
-        disp(['Sending LAND to client ', num2str(i)]);
+        disp(['Sending ', char(MESSAGE_TYPE.LAND), ' to client ', num2str(i)]);
     else
-        coder.ceval('sendLAND', int32(i));
+        coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.LAND));
     end
 end
 
-% Wait for LAND_COMPLETE from all clients (simultaneously using select())
+% Wait for ACK from all clients
 if coder.target('MATLAB')
-    disp('Waiting for LAND_COMPLETE from all clients...');
-    disp('All UAVs landed and disarmed.');
+    disp(['Waiting for ', char(MESSAGE_TYPE.ACK), ' from all clients...']);
 else
-    coder.ceval('waitForAllLANDComplete', int32(numClients));
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.ACK));
 end
 
-% Send FINISHED to all clients before closing
+% Wait for READY from all clients (landed and disarmed)
+if coder.target('MATLAB')
+    disp(['Waiting for ', char(MESSAGE_TYPE.READY), ' from all clients...']);
+    disp('All UAVs landed and disarmed.');
+else
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.READY));
+end
+
+% Send READY to all clients to signal mission complete
 for i = 1:numClients
     if coder.target('MATLAB')
-        disp(['Sending FINISHED to client ', num2str(i)]);
+        disp(['Sending ', char(MESSAGE_TYPE.READY), ' to client ', num2str(i)]);
     else
-        coder.ceval('sendFinished', int32(i));
+        coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.READY));
     end
 end
 

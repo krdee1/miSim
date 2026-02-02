@@ -1,33 +1,27 @@
 #ifndef CONTROLLER_IMPL_H
 #define CONTROLLER_IMPL_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// Server lifecycle
 void initServer();
 void acceptClient(int clientId);
-void sendMessage(int clientId);
-int receiveAck(int clientId);
 void closeServer();
 
-// Target location protocol functions
+// Configuration
 int loadTargets(const char* filename, double* targets, int maxClients);
-void sendTarget(int clientId, const double* target);
-int receiveTargetAck(int clientId);
-int waitForReady(int clientId);
-void sendFinished(int clientId);
 
-// Parallel wait functions (using select() for simultaneous processing)
-int waitForAllTargetAck(int numClients);
-int waitForAllReady(int numClients);
-int waitForAllRTLComplete(int numClients);
-int waitForAllLANDComplete(int numClients);
-
-// RTL and LAND protocol functions
-void sendRTL(int clientId);
-void sendLAND(int clientId);
+// User interaction
 void waitForUserInput();
+
+// Binary protocol operations
+int sendMessageType(int clientId, int msgType);
+int sendTarget(int clientId, const double* coords);
+int waitForAllMessageType(int numClients, int expectedType);
 
 #ifdef __cplusplus
 }
