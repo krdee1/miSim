@@ -135,7 +135,7 @@ int sendMessageType(int clientId, int msgType) {
         return 0;
     }
 
-    std::cout << "Sent to client " << clientId << ": " << messageTypeName(msg) << " (" << (int)msg << ")\n";
+    std::cout << "Sent " << messageTypeName(msg) << " to client " << clientId << "\n";
     return 1;
 }
 
@@ -192,13 +192,11 @@ int waitForAllMessageType(int numClients, int expectedType) {
                 int len = recv(clientSockets[i], &msgType, 1, 0);
                 if (len != 1) return 0;
 
-                std::cout << "Received from client " << (i + 1) << ": "
-                          << messageTypeName(msgType) << " (" << (int)msgType << ")\n";
+                std::cout << "Received " << messageTypeName(msgType) << " from client " << (i + 1) << "\n";
 
                 if (msgType == expected) {
                     completed[i] = true;
                     completedCount++;
-                    std::cout << "Client " << (i + 1) << " completed: " << messageTypeName(expected) << "\n";
                 }
             }
         }
