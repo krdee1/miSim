@@ -8,14 +8,13 @@ BUILD="$AERPAW_DIR/build"
 
 mkdir -p "$BUILD"
 
+# Compile all codegen sources (handles any new generated files)
 g++ -I/home/kdee/matlab/R2025a/extern/include \
     -I"$CODEGEN" \
     -I"$IMPL" \
     "$IMPL/controller_main.cpp" \
-    "$CODEGEN/controller.cpp" \
     "$IMPL/controller_impl.cpp" \
-    "$CODEGEN/controller_initialize.cpp" \
-    "$CODEGEN/controller_terminate.cpp" \
+    "$CODEGEN"/*.cpp \
     -o "$BUILD/controller_app" \
     -lpthread
 

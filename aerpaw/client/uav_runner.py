@@ -8,28 +8,39 @@ Run via:
 Or use the auto-detecting wrapper:
     ./run_uav.sh
 
-Protocol:
-    Server sends: TARGET:x,y,z (ENU coordinates in meters)
-    Client sends: ACK:TARGET
-    Client (after moving): READY
-    Server sends: RTL
-    Client sends: ACK:RTL
-    Client (after returning home): RTL_COMPLETE
-    Server sends: LAND
-    Client sends: ACK:LAND
-    Client (after landing): LAND_COMPLETE
-    Server sends: FINISHED
+Binary Protocol:
+    Server sends: TARGET (1 byte) + x,y,z (24 bytes as 3 doubles)
+    Client sends: ACK (1 byte)
+    Client (after moving): READY (1 byte)
+    Server sends: RTL (1 byte)
+    Client sends: ACK (1 byte)
+    Client (after returning home): READY (1 byte)
+    Server sends: LAND (1 byte)
+    Client sends: ACK (1 byte)
+    Client (after landing): READY (1 byte)
+    Server sends: READY (1 byte) - mission complete, disconnect
 """
+from enum import IntEnum
 from pathlib import Path
 import asyncio
 import os
 import socket
-
+import struct
 import yaml
 
 from aerpawlib.runner import BasicRunner, entrypoint
 from aerpawlib.util import Coordinate, VectorNED
 from aerpawlib.vehicle import Drone
+
+
+# Message types - must match MESSAGE_TYPE.m enum
+class MessageType(IntEnum):
+    TARGET = 1
+    ACK = 2
+    READY = 3
+    RTL = 4
+    LAND = 5
+
 
 AERPAW_DIR = Path(__file__).parent.parent
 CONFIG_FILE = AERPAW_DIR / "config" / "config.yaml"
@@ -56,15 +67,42 @@ def get_environment():
     return env
 
 
-def parse_target(message: str):
-    """Parse TARGET:x,y,z message. Returns (x, y, z) ENU coordinates."""
-    if not message.startswith("TARGET:"):
-        raise ValueError(f"Invalid message format: {message}")
-    coords_str = message[7:]
-    parts = coords_str.split(",")
-    if len(parts) != 3:
-        raise ValueError(f"Expected 3 coordinates, got {len(parts)}")
-    return float(parts[0]), float(parts[1]), float(parts[2])
+def recv_exactly(sock: socket.socket, n: int) -> bytes:
+    """Receive exactly n bytes from socket."""
+    data = b''
+    while len(data) < n:
+        chunk = sock.recv(n - len(data))
+        if not chunk:
+            raise ConnectionError("Connection closed while receiving data")
+        data += chunk
+    return data
+
+
+def recv_message_type(sock: socket.socket) -> MessageType:
+    """Receive a single-byte message type."""
+    data = recv_exactly(sock, 1)
+    return MessageType(data[0])
+
+
+def send_message_type(sock: socket.socket, msg_type: MessageType):
+    """Send a single-byte message type."""
+    sock.sendall(bytes([msg_type]))
+
+
+def recv_target(sock: socket.socket) -> tuple[float, float, float]:
+    """Receive TARGET message (1 byte type + 3 doubles).
+
+    Returns (x, y, z) ENU coordinates.
+    """
+    # First byte is message type (already consumed or check it)
+    msg_type = recv_message_type(sock)
+    if msg_type != MessageType.TARGET:
+        raise ValueError(f"Expected TARGET, got {msg_type.name}")
+
+    # Next 24 bytes are 3 doubles (little-endian)
+    data = recv_exactly(sock, 24)
+    x, y, z = struct.unpack('<ddd', data)
+    return x, y, z
 
 
 class UAVRunner(BasicRunner):
@@ -117,12 +155,9 @@ class UAVRunner(BasicRunner):
             await drone.takeoff(25)
             print("[UAV] Takeoff complete, waiting for target...")
 
-            # Receive TARGET command
-            data = sock.recv(1024).decode().strip()
-            print(f"[UAV] Received: {data}")
-
-            enu_x, enu_y, enu_z = parse_target(data)
-            print(f"[UAV] Target ENU: x={enu_x}, y={enu_y}, z={enu_z}")
+            # Receive TARGET command (1 byte type + 24 bytes coords)
+            enu_x, enu_y, enu_z = recv_target(sock)
+            print(f"[UAV] Received TARGET: x={enu_x}, y={enu_y}, z={enu_z}")
 
             # Convert ENU to lat/lon
             # ENU: x=East, y=North, z=Up
@@ -131,8 +166,8 @@ class UAVRunner(BasicRunner):
             print(f"[UAV] Target coord: {target.lat:.6f}, {target.lon:.6f}, {target.alt:.1f}")
 
             # Acknowledge
-            sock.sendall(b"ACK:TARGET")
-            print("[UAV] Sent ACK:TARGET")
+            send_message_type(sock, MessageType.ACK)
+            print(f"[UAV] Sent {MessageType.ACK.name}")
 
             # Move to target
             print("[UAV] Moving to target...")
@@ -140,50 +175,45 @@ class UAVRunner(BasicRunner):
             print("[UAV] Arrived at target")
 
             # Signal ready
-            sock.sendall(b"READY")
-            print("[UAV] Sent READY, waiting for commands...")
+            send_message_type(sock, MessageType.READY)
+            print(f"[UAV] Sent {MessageType.READY.name}, waiting for commands...")
 
-            # Command loop - handle RTL, LAND, FINISHED from controller
+            # Command loop - handle RTL, LAND, READY (mission complete) from controller
             while True:
-                data = sock.recv(1024).decode().strip()
-                print(f"[UAV] Received: {data}")
+                msg_type = recv_message_type(sock)
+                print(f"[UAV] Received: {msg_type.name}")
 
-                if data == "RTL":
-                    sock.sendall(b"ACK:RTL")
+                if msg_type == MessageType.RTL:
+                    send_message_type(sock, MessageType.ACK)
+                    print(f"[UAV] Sent {MessageType.ACK.name}")
                     print("[UAV] Returning to home...")
-                    # Navigate to home lat/lon but stay at current altitude
-                    # (AERPAW blocks goto_coordinates below 20m, but land() mode is allowed)
+                    # Navigate to home lat/lon at safe altitude
                     home = drone.home_coords
-                    current_alt = drone.position.alt
                     safe_alt = 25  # Set to 25m alt for RTL motion
                     rtl_target = Coordinate(home.lat, home.lon, safe_alt)
                     print(f"[UAV] RTL to {home.lat:.6f}, {home.lon:.6f} at {safe_alt:.1f}m")
                     await drone.goto_coordinates(rtl_target)
                     print("[UAV] Arrived at home position")
-                    sock.sendall(b"RTL_COMPLETE")
-                    print("[UAV] Sent RTL_COMPLETE")
+                    send_message_type(sock, MessageType.READY)
+                    print(f"[UAV] Sent {MessageType.READY.name}")
 
-                elif data == "LAND":
-                    sock.sendall(b"ACK:LAND")
+                elif msg_type == MessageType.LAND:
+                    send_message_type(sock, MessageType.ACK)
+                    print(f"[UAV] Sent {MessageType.ACK.name}")
                     print("[UAV] Landing...")
                     await drone.land()
                     print("[UAV] Landed and disarmed")
-                    sock.sendall(b"LAND_COMPLETE")
-                    print("[UAV] Sent LAND_COMPLETE")
+                    send_message_type(sock, MessageType.READY)
+                    print(f"[UAV] Sent {MessageType.READY.name}")
 
-                elif data == "FINISHED":
-                    print("[UAV] Received FINISHED - mission complete")
+                elif msg_type == MessageType.READY:
+                    print("[UAV] Received READY from server - mission complete")
                     break
 
                 else:
-                    print(f"[UAV] Unknown command: {data}")
+                    print(f"[UAV] Unknown command: {msg_type}")
 
-        except ValueError as e:
-            error_msg = f"ERROR:{str(e)}"
-            try:
-                sock.sendall(error_msg.encode())
-            except Exception:
-                pass
+        except (ValueError, ConnectionError) as e:
             print(f"[UAV] Error: {e}")
 
         finally:

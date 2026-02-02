@@ -51,23 +51,6 @@ void acceptClient(int clientId) {
     std::cout << "Client " << clientId << " connected\n";
 }
 
-void sendMessage(int clientId) {
-    if(clientId <= 0 || clientId > clientSockets.size()) return;
-    const char* msg = "Hello from server";
-    send(clientSockets[clientId-1], msg, strlen(msg), 0);
-    std::cout << "Sent message to client " << clientId << "\n";
-}
-
-int receiveAck(int clientId) {
-    if(clientId <= 0 || clientId > clientSockets.size()) return 0;
-    char buffer[1024];
-    int len = recv(clientSockets[clientId-1], buffer, sizeof(buffer)-1, 0);
-    if(len <= 0) return 0;
-    buffer[len] = '\0';
-    std::cout << "Received ACK from client " << clientId << ": " << buffer << "\n";
-    return 1;
-}
-
 void closeServer() {
     for(auto sock : clientSockets) {
         close(sock);
@@ -129,91 +112,61 @@ int loadTargets(const char* filename, double* targets, int maxClients) {
     return count;
 }
 
-// Send target coordinates to a client
-// target points to 3 doubles: [x, y, z]
-void sendTarget(int clientId, const double* target) {
-    if (clientId <= 0 || clientId > (int)clientSockets.size()) return;
-
-    char buffer[256];
-    snprintf(buffer, sizeof(buffer), "TARGET:%.6f,%.6f,%.6f",
-             target[0], target[1], target[2]);
-
-    send(clientSockets[clientId - 1], buffer, strlen(buffer), 0);
-    std::cout << "Sent target to client " << clientId << ": " << buffer << "\n";
+// Message type names for logging
+static const char* messageTypeName(uint8_t msgType) {
+    switch (msgType) {
+        case 1: return "TARGET";
+        case 2: return "ACK";
+        case 3: return "READY";
+        case 4: return "RTL";
+        case 5: return "LAND";
+        default: return "UNKNOWN";
+    }
 }
 
-// Receive and validate ACK:TARGET response
-// Returns 1 if ACK:TARGET received, 0 otherwise
-int receiveTargetAck(int clientId) {
+// Send a single-byte message type to a client
+int sendMessageType(int clientId, int msgType) {
     if (clientId <= 0 || clientId > (int)clientSockets.size()) return 0;
 
-    char buffer[256];
-    int len = recv(clientSockets[clientId - 1], buffer, sizeof(buffer) - 1, 0);
-    if (len <= 0) return 0;
-    buffer[len] = '\0';
-
-    std::cout << "Received from client " << clientId << ": " << buffer << "\n";
-
-    if (strncmp(buffer, "ACK:TARGET", 10) == 0) {
-        return 1;
+    uint8_t msg = (uint8_t)msgType;
+    ssize_t sent = send(clientSockets[clientId - 1], &msg, 1, 0);
+    if (sent != 1) {
+        std::cerr << "Send failed for client " << clientId << "\n";
+        return 0;
     }
-    return 0;
+
+    std::cout << "Sent to client " << clientId << ": " << messageTypeName(msg) << " (" << (int)msg << ")\n";
+    return 1;
 }
 
-// Wait for READY signal from client
-// Returns 1 if READY received, 0 otherwise
-int waitForReady(int clientId) {
+// Send TARGET message with coordinates (1 byte type + 24 bytes coords)
+int sendTarget(int clientId, const double* coords) {
     if (clientId <= 0 || clientId > (int)clientSockets.size()) return 0;
 
-    char buffer[256];
-    int len = recv(clientSockets[clientId - 1], buffer, sizeof(buffer) - 1, 0);
-    if (len <= 0) return 0;
-    buffer[len] = '\0';
+    // Build message: 1 byte type + 3 doubles (little-endian)
+    uint8_t buffer[1 + 3 * sizeof(double)];
+    buffer[0] = 1;  // TARGET = 1
+    memcpy(buffer + 1, coords, 3 * sizeof(double));
 
-    std::cout << "Received from client " << clientId << ": " << buffer << "\n";
-
-    if (strncmp(buffer, "READY", 5) == 0) {
-        return 1;
+    ssize_t sent = send(clientSockets[clientId - 1], buffer, sizeof(buffer), 0);
+    if (sent != sizeof(buffer)) {
+        std::cerr << "Send target failed for client " << clientId << "\n";
+        return 0;
     }
-    return 0;
+
+    std::cout << "Sent TARGET to client " << clientId << ": "
+              << coords[0] << "," << coords[1] << "," << coords[2] << "\n";
+    return 1;
 }
 
-// Send COMPLETE message to signal graceful shutdown
-void sendFinished(int clientId) {
-    if (clientId <= 0 || clientId > (int)clientSockets.size()) return;
-
-    const char* msg = "FINISHED";
-    send(clientSockets[clientId - 1], msg, strlen(msg), 0);
-    std::cout << "Sent FINISHED to client " << clientId << "\n";
-}
-
-// Send RTL (Return-To-Launch) command to a client
-void sendRTL(int clientId) {
-    if (clientId <= 0 || clientId > (int)clientSockets.size()) return;
-
-    const char* msg = "RTL";
-    send(clientSockets[clientId - 1], msg, strlen(msg), 0);
-    std::cout << "Sent RTL to client " << clientId << "\n";
-}
-
-// Send LAND command to a client
-void sendLAND(int clientId) {
-    if (clientId <= 0 || clientId > (int)clientSockets.size()) return;
-
-    const char* msg = "LAND";
-    send(clientSockets[clientId - 1], msg, strlen(msg), 0);
-    std::cout << "Sent LAND to client " << clientId << "\n";
-}
-
-// Wait for a specific message from ALL clients simultaneously using select()
-// Returns 1 if all clients sent the expected message, 0 otherwise
-static int waitForAllMessage(int numClients, const char* expectedMessage) {
+// Wait for a specific message type from ALL clients simultaneously using select()
+// Returns 1 if all clients responded with expected message type, 0 on failure
+int waitForAllMessageType(int numClients, int expectedType) {
     if (numClients <= 0 || numClients > (int)clientSockets.size()) return 0;
 
-    std::vector<std::string> accumulated(numClients);
+    uint8_t expected = (uint8_t)expectedType;
     std::vector<bool> completed(numClients, false);
     int completedCount = 0;
-    char buffer[512];
 
     while (completedCount < numClients) {
         // Build fd_set for select()
@@ -235,47 +188,23 @@ static int waitForAllMessage(int numClients, const char* expectedMessage) {
         // Check each socket
         for (int i = 0; i < numClients; i++) {
             if (!completed[i] && FD_ISSET(clientSockets[i], &readfds)) {
-                int len = recv(clientSockets[i], buffer, sizeof(buffer) - 1, 0);
-                if (len <= 0) return 0;
-                buffer[len] = '\0';
-                std::cout << "Received from client " << (i + 1) << ": " << buffer << "\n";
-                accumulated[i] += buffer;
+                uint8_t msgType;
+                int len = recv(clientSockets[i], &msgType, 1, 0);
+                if (len != 1) return 0;
 
-                // Check if expected message received
-                if (accumulated[i].find(expectedMessage) != std::string::npos) {
+                std::cout << "Received from client " << (i + 1) << ": "
+                          << messageTypeName(msgType) << " (" << (int)msgType << ")\n";
+
+                if (msgType == expected) {
                     completed[i] = true;
                     completedCount++;
-                    std::cout << "Client " << (i + 1) << " completed " << expectedMessage << "\n";
+                    std::cout << "Client " << (i + 1) << " completed: " << messageTypeName(expected) << "\n";
                 }
             }
         }
     }
 
     return 1;
-}
-
-// Wait for ACK:TARGET from ALL clients simultaneously
-// Returns 1 if all clients acknowledged, 0 otherwise
-int waitForAllTargetAck(int numClients) {
-    return waitForAllMessage(numClients, "ACK:TARGET");
-}
-
-// Wait for READY from ALL clients simultaneously
-// Returns 1 if all clients are ready, 0 otherwise
-int waitForAllReady(int numClients) {
-    return waitForAllMessage(numClients, "READY");
-}
-
-// Wait for RTL_COMPLETE from ALL clients simultaneously
-// Returns 1 if all clients completed RTL, 0 otherwise
-int waitForAllRTLComplete(int numClients) {
-    return waitForAllMessage(numClients, "RTL_COMPLETE");
-}
-
-// Wait for LAND_COMPLETE from ALL clients simultaneously
-// Returns 1 if all clients completed LAND, 0 otherwise
-int waitForAllLANDComplete(int numClients) {
-    return waitForAllMessage(numClients, "LAND_COMPLETE");
 }
 
 // Wait for user to press Enter
