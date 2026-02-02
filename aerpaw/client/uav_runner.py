@@ -207,7 +207,7 @@ class UAVRunner(BasicRunner):
                     print(f"[UAV] Sent {MessageType.READY.name}")
 
                 elif msg_type == MessageType.READY:
-                    print("[UAV] Received READY from server - mission complete")
+                    print("[UAV] Mission complete")
                     break
 
                 else:
