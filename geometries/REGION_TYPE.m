@@ -1,4 +1,4 @@
-classdef REGION_TYPE
+classdef REGION_TYPE < uint8
     properties
         id
         color
