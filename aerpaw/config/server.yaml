@@ -1,11 +1,5 @@
 # AERPAW Controller (Server) Configuration
 
-# ENU coordinate system origin (AERPAW Lake Wheeler Road Field)
-origin:
-  lat: 35.727436
-  lon: -78.696471
-  alt: 0.0  # Alt=0 means ENU z directly becomes target altitude above home
-
 # Target waypoints in ENU coordinates (meters: east, north, up)
 # Grouped by client: first N entries = Client 1, next N = Client 2, etc.
 # Each client must have the same number of waypoints.
