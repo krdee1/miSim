@@ -22,7 +22,6 @@ from enum import IntEnum
 from pathlib import Path
 import asyncio
 import os
-import socket
 import struct
 import yaml
 
@@ -65,26 +64,22 @@ def get_environment():
     return env
 
 
-def recv_exactly(sock: socket.socket, n: int) -> bytes:
-    """Receive exactly n bytes from socket."""
-    data = b''
-    while len(data) < n:
-        chunk = sock.recv(n - len(data))
-        if not chunk:
-            raise ConnectionError("Connection closed while receiving data")
-        data += chunk
+async def recv_exactly(reader: asyncio.StreamReader, n: int) -> bytes:
+    """Receive exactly n bytes from async stream."""
+    data = await reader.readexactly(n)
     return data
 
 
-def recv_message_type(sock: socket.socket) -> MessageType:
+async def recv_message_type(reader: asyncio.StreamReader) -> MessageType:
     """Receive a single-byte message type."""
-    data = recv_exactly(sock, 1)
+    data = await recv_exactly(reader, 1)
     return MessageType(data[0])
 
 
-def send_message_type(sock: socket.socket, msg_type: MessageType):
+async def send_message_type(writer: asyncio.StreamWriter, msg_type: MessageType):
     """Send a single-byte message type."""
-    sock.sendall(bytes([msg_type]))
+    writer.write(bytes([msg_type]))
+    await writer.drain()
 
 
 class UAVRunner(BasicRunner):
@@ -116,23 +111,21 @@ class UAVRunner(BasicRunner):
         print(f"[UAV] Connecting to controller at {self.server_ip}:{self.server_port}")
 
         # Retry connection up to 10 times (~30 seconds total)
-        sock = None
+        reader, writer = None, None
         for attempt in range(10):
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(5)
-                sock.connect((self.server_ip, self.server_port))
-                sock.settimeout(None)
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(self.server_ip, self.server_port),
+                    timeout=5,
+                )
                 print(f"[UAV] Connected to controller")
                 break
-            except (ConnectionRefusedError, socket.timeout, OSError) as e:
-                if sock:
-                    sock.close()
+            except (ConnectionRefusedError, asyncio.TimeoutError, OSError) as e:
                 print(f"[UAV] Connection attempt {attempt + 1}/10 failed: {e}")
                 if attempt < 9:
                     await asyncio.sleep(3)
 
-        if sock is None or sock.fileno() == -1:
+        if reader is None:
             print("[UAV] Failed to connect to controller after 10 attempts")
             return
 
@@ -145,12 +138,12 @@ class UAVRunner(BasicRunner):
             # Command loop - handle TARGET, RTL, LAND, READY from controller
             waypoint_num = 0
             while True:
-                msg_type = recv_message_type(sock)
+                msg_type = await recv_message_type(reader)
                 print(f"[UAV] Received: {msg_type.name}")
 
                 if msg_type == MessageType.TARGET:
                     # Read 24 bytes of coordinates (3 little-endian doubles)
-                    data = recv_exactly(sock, 24)
+                    data = await recv_exactly(reader, 24)
                     enu_x, enu_y, enu_z = struct.unpack('<ddd', data)
                     waypoint_num += 1
                     print(f"[UAV] TARGET (waypoint {waypoint_num}): x={enu_x}, y={enu_y}, z={enu_z}")
@@ -159,18 +152,18 @@ class UAVRunner(BasicRunner):
                     target = self.origin + VectorNED(north=enu_y, east=enu_x, down=-enu_z)
                     print(f"[UAV] Target coord: {target.lat:.6f}, {target.lon:.6f}, {target.alt:.1f}")
 
-                    send_message_type(sock, MessageType.ACK)
+                    await send_message_type(writer, MessageType.ACK)
                     print(f"[UAV] Sent ACK")
 
                     print(f"[UAV] Moving to waypoint {waypoint_num}...")
                     await drone.goto_coordinates(target)
                     print(f"[UAV] Arrived at waypoint {waypoint_num}")
 
-                    send_message_type(sock, MessageType.READY)
+                    await send_message_type(writer, MessageType.READY)
                     print(f"[UAV] Sent READY")
 
                 elif msg_type == MessageType.RTL:
-                    send_message_type(sock, MessageType.ACK)
+                    await send_message_type(writer, MessageType.ACK)
                     print(f"[UAV] Sent ACK")
                     print("[UAV] Returning to home...")
                     home = drone.home_coords
@@ -179,11 +172,11 @@ class UAVRunner(BasicRunner):
                     print(f"[UAV] RTL to {home.lat:.6f}, {home.lon:.6f} at {safe_alt:.1f}m")
                     await drone.goto_coordinates(rtl_target)
                     print("[UAV] Arrived at home position")
-                    send_message_type(sock, MessageType.READY)
+                    await send_message_type(writer, MessageType.READY)
                     print(f"[UAV] Sent READY")
 
                 elif msg_type == MessageType.LAND:
-                    send_message_type(sock, MessageType.ACK)
+                    await send_message_type(writer, MessageType.ACK)
                     print(f"[UAV] Sent ACK")
                     print("[UAV] Landing...")
                     await drone.land()
@@ -191,7 +184,7 @@ class UAVRunner(BasicRunner):
                     from dronekit import VehicleMode
                     drone._vehicle.mode = VehicleMode("ALT_HOLD")
                     print("[UAV] Landed and disarmed (ALT_HOLD)")
-                    send_message_type(sock, MessageType.READY)
+                    await send_message_type(writer, MessageType.READY)
                     print(f"[UAV] Sent READY")
 
                 elif msg_type == MessageType.READY:
@@ -201,9 +194,10 @@ class UAVRunner(BasicRunner):
                 else:
                     print(f"[UAV] Unknown command: {msg_type}")
 
-        except (ValueError, ConnectionError) as e:
+        except (ValueError, asyncio.IncompleteReadError, ConnectionError) as e:
             print(f"[UAV] Error: {e}")
 
         finally:
-            sock.close()
-            print("[UAV] Socket closed")
+            writer.close()
+            await writer.wait_closed()
+            print("[UAV] Connection closed")

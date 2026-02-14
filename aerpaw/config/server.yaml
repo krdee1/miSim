@@ -3,16 +3,29 @@
 # Target waypoints in ENU coordinates (meters: east, north, up)
 # Grouped by client: first N entries = Client 1, next N = Client 2, etc.
 # Each client must have the same number of waypoints.
+#
+# Flight pattern:
+#   UAV 1 (45m alt): straight line along x-axis, 4m intervals
+#   UAV 2 (30m alt): triangular path, diverges then converges
+#
+#   WP1: x=0   (close,  ~10m apart)
+#   WP2: x=4   (medium, ~20m apart)
+#   WP3: x=8   (far,    ~25m apart)
+#   WP4: x=12  (medium, ~20m apart)
+#   WP5: x=16  (close,  ~10m apart)
+#
+#   Max distance from origin: ~22m (all waypoints within geofence)
+#
 targets:
-  # Client 1 waypoints
-  - [10.5, 20.3, 45.0]
-  - [30.0, 40.0, 45.0]
-  - [50.0, 60.0, 45.0]
-  - [70.0, 80.0, 45.0]
-  - [90.0, 100.0, 45.0]
-  # Client 2 waypoints
-  - [25.0, 30.0, 30.0]
-  - [35.0, 40.0, 30.0]
-  - [45.0, 50.0, 30.0]
-  - [55.0, 60.0, 30.0]
-  - [65.0, 70.0, 30.0]
+  # UAV 1: straight line along x-axis at y=5, alt=45m
+  - [0.0,    5.0,  45.0]
+  - [4.0,    5.0,  45.0]
+  - [8.0,    5.0,  45.0]
+  - [12.0,   5.0,  45.0]
+  - [16.0,   5.0,  45.0]
+  # UAV 2: triangular path diverging/converging, alt=30m
+  - [0.0,   -5.0,  30.0]
+  - [4.0,  -15.0,  30.0]
+  - [8.0,  -20.0,  30.0]
+  - [12.0, -15.0,  30.0]
+  - [16.0,  -5.0,  30.0]
