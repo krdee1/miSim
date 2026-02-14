@@ -5,26 +5,32 @@ end
 
 coder.extrinsic('disp', 'loadTargetsFromYaml');
 
-% Maximum clients supported
+% Maximum clients and waypoints supported
 MAX_CLIENTS = 4;
+MAX_WAYPOINTS = 10;
+MAX_TARGETS = MAX_CLIENTS * MAX_WAYPOINTS;
 
-% Allocate targets array (MAX_CLIENTS x 3)
-targets = zeros(MAX_CLIENTS, 3);
+% Allocate targets array (MAX_TARGETS x 3)
+targets = zeros(MAX_TARGETS, 3);
+numWaypoints = int32(0);
 
 % Load targets from YAML config file
 if coder.target('MATLAB')
-    disp('Loading targets from config.yaml (simulation)...');
-    targetsLoaded = loadTargetsFromYaml('aerpaw/config/config.yaml');
-    numTargets = min(size(targetsLoaded, 1), numClients);
-    targets(1:numTargets, :) = targetsLoaded(1:numTargets, :);
-    disp(['Loaded ', num2str(numTargets), ' targets']);
+    disp('Loading targets from server.yaml (simulation)...');
+    targetsLoaded = loadTargetsFromYaml('aerpaw/config/server.yaml');
+    totalLoaded = size(targetsLoaded, 1);
+    targets(1:totalLoaded, :) = targetsLoaded(1:totalLoaded, :);
+    numWaypoints = int32(totalLoaded / numClients);
+    disp(['Loaded ', num2str(numWaypoints), ' waypoints per client']);
 else
     coder.cinclude('controller_impl.h');
     % Define filename as null-terminated character array for C compatibility
-    filename = ['config/config.yaml', char(0)];
+    filename = ['config/server.yaml', char(0)];
     % loadTargets fills targets array (column-major for MATLAB compatibility)
-    coder.ceval('loadTargets', coder.ref(filename), ...
-                coder.ref(targets), int32(MAX_CLIENTS));
+    totalLoaded = int32(0);
+    totalLoaded = coder.ceval('loadTargets', coder.ref(filename), ...
+                coder.ref(targets), int32(MAX_TARGETS));
+    numWaypoints = totalLoaded / int32(numClients);
 end
 
 % Initialize server
@@ -43,35 +49,38 @@ for i = 1:numClients
     end
 end
 
-% Send target coordinates to each client
-for i = 1:numClients
-    % Get target for this client (1x3 array)
-    target = targets(i, :);
+% Waypoint loop: send each waypoint to all clients, wait for all to arrive
+for w = 1:numWaypoints
+    % Send TARGET for waypoint w to each client
+    for i = 1:numClients
+        % Targets are grouped by client: client i's waypoints are at rows
+        % (i-1)*numWaypoints+1 through i*numWaypoints
+        targetIdx = (i - 1) * numWaypoints + w;
+        target = targets(targetIdx, :);
 
-    if coder.target('MATLAB')
-        disp(['Sending ', char(MESSAGE_TYPE.TARGET), ' to client ', num2str(i), ': ', ...
-              num2str(target(1)), ',', num2str(target(2)), ',', num2str(target(3))]);
-    else
-        coder.ceval('sendTarget', int32(i), coder.ref(target));
+        if coder.target('MATLAB')
+            disp(['Sending TARGET to client ', num2str(i), ' (waypoint ', num2str(w), '): ', ...
+                  num2str(target(1)), ',', num2str(target(2)), ',', num2str(target(3))]);
+        else
+            coder.ceval('sendTarget', int32(i), coder.ref(target));
+        end
     end
-end
 
-% Wait for ACK from all clients
-if coder.target('MATLAB')
-    disp(['Waiting for ', char(MESSAGE_TYPE.ACK), ' from all clients...']);
-    disp('All acknowledgments received.');
-else
-    coder.ceval('waitForAllMessageType', int32(numClients), ...
-                int32(MESSAGE_TYPE.ACK));
-end
+    % Wait for ACK from all clients
+    if coder.target('MATLAB')
+        disp('Waiting for ACK from all clients...');
+    else
+        coder.ceval('waitForAllMessageType', int32(numClients), ...
+                    int32(MESSAGE_TYPE.ACK));
+    end
 
-% Wait for READY signals from all clients
-if coder.target('MATLAB')
-    disp(['Waiting for ', char(MESSAGE_TYPE.READY), ' from all clients...']);
-    disp('All UAVs at target positions.');
-else
-    coder.ceval('waitForAllMessageType', int32(numClients), ...
-                int32(MESSAGE_TYPE.READY));
+    % Wait for READY from all clients (all arrived at waypoint w)
+    if coder.target('MATLAB')
+        disp(['All UAVs arrived at waypoint ', num2str(w)]);
+    else
+        coder.ceval('waitForAllMessageType', int32(numClients), ...
+                    int32(MESSAGE_TYPE.READY));
+    end
 end
 
 % Wait for user input before closing experiment
@@ -84,7 +93,7 @@ end
 % Send RTL command to all clients
 for i = 1:numClients
     if coder.target('MATLAB')
-        disp(['Sending ', char(MESSAGE_TYPE.RTL), ' to client ', num2str(i)]);
+        disp(['Sending RTL to client ', num2str(i)]);
     else
         coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.RTL));
     end
@@ -92,7 +101,7 @@ end
 
 % Wait for ACK from all clients
 if coder.target('MATLAB')
-    disp(['Waiting for ', char(MESSAGE_TYPE.ACK), ' from all clients...']);
+    disp('Waiting for ACK from all clients...');
 else
     coder.ceval('waitForAllMessageType', int32(numClients), ...
                 int32(MESSAGE_TYPE.ACK));
@@ -100,7 +109,6 @@ end
 
 % Wait for READY from all clients (returned to home)
 if coder.target('MATLAB')
-    disp(['Waiting for ', char(MESSAGE_TYPE.READY), ' from all clients...']);
     disp('All UAVs returned to home.');
 else
     coder.ceval('waitForAllMessageType', int32(numClients), ...
@@ -110,7 +118,7 @@ end
 % Send LAND command to all clients
 for i = 1:numClients
     if coder.target('MATLAB')
-        disp(['Sending ', char(MESSAGE_TYPE.LAND), ' to client ', num2str(i)]);
+        disp(['Sending LAND to client ', num2str(i)]);
     else
         coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.LAND));
     end
@@ -118,7 +126,7 @@ end
 
 % Wait for ACK from all clients
 if coder.target('MATLAB')
-    disp(['Waiting for ', char(MESSAGE_TYPE.ACK), ' from all clients...']);
+    disp('Waiting for ACK from all clients...');
 else
     coder.ceval('waitForAllMessageType', int32(numClients), ...
                 int32(MESSAGE_TYPE.ACK));
@@ -126,7 +134,6 @@ end
 
 % Wait for READY from all clients (landed and disarmed)
 if coder.target('MATLAB')
-    disp(['Waiting for ', char(MESSAGE_TYPE.READY), ' from all clients...']);
     disp('All UAVs landed and disarmed.');
 else
     coder.ceval('waitForAllMessageType', int32(numClients), ...
@@ -136,7 +143,7 @@ end
 % Send READY to all clients to signal mission complete
 for i = 1:numClients
     if coder.target('MATLAB')
-        disp(['Sending ', char(MESSAGE_TYPE.READY), ' to client ', num2str(i)]);
+        disp(['Sending READY to client ', num2str(i)]);
     else
         coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.READY));
     end
