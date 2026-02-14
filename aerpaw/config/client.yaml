@@ -1,18 +1,10 @@
-# AERPAW UAV Guidance System Configuration
-# This file contains all settings for both simulation and testbed environments
+# AERPAW UAV (Client) Configuration
 
 # ENU coordinate system origin (AERPAW Lake Wheeler Road Field)
 origin:
   lat: 35.727436
   lon: -78.696471
   alt: 0.0  # Alt=0 means ENU z directly becomes target altitude above home
-
-# Target positions in ENU coordinates (meters)
-# Each target is assigned to a client in order: client 1 gets targets[0], etc.
-targets:
-  - [10.5, 20.3, 45.0]   # Client 1: east, north, up
-  - [25.0, 30.0, 30.0]   # Client 2: east, north, up
-
 # Environment-specific settings
 environments:
   local:

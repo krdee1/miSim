@@ -38,7 +38,7 @@ export AERPAW_ENV="$ENV"
 # Read MAVLink connection from config.yaml using Python
 CONN=$(python3 -c "
 import yaml
-with open('config/config.yaml') as f:
+with open('config/client.yaml') as f:
     cfg = yaml.safe_load(f)
 env = cfg['environments']['$ENV']['mavlink']
 print(f\"udp:{env['ip']}:{env['port']}\")
