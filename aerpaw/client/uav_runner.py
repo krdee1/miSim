@@ -24,6 +24,7 @@ import asyncio
 import csv
 import datetime
 import os
+import platform
 import struct
 import time
 import yaml
@@ -111,7 +112,8 @@ def _gps_log_row(vehicle, line_num, writer):
 
 async def _gps_log_loop(drone):
     """Background async task that logs GPS data at 1Hz."""
-    filename = f"/root/Results/GPS_DATA_{datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.csv"
+    host = platform.node()
+    filename = f"/root/Results/GPS_DATA_{host}_{datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.csv"
     print(f"[UAV] GPS logging to {filename}")
     line_num = 1
     try:
