@@ -55,3 +55,12 @@ aerpaw/venv/*
 
 # Pycache
 __pycache__
+
+# aerpaw stuff
+aerpaw/build/
+aerpaw/build/*
+aerpaw/client/__pycache__/
+aerpaw/client/__pycache__/*
+aerpaw/codegen/
+aerpaw/codegen/*
+
