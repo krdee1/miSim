@@ -64,3 +64,5 @@ aerpaw/client/__pycache__/*
 aerpaw/codegen/
 aerpaw/codegen/*
 
+# results
+*.csv
