@@ -21,8 +21,11 @@ Binary Protocol:
 from enum import IntEnum
 from pathlib import Path
 import asyncio
+import csv
+import datetime
 import os
 import struct
+import time
 import yaml
 
 from aerpawlib.runner import BasicRunner, entrypoint
@@ -82,6 +85,53 @@ async def send_message_type(writer: asyncio.StreamWriter, msg_type: MessageType)
     await writer.drain()
 
 
+def _gps_log_row(vehicle, line_num, writer):
+    """Sample vehicle state and write one CSV row (matches gps_logger.py format)."""
+    pos = vehicle.position
+    lat, lon = pos.lat, pos.lon
+    alt = round(float(str(pos.alt)), 3)
+
+    batt = str(vehicle.battery)
+    volt = float(batt[16:batt.find(",")])
+
+    timestamp = datetime.datetime.now()
+    fix, num_sat = vehicle.gps.fix_type, vehicle.gps.satellites_visible
+
+    if fix < 2:
+        lat, lon, alt = -999, -999, -999
+
+    vel = vehicle.velocity
+    attitude = vehicle.attitude
+    attitude_str = (
+        "(" + ",".join(map(str, [attitude.pitch, attitude.yaw, attitude.roll])) + ")"
+    )
+
+    writer.writerow([line_num, lon, lat, alt, attitude_str, vel, volt, timestamp, fix, num_sat])
+
+
+async def _gps_log_loop(drone):
+    """Background async task that logs GPS data at 1Hz."""
+    filename = f"/root/Results/GPS_DATA_{datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.csv"
+    print(f"[UAV] GPS logging to {filename}")
+    line_num = 1
+    try:
+        with open(filename, "w+") as f:
+            writer = csv.writer(f)
+            while True:
+                if drone.connected:
+                    _gps_log_row(drone, line_num, writer)
+                    f.flush()
+                    os.fsync(f)
+                    line_num += 1
+                else:
+                    print("[UAV] [GPS] No vehicle heartbeat")
+                await asyncio.sleep(1.0)
+    except asyncio.CancelledError:
+        print(f"[UAV] GPS logging stopped ({line_num - 1} rows written)")
+    except Exception as e:
+        print(f"[UAV] GPS logging error: {e}")
+
+
 class UAVRunner(BasicRunner):
     def initialize_args(self, extra_args):
         """Load configuration from YAML config file."""
@@ -103,11 +153,6 @@ class UAVRunner(BasicRunner):
     @entrypoint
     async def run_mission(self, drone: Drone):
         """Main mission entry point."""
-        # Enable built-in telemetry logging
-        drone._verbose_logging = True
-        drone._verbose_logging_file_prefix = "uav_telemetry"
-        drone._verbose_logging_delay = 1.0  # 1 Hz
-
         print(f"[UAV] Connecting to controller at {self.server_ip}:{self.server_port}")
 
         # Retry connection up to 10 times (~30 seconds total)
@@ -129,11 +174,15 @@ class UAVRunner(BasicRunner):
             print("[UAV] Failed to connect to controller after 10 attempts")
             return
 
+        log_task = None
         try:
             # Takeoff to above AERPAW minimum altitude
             print("[UAV] Taking off...")
             await drone.takeoff(25)
             print("[UAV] Takeoff complete, waiting for commands...")
+
+            # Start GPS logging in background
+            log_task = asyncio.create_task(_gps_log_loop(drone))
 
             # Command loop - handle TARGET, RTL, LAND, READY from controller
             waypoint_num = 0
@@ -180,10 +229,7 @@ class UAVRunner(BasicRunner):
                     print(f"[UAV] Sent ACK")
                     print("[UAV] Landing...")
                     await drone.land()
-                    # Switch out of LAND mode so the drone is re-armable
-                    from dronekit import VehicleMode
-                    drone._vehicle.mode = VehicleMode("ALT_HOLD")
-                    print("[UAV] Landed and disarmed (ALT_HOLD)")
+                    print("[UAV] Landed and disarmed")
                     await send_message_type(writer, MessageType.READY)
                     print(f"[UAV] Sent READY")
 
@@ -198,6 +244,9 @@ class UAVRunner(BasicRunner):
             print(f"[UAV] Error: {e}")
 
         finally:
+            if log_task is not None:
+                log_task.cancel()
+                await asyncio.gather(log_task, return_exceptions=True)
             writer.close()
             await writer.wait_closed()
             print("[UAV] Connection closed")
