@@ -44,7 +44,12 @@ function [obj] = constrainMotion(obj)
 
             A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (obj.agents{ii}.pos - obj.agents{jj}.pos);
             A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-            b(kk) = obj.barrierGain * max(0, h(ii, jj))^obj.barrierExponent;
+            % Floor derived from existing params: recovery velocity = max gradient approach velocity.
+            % Correction splits between 2 agents, so |A| = 2*r_sum → floor = (4*r_sum*v_max/gain)^(1/p)
+            r_sum_ij = obj.agents{ii}.collisionGeometry.radius + obj.agents{jj}.collisionGeometry.radius;
+            v_max_ij = max(obj.agents{ii}.initialStepSize, obj.agents{jj}.initialStepSize) / obj.timestep;
+            h_floor_ij = -(4 * r_sum_ij * v_max_ij / obj.barrierGain)^(1 / obj.barrierExponent);
+            b(kk) = obj.barrierGain * max(h_floor_ij, h(ii, jj))^obj.barrierExponent;
             kk = kk + 1;
         end
     end
@@ -59,7 +64,11 @@ function [obj] = constrainMotion(obj)
             hObs(ii, jj) = dot(obj.agents{ii}.pos - cPos, obj.agents{ii}.pos - cPos) - obj.agents{ii}.collisionGeometry.radius^2;
 
             A(kk, (3 * ii - 2):(3 * ii)) = -2 * (obj.agents{ii}.pos - cPos);
-            b(kk) = obj.barrierGain * max(0, hObs(ii, jj))^obj.barrierExponent;
+            % Floor for single-agent constraint: full correction on one agent, |A| = 2*r_i
+            r_i = obj.agents{ii}.collisionGeometry.radius;
+            v_max_i = obj.agents{ii}.initialStepSize / obj.timestep;
+            h_floor_i = -(2 * r_i * v_max_i / obj.barrierGain)^(1 / obj.barrierExponent);
+            b(kk) = obj.barrierGain * max(h_floor_i, hObs(ii, jj))^obj.barrierExponent;
 
             kk = kk + 1;
         end
