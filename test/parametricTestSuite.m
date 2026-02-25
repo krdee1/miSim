@@ -25,41 +25,11 @@ classdef parametricTestSuite < matlab.unittest.TestCase
         end
     end
 
-    methods (Static)
-        function params = readIterationsCsv(csvPath)
-            arguments (Input)
-                csvPath (1, 1) string;
-            end
-            arguments (Output)
-                params (1, 1) struct;
-            end
-
-            % File input validation
-            assert(isfile(csvPath), "%s is not a valid filepath.");
-            assert(endsWith(csvPath, ".csv"), "%s is not a CSV file.");
-
-            % Read file
-            csv = readtable(csvPath, "TextType", "String", "NumHeaderLines", 0, "VariableNamingRule", "Preserve");
-            csv.Properties.VariableNames = ["timestep", "maxIter", "minAlt", "discretizationStep", "protectedRange", "sensorPerformanceMinimum", "initialStepSize", "barrierGain", "barrierExponent", "numObstacles", "numAgents", "collisionRadius", "comRange", "alphaDist", "betaDist", "alphaTilt", "betaTilt"];
-
-            for ii = 1:size(csv.Properties.VariableNames, 2)
-                csv.(csv.Properties.VariableNames{ii}) = cell2mat(cellfun(@(x) str2num(x), csv.(csv.Properties.VariableNames{ii}), "UniformOutput", false));
-            end
-        
-            % Put params into standard structure
-            params = struct("timestep", csv.timestep, "maxIter", csv.maxIter, "minAlt", csv.minAlt, "discretizationStep", csv.discretizationStep, ...
-                            "protectedRange", csv.protectedRange, "sensorPerformanceMinimum", csv.sensorPerformanceMinimum, "initialStepSize", csv.initialStepSize, ...
-                            "barrierGain", csv.barrierGain, "barrierExponent", csv.barrierExponent, "numObstacles", csv.numObstacles,...
-                            "numAgents", csv.numAgents, "collisionRadius", csv.collisionRadius, "comRange", csv.comRange, "alphaDist", csv.alphaDist, ...
-                            "betaDist", csv.betaDist, "alphaTilt", csv.alphaTilt, "betaTilt", csv.betaTilt);
-        end
-    end
-
     methods (Test)
         % Test cases
-        function csv_parametric_tests(tc)
+        function csv_parametric_tests_random_agents(tc)
             % Read in parameters to iterate over
-            params = tc.readIterationsCsv(tc.csvPath);
+            params = tc.testClass.readScenarioCsv(tc.csvPath);
 
             % Test case setup
             l = 10; % domain size
