@@ -365,8 +365,8 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
 
-            % Write out parameters
-            tc.testClass.writeParams();
+            % Write out initialization state
+            tc.testClass.writeInits();
 
             % Run simulation loop
             tc.testClass = tc.testClass.run();

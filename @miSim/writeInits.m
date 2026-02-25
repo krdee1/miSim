@@ -1,4 +1,4 @@
-function writeParams(obj)
+function writeInits(obj)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "miSim")};
     end
