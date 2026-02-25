@@ -20,14 +20,20 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.makePlots = makePlots;
     if ~obj.makePlots
         if makeVideo
-            warning("makeVideo set to true, but makePlots set to false. Setting makeVideo to false.");
+            if coder.target('MATLAB')
+                warning("makeVideo set to true, but makePlots set to false. Setting makeVideo to false.");
+            end
             makeVideo = false;
         end
     end
     obj.makeVideo = makeVideo;
 
     % Generate artifact(s) name
-    obj.artifactName = strcat(string(datetime("now"), "yyyy_MM_dd_HH_mm_ss"));
+    if coder.target('MATLAB')
+        obj.artifactName = strcat(string(datetime("now"), "yyyy_MM_dd_HH_mm_ss"));
+    else
+        obj.artifactName = ""; % Generate no artifacts from simulation in codegen
+    end
 
     % Define simulation time parameters
     obj.timestep = timestep;
@@ -37,14 +43,24 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     % Define domain
     obj.domain = domain;
 
-    % Add geometries representing obstacles within the domain
-    obj.obstacles = obstacles;
+    % Add geometries representing obstacles within the domain, pre-allocating
+    % one extra slot for the minimum altitude floor obstacle if needed
+    numInputObs = size(obstacles, 1);
+    if minAlt > 0
+        obj.obstacles = repmat({rectangularPrism}, numInputObs + 1, 1);
+    else
+        obj.obstacles = repmat({rectangularPrism}, numInputObs, 1);
+    end
+    for kk = 1:numInputObs
+        obj.obstacles{kk} = obstacles{kk};
+    end
 
-    % Add an additional obstacle spanning the domain's footprint to 
+    % Add an additional obstacle spanning the domain's footprint to
     % represent the minimum allowable altitude
     if minAlt > 0
-        obj.obstacles{end + 1, 1} = rectangularPrism;
-        obj.obstacles{end, 1} = obj.obstacles{end, 1}.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
+        minAltObstacle = rectangularPrism;
+        minAltObstacle = minAltObstacle.initialize([obj.domain.minCorner; obj.domain.maxCorner(1:2), minAlt], "OBSTACLE", "Minimum Altitude Domain Constraint");
+        obj.obstacles{numInputObs + 1} = minAltObstacle;
     end
 
     % Define agents
@@ -56,12 +72,12 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     for ii = 1:size(obj.agents, 1)
         % Agent
         if isempty(char(obj.agents{ii}.label))
-            obj.agents{ii}.label = sprintf("Agent %d", ii);
+            obj.agents{ii}.label = sprintf("Agent %d", int8(ii));
         end
 
         % Collision geometry
         if isempty(char(obj.agents{ii}.collisionGeometry.label))
-            obj.agents{ii}.collisionGeometry.label = sprintf("Agent %d Collision Geometry", ii);
+            obj.agents{ii}.collisionGeometry.label = sprintf("Agent %d Collision Geometry", int8(ii));
         end
     end
 
@@ -76,22 +92,26 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     % Set up times to iterate over
     obj.times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';
 
-    % Prepare performance data store (at t = 0, all have 0 performance)
-    obj.perf = [zeros(size(obj.agents, 1) + 1, 1), NaN(size(obj.agents, 1) + 1, size(obj.partitioningTimes, 1) - 1)];
+    if coder.target('MATLAB')
+        % Prepare performance data store (at t = 0, all have 0 performance)
+        obj.perf = [zeros(size(obj.agents, 1) + 1, 1), NaN(size(obj.agents, 1) + 1, size(obj.partitioningTimes, 1) - 1)];
 
-    % Prepare h function data store
-    obj.h = NaN(size(obj.agents, 1) * (size(obj.agents, 1) - 1) / 2 + size(obj.agents, 1) * size(obj.obstacles, 1) + 6, size(obj.times, 1));
+        % Prepare h function data store
+        obj.h = NaN(size(obj.agents, 1) * (size(obj.agents, 1) - 1) / 2 + size(obj.agents, 1) * size(obj.obstacles, 1) + 6, size(obj.times, 1));
+    end
 
     % Create initial partitioning
     obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
-    % Initialize variable that will store agent positions for trail plots
-    obj.posHist = NaN(size(obj.agents, 1), obj.maxIter + 1, 3);
-    obj.posHist(1:size(obj.agents, 1), 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, "UniformOutput", false)), size(obj.agents, 1), 1, 3);
+    if coder.target('MATLAB')
+        % Initialize variable that will store agent positions for trail plots
+        obj.posHist = NaN(size(obj.agents, 1), obj.maxIter + 1, 3);
+        obj.posHist(1:size(obj.agents, 1), 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, "UniformOutput", false)), size(obj.agents, 1), 1, 3);
 
-    % Set up plots showing initialized state
-    obj = obj.plot();
+        % Set up plots showing initialized state
+        obj = obj.plot();
 
-    % Run validations
-    obj.validate();
+        % Run validations
+        obj.validate();
+    end
 end

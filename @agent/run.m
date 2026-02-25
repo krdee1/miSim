@@ -13,7 +13,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
 
     % Collect objective function values across partition
     partitionMask = partitioning == index;
-    if ~unique(partitionMask)
+    if ~any(partitionMask(:))
         % This agent has no partition, maintain current state
         return;
     end
@@ -32,10 +32,10 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
         pos = obj.pos + delta * deltaApplicator(ii, 1:3);
         
         % Compute performance values on partition
-        if ii < 5
+        if ii < 6
             % Compute sensing performance
             sensorValues = obj.sensorModel.sensorPerformance(pos, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
-            % Objective performance does not change for 0, +/- X, Y steps.
+            % Objective performance does not change for 0, +/- X, +/- Y steps.
             % Those values are computed once before the loop and are only
             % recomputed when +/- Z steps are applied
         else
@@ -64,17 +64,26 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
     end
 
     % Store agent performance at current time and place
-    obj.performance(timestepIndex + 1) = C_delta(1);
+    if coder.target('MATLAB')
+        obj.performance(timestepIndex + 1) = C_delta(1);
+    end
 
     % Compute gradient by finite central differences
     gradC = [(C_delta(2)-C_delta(3))/(2*delta), (C_delta(4)-C_delta(5))/(2*delta), (C_delta(6)-C_delta(7))/(2*delta)];
 
     % Compute scaling factor
     targetRate = obj.initialStepSize - obj.stepDecayRate * timestepIndex; % slow down as you get closer
-    rateFactor = targetRate / norm(gradC);
+    gradNorm = norm(gradC);
 
-    % Compute unconstrained next position
-    pNext = obj.pos + rateFactor * gradC;
+    % Compute unconstrained next position.
+    % Guard against near-zero gradient: when sensor performance is saturated
+    % or near-zero across the whole partition, rateFactor -> Inf and pNext
+    % explodes. Stay put instead.
+    if gradNorm < 1e-10
+        pNext = obj.pos;
+    else
+        pNext = obj.pos + (targetRate / gradNorm) * gradC;
+    end
 
     % Move to next position
     obj.lastPos = obj.pos;

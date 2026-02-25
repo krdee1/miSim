@@ -17,15 +17,7 @@
 #   Max distance from origin: ~22m (all waypoints within geofence)
 #
 targets:
-  # UAV 1: straight line along x-axis at y=5, alt=45m
-  - [0.0,    5.0,  45.0]
-  - [4.0,    5.0,  45.0]
-  - [8.0,    5.0,  45.0]
-  - [12.0,   5.0,  45.0]
-  - [16.0,   5.0,  45.0]
-  # UAV 2: triangular path diverging/converging, alt=30m
-  - [0.0,   -5.0,  30.0]
-  - [4.0,  -15.0,  30.0]
-  - [8.0,  -20.0,  30.0]
-  - [12.0, -15.0,  30.0]
-  - [16.0,  -5.0,  30.0]
+  # UAV 1 Initial Position — west side of guidance domain
+  - [5.0,   10.0,  45.0]
+  # UAV 2 Initial Position — east side of guidance domain
+  - [15.0,  10.0,  30.0]

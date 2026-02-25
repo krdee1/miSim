@@ -207,6 +207,12 @@ classdef test_miSim < matlab.unittest.TestCase
                             break;
                         end
                     end
+
+                    % Make sure candidate clears domain floor
+                    if newAgent.pos(3) - newAgent.collisionGeometry.radius <= tc.minAlt
+                        violation = true;
+                    end
+                    
                     if violation
                         continue;
                     end
@@ -340,6 +346,12 @@ classdef test_miSim < matlab.unittest.TestCase
                             break;
                         end
                     end
+
+                    % Make sure candidate clears domain floor
+                    if newAgent.pos(3) - newAgent.collisionGeometry.radius <= tc.minAlt
+                        violation = true;
+                    end
+
                     if violation
                         continue;
                     end

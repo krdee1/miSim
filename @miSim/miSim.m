@@ -2,17 +2,17 @@ classdef miSim
     % multiagent interconnection simulation
 
     % Simulation parameters
-    properties (SetAccess = private, GetAccess = public)
+    properties (SetAccess = public, GetAccess = public)
         timestep = NaN; % delta time interval for simulation iterations
         timestepIndex = NaN; % index of the current timestep (useful for time-indexed arrays)
         maxIter = NaN; % maximum number of simulation iterations
-        domain = rectangularPrism;
-        objective = sensingObjective;
-        obstacles = cell(0, 1); % geometries that define obstacles within the domain
-        agents = cell(0, 1); % agents that move within the domain
-        adjacency = NaN; % Adjacency matrix representing communications network graph
-        constraintAdjacencyMatrix = NaN; % Adjacency matrix representing desired lesser neighbor connections
-        partitioning = NaN;
+        domain;
+        objective;
+        obstacles; % geometries that define obstacles within the domain
+        agents; % agents that move within the domain
+        adjacency = false(0, 0); % Adjacency matrix representing communications network graph
+        constraintAdjacencyMatrix = false(0, 0); % Adjacency matrix representing desired lesser neighbor connections
+        partitioning = zeros(0, 0);
         perf; % sensor performance timeseries array
         performance = 0; % simulation performance timeseries vector
         barrierGain = NaN; % CBF gain parameter
@@ -54,6 +54,15 @@ classdef miSim
     end
 
     methods (Access = public)
+        function obj = miSim()
+            arguments (Output)
+                obj (1, 1) miSim
+            end
+            obj.domain = rectangularPrism;
+            obj.objective = sensingObjective;
+            obj.obstacles = {rectangularPrism};
+            obj.agents = {agent};
+        end
         [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);

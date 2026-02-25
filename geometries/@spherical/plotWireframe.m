@@ -25,10 +25,10 @@ function [obj, f] = plotWireframe(obj, ind, f)
 
     % Plot the boundaries of the geometry into 3D view
     if isnan(ind)
-        o = plot3(f.CurrentAxes, X, Y, Z, "-", "Color", obj.tag.color, "LineWidth", 2);
+        o = plot3(f.CurrentAxes, X, Y, Z, "-", "Color", regionTypeColor(obj.tag), "LineWidth", 2);
     else
         hold(f.Children(1).Children(ind(1)), "on");
-        o = plot3(f.Children(1).Children(ind(1)), X, Y, Z, "-", "Color", obj.tag.color, "LineWidth", 1);
+        o = plot3(f.Children(1).Children(ind(1)), X, Y, Z, "-", "Color", regionTypeColor(obj.tag), "LineWidth", 1);
         hold(f.Children(1).Children(ind(1)), "off");
     end
 
