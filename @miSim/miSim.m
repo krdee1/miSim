@@ -64,6 +64,7 @@ classdef miSim
             obj.agents = {agent};
         end
         [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo);
+        [obj] = initializeFromCsv(obj, csvPath);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);
         [obj] = constrainMotion(obj);
@@ -77,6 +78,7 @@ classdef miSim
         [obj] = plotH(obj);
         [obj] = updatePlots(obj);
         [obj] = teardown(obj);
+        inits = readScenarioCsv(csvPath);
         writeInits(obj);
         validate(obj);
     end
