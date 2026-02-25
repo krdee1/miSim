@@ -28,6 +28,12 @@ classdef rectangularPrism
     end
 
     methods (Access = public)
+        function obj = rectangularPrism()
+            arguments (Output)
+                obj (1, 1) rectangularPrism
+            end
+            obj.objective = sensingObjective;
+        end
         [obj   ] = initialize(obj, bounds, tag, label, objectiveFunction, discretizationStep);
         [obj   ] = initializeRandom(obj, tag, label, minDimension, maxDimension, domain);
         [r     ] = random(obj);

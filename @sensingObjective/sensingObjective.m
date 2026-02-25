@@ -4,7 +4,6 @@ classdef sensingObjective
         label = "";
         groundPos = [NaN, NaN];
         discretizationStep = NaN;
-        objectiveFunction = @(x, y) NaN; % define objective functions over a grid in this manner
         X = [];
         Y = [];
         values = [];
@@ -14,7 +13,8 @@ classdef sensingObjective
 
     methods (Access = public)
         [obj] = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange, sensorPerformanceMinimum);
-        [obj] = initializeRandomMvnpdf(obj, domain, protectedRange, discretizationStep, protectedRange);
+        [obj] = initializeWithValues(obj, values, domain, discretizationStep, protectedRange, sensorPerformanceMinimum);
+        [obj] = initializeRandomMvnpdf(obj, domain, discretizationStep, protectedRange);
         [f  ] = plot(obj, ind, f);
     end
 end

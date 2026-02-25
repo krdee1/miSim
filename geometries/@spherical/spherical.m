@@ -2,12 +2,12 @@ classdef spherical
     % Rectangular prism geometry
     properties (SetAccess = private, GetAccess = public)
         % Spatial
-        center = NaN;
+        center = NaN(1, 3);
         radius = NaN;
         diameter = NaN;
 
-        vertices; % fake vertices
-        edges; % fake edges
+        vertices = NaN(6, 3); % fake vertices
+        edges = NaN(8, 2); % fake edges
 
         % Plotting
         lines;
@@ -22,6 +22,12 @@ classdef spherical
     end
 
     methods (Access = public)
+        function obj = spherical()
+            arguments (Output)
+                obj (1, 1) spherical
+            end
+            obj.objective = sensingObjective;
+        end
         [obj   ] = initialize(obj, center, radius, tag, label);
         [r     ] = random(obj);
         [c     ] = contains(obj, pos);

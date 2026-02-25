@@ -8,6 +8,8 @@ BUILD="$AERPAW_DIR/build"
 
 mkdir -p "$BUILD"
 
+echo "Compiling controller executable..."
+
 # Compile all codegen sources (handles any new generated files)
 g++ -I/home/kdee/matlab/R2025a/extern/include \
     -I"$CODEGEN" \
@@ -16,6 +18,7 @@ g++ -I/home/kdee/matlab/R2025a/extern/include \
     "$IMPL/controller_impl.cpp" \
     "$CODEGEN"/*.cpp \
     -o "$BUILD/controller_app" \
+    -fopenmp \
     -lpthread
 
 echo "Built: $BUILD/controller_app"

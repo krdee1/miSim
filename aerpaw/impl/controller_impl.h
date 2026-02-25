@@ -23,6 +23,12 @@ int sendMessageType(int clientId, int msgType);
 int sendTarget(int clientId, const double* coords);
 int waitForAllMessageType(int numClients, int expectedType);
 
+// Guidance loop operations
+void sendGuidanceToggle(int numClients);
+int  sendRequestPositions(int numClients);
+int  recvPositions(int numClients, double* positions, int maxClients); // column-major maxClients x 3
+void sleepMs(int ms);
+
 #ifdef __cplusplus
 }
 #endif

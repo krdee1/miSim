@@ -31,7 +31,7 @@ function [obj, f] = plot(obj, ind, f, maxAlt)
         o = surf(f.CurrentAxes, X, Y, Z);
     else
         hold(f.Children(1).Children(ind(1)), "on");
-        o = surf(f.Children(1).Children(ind(1)), X, Y, Z, ones([size(Z), 1]) .* reshape(obj.tag.color, 1, 1, 3), "FaceAlpha", 0.25, "EdgeColor", "none");
+        o = surf(f.Children(1).Children(ind(1)), X, Y, Z, ones([size(Z), 1]) .* reshape(regionTypeColor(obj.tag), 1, 1, 3), "FaceAlpha", 0.25, "EdgeColor", "none");
         hold(f.Children(1).Children(ind(1)), "off");
     end
     

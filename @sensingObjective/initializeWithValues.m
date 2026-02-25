@@ -1,7 +1,7 @@
-function obj = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange, sensorPerformanceMinimum)
+function obj = initializeWithValues(obj, values, domain, discretizationStep, protectedRange, sensorPerformanceMinimum)
     arguments (Input)
         obj (1,1) {mustBeA(obj, "sensingObjective")};
-        objectiveFunction (1, 1) {mustBeA(objectiveFunction, "function_handle")};
+        values (:,:) double;
         domain (1, 1) {mustBeGeometry};
         discretizationStep (1, 1) double = 1;
         protectedRange (1, 1) double = 1;
@@ -12,9 +12,7 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
     end
 
     obj.discretizationStep = discretizationStep;
-
     obj.sensorPerformanceMinimum = sensorPerformanceMinimum;
-    
     obj.protectedRange = protectedRange;
 
     % Extract footprint limits
@@ -25,20 +23,20 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
 
     xGrid = unique([xMin:obj.discretizationStep:xMax, xMax]);
     yGrid = unique([yMin:obj.discretizationStep:yMax, yMax]);
-    
-    % Store grid points for plotting later
+
+    % Store grid points
     [obj.X, obj.Y] = meshgrid(xGrid, yGrid);
 
-    % Evaluate function over grid points
-    obj.values = reshape(objectiveFunction(obj.X, obj.Y), size(obj.X));
-    
+    % Use pre-computed values (caller must evaluate on same grid)
+    obj.values = reshape(values, size(obj.X));
+
     % Normalize
     obj.values = obj.values ./ max(obj.values, [], "all");
 
-    % store ground position
+    % Store ground position (peak of objective)
     idx = obj.values == 1;
     obj.groundPos = [obj.X(idx), obj.Y(idx)];
-    obj.groundPos = obj.groundPos(1, 1:2); % for safety, in case 2 points are maximal (somehow)
+    obj.groundPos = obj.groundPos(1, 1:2);
 
     assert(domain.distance([obj.groundPos, domain.center(3)]) > protectedRange, "Domain is crowding the sensing objective")
 end

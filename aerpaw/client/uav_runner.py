@@ -36,11 +36,14 @@ from aerpawlib.vehicle import Drone
 
 # Message types - must match MESSAGE_TYPE.m enum
 class MessageType(IntEnum):
-    TARGET = 1
-    ACK = 2
-    READY = 3
-    RTL = 4
-    LAND = 5
+    TARGET           = 1
+    ACK              = 2
+    READY            = 3
+    RTL              = 4
+    LAND             = 5
+    GUIDANCE_TOGGLE  = 6
+    REQUEST_POSITION = 7
+    POSITION         = 8
 
 
 AERPAW_DIR = Path(__file__).parent.parent
@@ -177,6 +180,7 @@ class UAVRunner(BasicRunner):
             return
 
         log_task = None
+        nav_task = None
         try:
             # Takeoff to above AERPAW minimum altitude
             print("[UAV] Taking off...")
@@ -186,32 +190,64 @@ class UAVRunner(BasicRunner):
             # Start GPS logging in background
             log_task = asyncio.create_task(_gps_log_loop(drone))
 
-            # Command loop - handle TARGET, RTL, LAND, READY from controller
+            # Command loop - handle all messages from controller
             waypoint_num = 0
+            in_guidance = False
             while True:
                 msg_type = await recv_message_type(reader)
                 print(f"[UAV] Received: {msg_type.name}")
 
-                if msg_type == MessageType.TARGET:
+                if msg_type == MessageType.GUIDANCE_TOGGLE:
+                    in_guidance = not in_guidance
+                    print(f"[UAV] Guidance mode: {'ON' if in_guidance else 'OFF'}")
+                    if not in_guidance:
+                        # Exiting guidance: wait for current navigation to finish
+                        # before resuming sequential (ACK/READY) mode
+                        if nav_task and not nav_task.done():
+                            print("[UAV] Waiting for current navigation to complete...")
+                            await nav_task
+                            nav_task = None
+                        # Acknowledge that we are ready for sequential commands
+                        await send_message_type(writer, MessageType.ACK)
+                        print("[UAV] Sent ACK (guidance mode exited, ready for sequential commands)")
+
+                elif msg_type == MessageType.REQUEST_POSITION:
+                    # Respond immediately with current ENU position relative to origin
+                    pos = drone.position
+                    enu = pos - self.origin  # VectorNED(north, east, down)
+                    await send_message_type(writer, MessageType.POSITION)
+                    writer.write(struct.pack('<ddd', enu.east, enu.north, -enu.down))
+                    await writer.drain()
+                    print(f"[UAV] Sent POSITION: E={enu.east:.1f} N={enu.north:.1f} U={-enu.down:.1f}")
+
+                elif msg_type == MessageType.TARGET:
                     # Read 24 bytes of coordinates (3 little-endian doubles)
                     data = await recv_exactly(reader, 24)
                     enu_x, enu_y, enu_z = struct.unpack('<ddd', data)
-                    waypoint_num += 1
-                    print(f"[UAV] TARGET (waypoint {waypoint_num}): x={enu_x}, y={enu_y}, z={enu_z}")
 
                     # Convert ENU to lat/lon (ENU: x=East, y=North, z=Up)
                     target = self.origin + VectorNED(north=enu_y, east=enu_x, down=-enu_z)
-                    print(f"[UAV] Target coord: {target.lat:.6f}, {target.lon:.6f}, {target.alt:.1f}")
 
-                    await send_message_type(writer, MessageType.ACK)
-                    print(f"[UAV] Sent ACK")
-
-                    print(f"[UAV] Moving to waypoint {waypoint_num}...")
-                    await drone.goto_coordinates(target)
-                    print(f"[UAV] Arrived at waypoint {waypoint_num}")
-
-                    await send_message_type(writer, MessageType.READY)
-                    print(f"[UAV] Sent READY")
+                    if in_guidance:
+                        # Guidance mode: non-blocking — cancel previous nav and start new
+                        print(f"[UAV] Guidance TARGET: E={enu_x:.1f} N={enu_y:.1f} U={enu_z:.1f}")
+                        if nav_task and not nav_task.done():
+                            nav_task.cancel()
+                            await asyncio.gather(nav_task, return_exceptions=True)
+                        nav_task = asyncio.create_task(drone.goto_coordinates(target))
+                        # No ACK/READY in guidance mode
+                    else:
+                        # Sequential mode: ACK → navigate → READY
+                        waypoint_num += 1
+                        print(f"[UAV] TARGET (waypoint {waypoint_num}): x={enu_x:.1f}, y={enu_y:.1f}, z={enu_z:.1f}")
+                        print(f"[UAV] Target coord: {target.lat:.6f}, {target.lon:.6f}, {target.alt:.1f}")
+                        await send_message_type(writer, MessageType.ACK)
+                        print("[UAV] Sent ACK")
+                        print(f"[UAV] Moving to waypoint {waypoint_num}...")
+                        await drone.goto_coordinates(target)
+                        print(f"[UAV] Arrived at waypoint {waypoint_num}")
+                        await send_message_type(writer, MessageType.READY)
+                        print("[UAV] Sent READY")
 
                 elif msg_type == MessageType.RTL:
                     await send_message_type(writer, MessageType.ACK)
@@ -246,6 +282,9 @@ class UAVRunner(BasicRunner):
             print(f"[UAV] Error: {e}")
 
         finally:
+            if nav_task is not None and not nav_task.done():
+                nav_task.cancel()
+                await asyncio.gather(nav_task, return_exceptions=True)
             if log_task is not None:
                 log_task.cancel()
                 await asyncio.gather(log_task, return_exceptions=True)

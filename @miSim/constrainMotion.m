@@ -6,138 +6,152 @@ function [obj] = constrainMotion(obj)
         obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
-    if size(obj.agents, 1) < 2
+    nAgents = size(obj.agents, 1);
+
+    if nAgents < 2
         nAAPairs = 0;
     else
-        nAAPairs = nchoosek(size(obj.agents, 1), 2); % unique agent/agent pairs
+        nAAPairs = nchoosek(nAgents, 2); % unique agent/agent pairs
     end
 
-    agents = [obj.agents{:}];
-    v = reshape(([agents.pos] - [agents.lastPos])./obj.timestep, 3, size(obj.agents, 1))';
-    if all(isnan(v), "all") || all(v == zeros(size(obj.agents, 1), 3), "all")
+    % Compute velocity matrix from unconstrained gradient-ascent step
+    v = zeros(nAgents, 3);
+    for ii = 1:nAgents
+        v(ii, :) = (obj.agents{ii}.pos - obj.agents{ii}.lastPos) ./ obj.timestep;
+    end
+    if all(isnan(v), "all") || all(v == zeros(nAgents, 3), "all")
         % Agents are not attempting to move, so there is no motion to be
         % constrained
         return;
     end
 
     % Initialize QP based on number of agents and obstacles
-    nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
-    nADPairs = size(obj.agents, 1) * 5; % agents x (4 walls + 1 ceiling)
-    nLNAPairs = sum(obj.constraintAdjacencyMatrix, "all") - size(obj.agents, 1);
+    nAOPairs = nAgents * size(obj.obstacles, 1); % unique agent/obstacle pairs
+    nADPairs = nAgents * 6; % agents x (4 walls + 1 floor + 1 ceiling)
+    nLNAPairs = sum(obj.constraintAdjacencyMatrix, "all") - nAgents;
     total = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
     kk = 1;
-    A = zeros(total, 3 * size(obj.agents, 1));
+    A = zeros(total, 3 * nAgents);
     b = zeros(total, 1);
 
     % Set up collision avoidance constraints
-    h = NaN(size(obj.agents, 1));
-    h(logical(eye(size(obj.agents, 1)))) = 0; % self value is 0
-    for ii = 1:(size(obj.agents, 1) - 1)
-        for jj = (ii + 1):size(obj.agents, 1)
-            h(ii, jj) = norm(agents(ii).pos - agents(jj).pos)^2 - (agents(ii).collisionGeometry.radius + agents(jj).collisionGeometry.radius)^2;
+    h = NaN(nAgents, nAgents);
+    h(logical(eye(nAgents))) = 0; % self value is 0
+    for ii = 1:(nAgents - 1)
+        for jj = (ii + 1):nAgents
+            h(ii, jj) = norm(obj.agents{ii}.pos - obj.agents{jj}.pos)^2 - (obj.agents{ii}.collisionGeometry.radius + obj.agents{jj}.collisionGeometry.radius)^2;
             h(jj, ii) = h(ii, jj);
-            
-            A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (agents(ii).pos - agents(jj).pos);
+
+            A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (obj.agents{ii}.pos - obj.agents{jj}.pos);
             A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-            b(kk) = obj.barrierGain * h(ii, jj)^obj.barrierExponent;
+            b(kk) = obj.barrierGain * max(0, h(ii, jj))^obj.barrierExponent;
             kk = kk + 1;
         end
     end
 
-    hObs = NaN(size(obj.agents, 1), size(obj.obstacles, 1));
+    hObs = NaN(nAgents, size(obj.obstacles, 1));
     % Set up obstacle avoidance constraints
-    for ii = 1:size(obj.agents, 1)
+    for ii = 1:nAgents
         for jj = 1:size(obj.obstacles, 1)
             % find closest position to agent on/in obstacle
-            cPos = obj.obstacles{jj}.closestToPoint(agents(ii).pos);
+            cPos = obj.obstacles{jj}.closestToPoint(obj.agents{ii}.pos);
 
-            hObs(ii, jj) = dot(agents(ii).pos - cPos, agents(ii).pos - cPos) - agents(ii).collisionGeometry.radius^2;
+            hObs(ii, jj) = dot(obj.agents{ii}.pos - cPos, obj.agents{ii}.pos - cPos) - obj.agents{ii}.collisionGeometry.radius^2;
 
-            A(kk, (3 * ii - 2):(3 * ii)) = -2 * (agents(ii).pos - cPos);
-            b(kk) = obj.barrierGain * hObs(ii, jj)^obj.barrierExponent;
-           
+            A(kk, (3 * ii - 2):(3 * ii)) = -2 * (obj.agents{ii}.pos - cPos);
+            b(kk) = obj.barrierGain * max(0, hObs(ii, jj))^obj.barrierExponent;
+
             kk = kk + 1;
         end
     end
-    
+
     % Set up domain constraints (walls and ceiling only)
     % Floor constraint is implicit with an obstacle corresponding to the
     % minimum allowed altitude, but I included it anyways
-    for ii = 1:size(obj.agents, 1)
+    h_xMin = 0.0; h_xMax = 0.0; h_yMin = 0.0; h_yMax = 0.0; h_zMin = 0.0; h_zMax = 0.0;
+    for ii = 1:nAgents
         % X minimum
-        h_xMin = (agents(ii).pos(1) - obj.domain.minCorner(1)) - agents(ii).collisionGeometry.radius;
+        h_xMin = (obj.agents{ii}.pos(1) - obj.domain.minCorner(1)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [-1, 0, 0];
-        b(kk) = obj.barrierGain * h_xMin^obj.barrierExponent;
+        b(kk) = obj.barrierGain * max(0, h_xMin)^obj.barrierExponent;
         kk = kk + 1;
-    
+
         % X maximum
-        h_xMax = (obj.domain.maxCorner(1) - agents(ii).pos(1)) - agents(ii).collisionGeometry.radius;
+        h_xMax = (obj.domain.maxCorner(1) - obj.agents{ii}.pos(1)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [1, 0, 0];
-        b(kk) = obj.barrierGain * h_xMax^obj.barrierExponent;
+        b(kk) = obj.barrierGain * max(0, h_xMax)^obj.barrierExponent;
         kk = kk + 1;
-    
+
         % Y minimum
-        h_yMin = (agents(ii).pos(2) - obj.domain.minCorner(2)) - agents(ii).collisionGeometry.radius;
+        h_yMin = (obj.agents{ii}.pos(2) - obj.domain.minCorner(2)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, -1, 0];
-        b(kk) = obj.barrierGain * h_yMin^obj.barrierExponent;
+        b(kk) = obj.barrierGain * max(0, h_yMin)^obj.barrierExponent;
         kk = kk + 1;
-    
+
         % Y maximum
-        h_yMax = (obj.domain.maxCorner(2) - agents(ii).pos(2)) - agents(ii).collisionGeometry.radius;
+        h_yMax = (obj.domain.maxCorner(2) - obj.agents{ii}.pos(2)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 1, 0];
-        b(kk) = obj.barrierGain * h_yMax^obj.barrierExponent;
+        b(kk) = obj.barrierGain * max(0, h_yMax)^obj.barrierExponent;
         kk = kk + 1;
-    
+
         % Z minimum
-        h_zMin = (agents(ii).pos(3) - obj.domain.minCorner(3)) - agents(ii).collisionGeometry.radius;
+        h_zMin = (obj.agents{ii}.pos(3) - obj.domain.minCorner(3)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, -1];
-        b(kk) = obj.barrierGain * h_zMin^obj.barrierExponent;
+        b(kk) = obj.barrierGain * max(0, h_zMin)^obj.barrierExponent;
         kk = kk + 1;
-    
+
         % Z maximum
-        h_zMax = (obj.domain.maxCorner(2) - agents(ii).pos(2)) - agents(ii).collisionGeometry.radius;
+        h_zMax = (obj.domain.maxCorner(3) - obj.agents{ii}.pos(3)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, 1];
-        b(kk) = obj.barrierGain * h_zMax^obj.barrierExponent;
+        b(kk) = obj.barrierGain * max(0, h_zMax)^obj.barrierExponent;
         kk = kk + 1;
     end
 
-    % Save off h function values (ignoring network constraints which may evolve in time)
-    obj.h(:, obj.timestepIndex) = [h(triu(true(size(obj.agents, 1)), 1)); reshape(hObs, [], 1); h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax;]; 
+    if coder.target('MATLAB')
+        % Save off h function values (logging only — not needed in compiled mode)
+        obj.h(:, obj.timestepIndex) = [h(triu(true(nAgents), 1)); reshape(hObs, [], 1); h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax;];
+    end
 
     % Add communication network constraints
-    hComms = NaN(size(obj.agents, 1));
-    hComms(logical(eye(size(obj.agents, 1)))) = 0;
-    for ii = 1:(size(obj.agents, 1) - 1)
-        for jj = (ii + 1):size(obj.agents, 1)
+    hComms = NaN(nAgents, nAgents);
+    hComms(logical(eye(nAgents))) = 0;
+    for ii = 1:(nAgents - 1)
+        for jj = (ii + 1):nAgents
             if obj.constraintAdjacencyMatrix(ii, jj)
-                hComms(ii, jj) = min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius])^2 - norm(agents(ii).pos - agents(jj).pos)^2;
+                hComms(ii, jj) = min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius])^2 - norm(obj.agents{ii}.pos - obj.agents{jj}.pos)^2;
 
-                A(kk, (3 * ii - 2):(3 * ii)) =  2 * (agents(ii).pos - agents(jj).pos);
+                A(kk, (3 * ii - 2):(3 * ii)) =  2 * (obj.agents{ii}.pos - obj.agents{jj}.pos);
                 A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-                b(kk) = obj.barrierGain * hComms(ii, jj)^obj.barrierExponent;
+                b(kk) = obj.barrierGain * max(0, hComms(ii, jj))^obj.barrierExponent;
 
-                kk = kk + 1; 
+                kk = kk + 1;
             end
         end
     end
 
     % Solve QP program generated earlier
-    vhat = reshape(v', 3 * size(obj.agents, 1), 1);
-    H = 2 * eye(3 * size(obj.agents, 1));
+    vhat = reshape(v', 3 * nAgents, 1);
+    H = 2 * eye(3 * nAgents);
     f = -2 * vhat;
-    
+
     % Update solution based on constraints
-    assert(size(A,2) == size(H,1))
-    assert(size(A,1) == size(b,1))
-    assert(size(H,1) == length(f))
+    if coder.target('MATLAB')
+        assert(size(A,2) == size(H,1))
+        assert(size(A,1) == size(b,1))
+        assert(size(H,1) == length(f))
+    end
     opt = optimoptions("quadprog", "Display", "off", "Algorithm", "active-set", "UseCodegenSolver", true);
     x0 = zeros(size(H, 1), 1);
     [vNew, ~, exitflag, m] = quadprog(H, double(f), A, b, [], [], [], [], x0, opt);
-    assert(exitflag == 1, sprintf("quadprog failure... %s%s", newline, m.message));
-    vNew = reshape(vNew, 3, size(obj.agents, 1))';
+    if coder.target('MATLAB')
+        assert(exitflag == 1, sprintf("quadprog failure... %s%s", newline, m.message));
+    end
+    vNew = reshape(vNew, 3, nAgents)';
 
     if exitflag <= 0
-        warning("QP failed, continuing with unconstrained solution...")
+        if coder.target('MATLAB')
+            warning("QP failed, continuing with unconstrained solution...")
+        end
         vNew = v;
     end
 

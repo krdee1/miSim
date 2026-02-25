@@ -9,6 +9,7 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <time.h>
 
 #define SERVER_PORT 5000
 #define SERVER_IP "127.0.0.1"
@@ -120,6 +121,9 @@ static const char* messageTypeName(uint8_t msgType) {
         case 3: return "READY";
         case 4: return "RTL";
         case 5: return "LAND";
+        case 6: return "GUIDANCE_TOGGLE";
+        case 7: return "REQUEST_POSITION";
+        case 8: return "POSITION";
         default: return "UNKNOWN";
     }
 }
@@ -190,7 +194,17 @@ int waitForAllMessageType(int numClients, int expectedType) {
             if (!completed[i] && FD_ISSET(clientSockets[i], &readfds)) {
                 uint8_t msgType;
                 int len = recv(clientSockets[i], &msgType, 1, 0);
-                if (len != 1) return 0;
+                if (len == 0) {
+                    std::cerr << "waitForAllMessageType: client " << (i + 1)
+                              << " disconnected while waiting for "
+                              << messageTypeName(expected) << "\n";
+                    return 0;
+                }
+                if (len < 0) {
+                    std::cerr << "waitForAllMessageType: recv error for client " << (i + 1)
+                              << " while waiting for " << messageTypeName(expected) << "\n";
+                    return 0;
+                }
 
                 std::cout << "Received " << messageTypeName(msgType) << " from client " << (i + 1) << "\n";
 
@@ -207,6 +221,66 @@ int waitForAllMessageType(int numClients, int expectedType) {
 
 // Wait for user to press Enter
 void waitForUserInput() {
-    std::cout << "Press Enter to close experiment (RTL + LAND)...\n";
+    std::cout << "Press Enter to continue...\n";
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+}
+
+// Broadcast GUIDANCE_TOGGLE to all clients
+void sendGuidanceToggle(int numClients) {
+    for (int i = 1; i <= numClients; i++) {
+        sendMessageType(i, 6);  // GUIDANCE_TOGGLE = 6
+    }
+}
+
+// Send REQUEST_POSITION to all clients
+int sendRequestPositions(int numClients) {
+    for (int i = 1; i <= numClients; i++) {
+        if (!sendMessageType(i, 7)) return 0;  // REQUEST_POSITION = 7
+    }
+    return 1;
+}
+
+// Receive POSITION response (1 byte type + 24 bytes ENU) from all clients.
+// Stores results in column-major order: positions[client + 0*maxClients] = x (east),
+//                                       positions[client + 1*maxClients] = y (north),
+//                                       positions[client + 2*maxClients] = z (up)
+int recvPositions(int numClients, double* positions, int maxClients) {
+    if (numClients <= 0 || numClients > (int)clientSockets.size()) return 0;
+
+    for (int i = 0; i < numClients; i++) {
+        // Expect: POSITION byte (1) + 3 doubles (24)
+        uint8_t msgType;
+        if (recv(clientSockets[i], &msgType, 1, MSG_WAITALL) != 1) {
+            std::cerr << "recvPositions: failed to read msg type from client " << (i + 1) << "\n";
+            return 0;
+        }
+        if (msgType != 8) {  // POSITION = 8
+            std::cerr << "recvPositions: expected POSITION(8), got " << (int)msgType
+                      << " from client " << (i + 1) << "\n";
+            return 0;
+        }
+
+        double coords[3];
+        if (recv(clientSockets[i], coords, sizeof(coords), MSG_WAITALL) != (ssize_t)sizeof(coords)) {
+            std::cerr << "recvPositions: failed to read coords from client " << (i + 1) << "\n";
+            return 0;
+        }
+
+        // Store column-major (MATLAB layout): col 0 = east, col 1 = north, col 2 = up
+        positions[i + 0 * maxClients] = coords[0];  // east  (x)
+        positions[i + 1 * maxClients] = coords[1];  // north (y)
+        positions[i + 2 * maxClients] = coords[2];  // up    (z)
+
+        std::cout << "Position from client " << (i + 1) << ": "
+                  << coords[0] << "," << coords[1] << "," << coords[2] << "\n";
+    }
+    return 1;
+}
+
+// Sleep for the given number of milliseconds
+void sleepMs(int ms) {
+    struct timespec ts;
+    ts.tv_sec  = ms / 1000;
+    ts.tv_nsec = (ms % 1000) * 1000000L;
+    nanosleep(&ts, nullptr);
 }

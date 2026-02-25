@@ -83,7 +83,69 @@ for w = 1:numWaypoints
     end
 end
 
-% Wait for user input before closing experiment
+% ---- Phase 2: miSim guidance loop ----------------------------------------
+% Guidance parameters (adjust here and recompile as needed)
+MAX_GUIDANCE_STEPS = int32(100); % number of guidance iterations
+GUIDANCE_RATE_MS   = int32(5000); % ms between iterations (0.2 Hz default)
+
+% Wait for user input to start guidance loop
+if coder.target('MATLAB')
+    input('Press Enter to start guidance loop: ', 's');
+else
+    coder.ceval('waitForUserInput');
+end
+
+% Enter guidance mode on all clients
+if ~coder.target('MATLAB')
+    coder.ceval('sendGuidanceToggle', int32(numClients));
+end
+
+% Request initial GPS positions and initialise guidance algorithm
+positions = zeros(MAX_CLIENTS, 3);
+if ~coder.target('MATLAB')
+    coder.ceval('sendRequestPositions', int32(numClients));
+    coder.ceval('recvPositions', int32(numClients), coder.ref(positions), int32(MAX_CLIENTS));
+end
+guidance_step(positions(1:numClients, :), true);
+
+% Main guidance loop
+for step = 1:MAX_GUIDANCE_STEPS
+    % Query current GPS positions from all clients
+    if ~coder.target('MATLAB')
+        coder.ceval('sendRequestPositions', int32(numClients));
+        coder.ceval('recvPositions', int32(numClients), coder.ref(positions), int32(MAX_CLIENTS));
+    end
+
+    % Run one guidance step: feed GPS positions in, get targets out
+    nextPositions = guidance_step(positions(1:numClients, :), false);
+
+    % Send target to each client (no ACK/READY expected in guidance mode)
+    for i = 1:numClients
+        target = nextPositions(i, :);
+        if ~coder.target('MATLAB')
+            coder.ceval('sendTarget', int32(i), coder.ref(target));
+        else
+            disp(['[guidance] target UAV ', num2str(i), ': ', num2str(target)]);
+        end
+    end
+
+    % Wait for the guidance rate interval before the next iteration
+    if ~coder.target('MATLAB')
+        coder.ceval('sleepMs', int32(GUIDANCE_RATE_MS));
+    end
+end
+
+% Exit guidance mode on all clients (second toggle)
+if ~coder.target('MATLAB')
+    coder.ceval('sendGuidanceToggle', int32(numClients));
+    % Wait for ACK from all clients: confirms each client has finished its
+    % last guidance navigation and is back in sequential (ACK/READY) mode.
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.ACK));
+end
+% --------------------------------------------------------------------------
+
+% Wait for user input before closing experiment (RTL + LAND)
 if coder.target('MATLAB')
     input('Press Enter to close experiment (RTL + LAND): ', 's');
 else

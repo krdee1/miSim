@@ -23,7 +23,9 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
     obj.stepDecayRate = obj.initialStepSize / maxIter;
 
     % Initialize performance vector
-    obj.performance = [0, NaN(1, maxIter), 0];
+    if coder.target('MATLAB')
+        obj.performance = [0, NaN(1, maxIter), 0];
+    end
 
     % Add spherical geometry based on com range
     obj.commsGeometry = obj.commsGeometry.initialize(obj.pos, comRange, REGION_TYPE.COMMS, sprintf("%s Comms Geometry", obj.label));
