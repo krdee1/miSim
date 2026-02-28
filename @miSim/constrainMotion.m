@@ -44,12 +44,12 @@ function [obj] = constrainMotion(obj)
 
             A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (obj.agents{ii}.pos - obj.agents{jj}.pos);
             A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-            % Floor derived from existing params: recovery velocity = max gradient approach velocity.
-            % Correction splits between 2 agents, so |A| = 2*r_sum → floor = (4*r_sum*v_max/gain)^(1/p)
+            % Slack derived from existing params: recovery velocity = max gradient approach velocity.
+            % Correction splits between 2 agents, so |A| = 2*r_sum
             r_sum_ij = obj.agents{ii}.collisionGeometry.radius + obj.agents{jj}.collisionGeometry.radius;
             v_max_ij = max(obj.agents{ii}.initialStepSize, obj.agents{jj}.initialStepSize) / obj.timestep;
-            h_floor_ij = -(4 * r_sum_ij * v_max_ij / obj.barrierGain)^(1 / obj.barrierExponent);
-            b(kk) = obj.barrierGain * max(h_floor_ij, h(ii, jj))^obj.barrierExponent;
+            slack = -(4 * r_sum_ij * v_max_ij / obj.barrierGain)^(1 / obj.barrierExponent);
+            b(kk) = obj.barrierGain * max(slack, h(ii, jj))^obj.barrierExponent;
             kk = kk + 1;
         end
     end
