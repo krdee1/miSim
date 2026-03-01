@@ -3,35 +3,54 @@ arguments (Input)
     numClients (1, 1) int32;
 end
 
-coder.extrinsic('disp', 'loadTargetsFromYaml');
+coder.extrinsic('disp', 'readScenarioCsv');
 
-% Maximum clients and waypoints supported
+% Maximum clients supported (one initial position per UAV)
 MAX_CLIENTS = 4;
-MAX_WAYPOINTS = 10;
-MAX_TARGETS = MAX_CLIENTS * MAX_WAYPOINTS;
+MAX_TARGETS = MAX_CLIENTS;
 
 % Allocate targets array (MAX_TARGETS x 3)
 targets = zeros(MAX_TARGETS, 3);
 numWaypoints = int32(0);
+totalLoaded  = int32(0);  % pre-declare type for coder.ceval %#ok<NASGU>
 
-% Load targets from YAML config file
+% Load initial UAV positions from scenario CSV
 if coder.target('MATLAB')
-    disp('Loading targets from server.yaml (simulation)...');
-    targetsLoaded = loadTargetsFromYaml('aerpaw/config/server.yaml');
-    totalLoaded = size(targetsLoaded, 1);
-    targets(1:totalLoaded, :) = targetsLoaded(1:totalLoaded, :);
-    numWaypoints = int32(totalLoaded / numClients);
-    disp(['Loaded ', num2str(numWaypoints), ' waypoints per client']);
+    disp('Loading initial positions from scenario.csv (simulation)...');
+    tmpSim = miSim;
+    sc = tmpSim.readScenarioCsv('aerpaw/config/scenario.csv');
+    flatPos = double(sc.initialPositions);  % 1×(3*N) flat vector
+    posMatrix = reshape(flatPos, 3, [])';   % N×3, same layout as initializeFromCsv
+    totalLoaded = int32(size(posMatrix, 1));
+    targets(1:totalLoaded, :) = posMatrix;
+    numWaypoints = int32(1);
+    disp(['Loaded ', num2str(double(totalLoaded)), ' initial positions']);
 else
     coder.cinclude('controller_impl.h');
-    % Define filename as null-terminated character array for C compatibility
-    filename = ['config/server.yaml', char(0)];
-    % loadTargets fills targets array (column-major for MATLAB compatibility)
-    totalLoaded = int32(0);
-    totalLoaded = coder.ceval('loadTargets', coder.ref(filename), ...
+    filename = ['config/scenario.csv', char(0)];
+    totalLoaded = coder.ceval('loadInitialPositions', coder.ref(filename), ...
                 coder.ref(targets), int32(MAX_TARGETS));
     numWaypoints = totalLoaded / int32(numClients);
 end
+
+% Load guidance scenario from CSV (parameters for guidance_step)
+NUM_SCENARIO_PARAMS = 23;
+MAX_OBSTACLES_CTRL  = int32(8);
+scenarioParams = zeros(1, NUM_SCENARIO_PARAMS);
+obstacleMin    = zeros(MAX_OBSTACLES_CTRL, 3);
+obstacleMax    = zeros(MAX_OBSTACLES_CTRL, 3);
+numObstacles   = int32(0);
+if ~coder.target('MATLAB')
+    coder.cinclude('controller_impl.h');
+    scenarioFilename = ['config/scenario.csv', char(0)];
+    coder.ceval('loadScenario', coder.ref(scenarioFilename), coder.ref(scenarioParams));
+    numObstacles = coder.ceval('loadObstacles', coder.ref(scenarioFilename), ...
+                         coder.ref(obstacleMin), coder.ref(obstacleMax), ...
+                         int32(MAX_OBSTACLES_CTRL));
+end
+% On MATLAB path, scenarioParams and obstacle arrays are left as zeros.
+% guidance_step's MATLAB path loads parameters directly from scenario.csv
+% via sim.initializeFromCsv and does not use these arrays.
 
 % Initialize server
 if coder.target('MATLAB')
@@ -105,8 +124,12 @@ positions = zeros(MAX_CLIENTS, 3);
 if ~coder.target('MATLAB')
     coder.ceval('sendRequestPositions', int32(numClients));
     coder.ceval('recvPositions', int32(numClients), coder.ref(positions), int32(MAX_CLIENTS));
+else
+    % Simulation: seed positions from CSV waypoints so agents don't start at origin
+    positions(1:totalLoaded, :) = targets(1:totalLoaded, :);
 end
-guidance_step(positions(1:numClients, :), true);
+guidance_step(positions(1:numClients, :), true, ...
+              scenarioParams, obstacleMin, obstacleMax, numObstacles);
 
 % Main guidance loop
 for step = 1:MAX_GUIDANCE_STEPS
@@ -117,7 +140,8 @@ for step = 1:MAX_GUIDANCE_STEPS
     end
 
     % Run one guidance step: feed GPS positions in, get targets out
-    nextPositions = guidance_step(positions(1:numClients, :), false);
+    nextPositions = guidance_step(positions(1:numClients, :), false, ...
+                                  scenarioParams, obstacleMin, obstacleMax, numObstacles);
 
     % Send target to each client (no ACK/READY expected in guidance mode)
     for i = 1:numClients
@@ -127,6 +151,11 @@ for step = 1:MAX_GUIDANCE_STEPS
         else
             disp(['[guidance] target UAV ', num2str(i), ': ', num2str(target)]);
         end
+    end
+
+    % Simulation: advance positions to guidance outputs for closed-loop feedback
+    if coder.target('MATLAB')
+        positions(1:numClients, :) = nextPositions(1:numClients, :);
     end
 
     % Wait for the guidance rate interval before the next iteration

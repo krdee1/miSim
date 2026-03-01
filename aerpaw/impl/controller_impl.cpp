@@ -113,6 +113,255 @@ int loadTargets(const char* filename, double* targets, int maxClients) {
     return count;
 }
 
+// ---------------------------------------------------------------------------
+// Scenario CSV loading
+// ---------------------------------------------------------------------------
+
+// Split a CSV data row into fields, respecting quoted commas.
+// Inserts NUL terminators into `line` in place.
+// Returns the number of fields found.
+static int splitCSVRow(char* line, char** fields, int maxFields) {
+    int n = 0;
+    bool inQuote = false;
+    if (n < maxFields) fields[n++] = line;
+    for (char* p = line; *p && *p != '\n' && *p != '\r'; ++p) {
+        if (*p == '"') {
+            inQuote = !inQuote;
+        } else if (*p == ',' && !inQuote && n < maxFields) {
+            *p = '\0';
+            fields[n++] = p + 1;
+        }
+    }
+    // NUL-terminate the last field (strip trailing newline)
+    for (char* p = fields[n - 1]; *p; ++p) {
+        if (*p == '\n' || *p == '\r') { *p = '\0'; break; }
+    }
+    return n;
+}
+
+// Trim leading/trailing ASCII whitespace and remove enclosing double-quotes.
+// Modifies the string in place and returns the start of the trimmed content.
+static char* trimField(char* s) {
+    // Trim leading whitespace
+    while (*s == ' ' || *s == '\t') ++s;
+    // Remove enclosing quotes
+    size_t len = strlen(s);
+    if (len >= 2 && s[0] == '"' && s[len - 1] == '"') {
+        s[len - 1] = '\0';
+        ++s;
+    }
+    // Trim trailing whitespace
+    char* end = s + strlen(s) - 1;
+    while (end > s && (*end == ' ' || *end == '\t')) { *end-- = '\0'; }
+    return s;
+}
+
+// Open scenario.csv, skip the header row, return the data row in `line`.
+// Returns 1 on success, 0 on failure.
+static int readScenarioDataRow(const char* filename, char* line, int lineSize) {
+    FILE* f = fopen(filename, "r");
+    if (!f) {
+        std::cerr << "loadScenario: cannot open " << filename << "\n";
+        return 0;
+    }
+    // Skip header row
+    if (!fgets(line, lineSize, f)) { fclose(f); return 0; }
+    // Read data row
+    int ok = (fgets(line, lineSize, f) != NULL);
+    fclose(f);
+    return ok ? 1 : 0;
+}
+
+// Load guidance parameters from scenario.csv into flat params[NUM_SCENARIO_PARAMS].
+// Index mapping (0-based):
+//   0-13 : timestep, maxIter, minAlt, discretizationStep, protectedRange,
+//           initialStepSize, barrierGain, barrierExponent, collisionRadius,
+//           comRange, alphaDist, betaDist, alphaTilt, betaTilt
+//   14-16: domainMin  (east, north, up)
+//   17-19: domainMax  (east, north, up)
+//   20-21: objectivePos (east, north)
+// Returns 1 on success, 0 on failure.
+int loadScenario(const char* filename, double* params) {
+    char line[4096];
+    if (!readScenarioDataRow(filename, line, sizeof(line))) return 0;
+
+    char copy[4096];
+    strncpy(copy, line, sizeof(copy) - 1);
+    copy[sizeof(copy) - 1] = '\0';
+
+    char* fields[32];
+    int nf = splitCSVRow(copy, fields, 32);
+    if (nf < 21) {
+        fprintf(stderr, "loadScenario: expected >=21 columns, got %d\n", nf);
+        return 0;
+    }
+
+    // Scalar fields (columns 0–13)
+    for (int i = 0; i < 14; i++) {
+        params[i] = atof(trimField(fields[i]));
+    }
+
+    // domainMin: column 14, format "east, north, up"
+    {
+        char tmp[256]; strncpy(tmp, fields[14], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        char* t = trimField(tmp);
+        if (sscanf(t, "%lf , %lf , %lf", &params[14], &params[15], &params[16]) != 3) {
+            fprintf(stderr, "loadScenario: failed to parse domainMin: %s\n", t);
+            return 0;
+        }
+    }
+
+    // domainMax: column 15
+    {
+        char tmp[256]; strncpy(tmp, fields[15], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        char* t = trimField(tmp);
+        if (sscanf(t, "%lf , %lf , %lf", &params[17], &params[18], &params[19]) != 3) {
+            fprintf(stderr, "loadScenario: failed to parse domainMax: %s\n", t);
+            return 0;
+        }
+    }
+
+    // objectivePos: column 16
+    {
+        char tmp[256]; strncpy(tmp, fields[16], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        char* t = trimField(tmp);
+        if (sscanf(t, "%lf , %lf", &params[20], &params[21]) != 2) {
+            fprintf(stderr, "loadScenario: failed to parse objectivePos: %s\n", t);
+            return 0;
+        }
+    }
+
+    // sensorPerformanceMinimum: column 17
+    {
+        char tmp[64]; strncpy(tmp, fields[17], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[22] = atof(trimField(tmp));
+    }
+
+    printf("Loaded scenario: domain [%g,%g,%g] to [%g,%g,%g]\n",
+           params[14], params[15], params[16], params[17], params[18], params[19]);
+    return 1;
+}
+
+// Load initial UAV positions from scenario.csv (column 17: initialPositions).
+// targets is a column-major [maxClients x 3] array (same layout as loadTargets):
+//   targets[i + 0*maxClients] = east
+//   targets[i + 1*maxClients] = north
+//   targets[i + 2*maxClients] = up
+// Returns number of positions loaded.
+int loadInitialPositions(const char* filename, double* targets, int maxClients) {
+    char line[4096];
+    if (!readScenarioDataRow(filename, line, sizeof(line))) return 0;
+
+    char copy[4096];
+    strncpy(copy, line, sizeof(copy) - 1);
+    copy[sizeof(copy) - 1] = '\0';
+
+    char* fields[32];
+    int nf = splitCSVRow(copy, fields, 32);
+    if (nf < 19) {
+        fprintf(stderr, "loadInitialPositions: expected >=19 columns, got %d\n", nf);
+        return 0;
+    }
+
+    // Column 18: initialPositions flat "x1,y1,z1, x2,y2,z2, ..."
+    char tmp[1024]; strncpy(tmp, fields[18], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+    char* t = trimField(tmp);
+
+    double vals[3 * 4];  // up to MAX_CLIENTS triples
+    int parsed = 0;
+    char* tok = strtok(t, ",");
+    while (tok && parsed < 3 * maxClients) {
+        vals[parsed++] = atof(tok);
+        tok = strtok(nullptr, ",");
+    }
+
+    int count = parsed / 3;
+    for (int i = 0; i < count; i++) {
+        targets[i + 0 * maxClients] = vals[i * 3 + 0];  // east
+        targets[i + 1 * maxClients] = vals[i * 3 + 1];  // north
+        targets[i + 2 * maxClients] = vals[i * 3 + 2];  // up
+    }
+
+    printf("Loaded %d initial position(s) from scenario\n", count);
+    return count;
+}
+
+// Load obstacle bounding-box corners from scenario.csv.
+// Columns used: 18 (numObstacles), 19 (obstacleMin flat), 20 (obstacleMax flat).
+// obstacleMin and obstacleMax are column-major [maxObstacles x 3] arrays:
+//   obstacleMin[obs + 0*maxObstacles] = east_min
+//   obstacleMin[obs + 1*maxObstacles] = north_min
+//   obstacleMin[obs + 2*maxObstacles] = up_min
+// Returns number of obstacles loaded (0 if none or on error).
+int loadObstacles(const char* filename, double* obstacleMin, double* obstacleMax,
+                  int maxObstacles) {
+    char line[4096];
+    if (!readScenarioDataRow(filename, line, sizeof(line))) return 0;
+
+    char copy[4096];
+    strncpy(copy, line, sizeof(copy) - 1);
+    copy[sizeof(copy) - 1] = '\0';
+
+    char* fields[32];
+    int nf = splitCSVRow(copy, fields, 32);
+    if (nf < 22) return 0;
+
+    // Column 19: numObstacles
+    int n = (int)atof(trimField(fields[19]));
+    if (n <= 0) return 0;
+    if (n > maxObstacles) {
+        fprintf(stderr, "loadObstacles: %d obstacles exceeds MAX_OBSTACLES=%d\n", n, maxObstacles);
+        n = maxObstacles;
+    }
+
+    // Column 20: obstacleMin flat "x0,y0,z0, x1,y1,z1, ..."
+    {
+        char tmp[1024]; strncpy(tmp, fields[20], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        char* t = trimField(tmp);
+        double vals[3 * 8];  // up to MAX_OBSTACLES triples
+        int parsed = 0;
+        char* tok = strtok(t, ",");
+        while (tok && parsed < 3 * n) {
+            vals[parsed++] = atof(tok);
+            tok = strtok(nullptr, ",");
+        }
+        if (parsed < 3 * n) {
+            fprintf(stderr, "loadObstacles: obstacleMin has fewer values than expected\n");
+            return 0;
+        }
+        for (int obs = 0; obs < n; obs++) {
+            obstacleMin[obs + 0 * maxObstacles] = vals[obs * 3 + 0];  // east
+            obstacleMin[obs + 1 * maxObstacles] = vals[obs * 3 + 1];  // north
+            obstacleMin[obs + 2 * maxObstacles] = vals[obs * 3 + 2];  // up
+        }
+    }
+
+    // Column 21: obstacleMax flat
+    {
+        char tmp[1024]; strncpy(tmp, fields[21], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        char* t = trimField(tmp);
+        double vals[3 * 8];
+        int parsed = 0;
+        char* tok = strtok(t, ",");
+        while (tok && parsed < 3 * n) {
+            vals[parsed++] = atof(tok);
+            tok = strtok(nullptr, ",");
+        }
+        if (parsed < 3 * n) {
+            fprintf(stderr, "loadObstacles: obstacleMax has fewer values than expected\n");
+            return 0;
+        }
+        for (int obs = 0; obs < n; obs++) {
+            obstacleMax[obs + 0 * maxObstacles] = vals[obs * 3 + 0];
+            obstacleMax[obs + 1 * maxObstacles] = vals[obs * 3 + 1];
+            obstacleMax[obs + 2 * maxObstacles] = vals[obs * 3 + 2];
+        }
+    }
+
+    printf("Loaded %d obstacle(s) from scenario\n", n);
+    return n;
+}
+
 // Message type names for logging
 static const char* messageTypeName(uint8_t msgType) {
     switch (msgType) {

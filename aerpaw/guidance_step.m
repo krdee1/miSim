@@ -1,67 +1,52 @@
-function nextPositions = guidance_step(currentPositions, isInit)
+function nextPositions = guidance_step(currentPositions, isInit, ...
+                                       scenarioParams, ...
+                                       obstacleMin, obstacleMax, numObstacles)
 % guidance_step  One step of the miSim sensing coverage guidance algorithm.
 %
 % Wraps the miSim gradient-ascent + CBF motion algorithm for AERPAW.
 % Holds full simulation state in a persistent variable between calls.
 %
 % Usage (from controller.m):
-%   guidance_step(initPositions, true)         % first call: initialise state
-%   nextPos = guidance_step(gpsPos, false)     % subsequent calls: run one step
+%   guidance_step(initPositions, true,  scenarioParams, obstacleMin, obstacleMax, numObstacles)
+%   nextPos = guidance_step(gpsPos, false, scenarioParams, obstacleMin, obstacleMax, numObstacles)
 %
 % Inputs:
 %   currentPositions  (MAX_CLIENTS × 3) double  ENU [east north up] metres
 %   isInit            (1,1)             logical  true on first call only
+%   scenarioParams    (1 × NUM_SCENARIO_PARAMS) double
+%                       Flat array of guidance parameters (compiled path).
+%                       On MATLAB path this is ignored; parameters are loaded
+%                       from scenario.csv via initializeFromCsv instead.
+%                       Index mapping (1-based):
+%                         1  timestep            9  collisionRadius
+%                         2  maxIter            10  comRange
+%                         3  minAlt             11  alphaDist
+%                         4  discretizationStep 12  betaDist
+%                         5  protectedRange     13  alphaTilt
+%                         6  initialStepSize    14  betaTilt
+%                         7  barrierGain        15-17 domainMin
+%                         8  barrierExponent    18-20 domainMax
+%                                               21-22 objectivePos
+%                                               23    sensorPerformanceMinimum
+%   obstacleMin       (MAX_OBSTACLES × 3) double  column-major obstacle corners (compiled path)
+%   obstacleMax       (MAX_OBSTACLES × 3) double
+%   numObstacles      (1,1) int32                 actual obstacle count
 %
 % Output:
 %   nextPositions     (MAX_CLIENTS × 3) double  guidance targets, ENU metres
 %
 % Codegen notes:
 %   - Persistent variable 'sim' holds the miSim object between calls.
-%   - Plotting/video are disabled (makePlots=false, makeVideo=false) for
-%     deployment. The coder.target('MATLAB') guards in the miSim/agent
-%     class files must be in place before codegen will succeed.
-%   - objectiveFunctionWrapper returns a function handle which is not
-%     directly codegen-compatible; the MATLAB path uses it normally. The
-%     compiled path requires an equivalent C impl (see TODO below).
+%   - On MATLAB path isInit uses sim.initializeFromCsv (file I/O, not compiled).
+%   - On compiled path isInit uses scenarioParams + obstacle arrays directly.
+%   - Plotting/video are disabled (makePlots=false, makeVideo=false).
 
-coder.extrinsic('disp', 'objectiveFunctionWrapper');
+coder.extrinsic('disp', 'objectiveFunctionWrapper', 'initializeFromCsv');
 
-% =========================================================================
-% Tunable guidance parameters — adjust here and recompile as needed.
-% =========================================================================
 MAX_CLIENTS = int32(4);      % must match MAX_CLIENTS in controller.m
 
-% Domain bounds in ENU metres [east, north, up]
-DOMAIN_MIN = [  0.0,   0.0,  25.0];
-DOMAIN_MAX = [ 20.0,  20.0,  55.0];
-MIN_ALT    = 25.0;           % hard altitude floor (m)
-
-% Sensing objective: bivariate Gaussian centred at [east, north]
-OBJECTIVE_GROUND_POS = [10.0, 10.0];
-DISCRETIZATION_STEP  = 0.1;  % objective grid step (m) — coarser = faster
-PROTECTED_RANGE      = 1.0;  % objective centre must be >this from domain edge
-
-% Agent safety geometry
-COLLISION_RADIUS = 3.0;      % spherical collision radius (m)
-COMMS_RANGE      = 60.0;     % communications range (m)
-
-% Gradient-ascent parameters
-INITIAL_STEP_SIZE = 1;     % step size at iteration 0 (decays to 0 at MAX_ITER)
-MAX_ITER          = 100;     % guidance steps (sets decay rate)
-
-% Sensor model (sigmoidSensor)
-ALPHA_DIST = 60.0;           % effective sensing distance (m) — set beyond max domain slant range (~53 m)
-BETA_DIST  = 0.2;            % distance sigmoid steepness — gentle, tilt drives the coverage gradient
-ALPHA_TILT = 10.0;           % max useful tilt angle (degrees)
-BETA_TILT  = 1.0;            % tilt sigmoid steepness
-
-% Safety filter — Control Barrier Function (CBF/QP)
-BARRIER_GAIN     = 100;
-BARRIER_EXPONENT = 3;
-
-% Simulation timestep (s) — should match GUIDANCE_RATE_MS / 1000 in controller.m
-TIMESTEP = 5.0;
-% =========================================================================
+% Path to scenario CSV — used on MATLAB path only (not compiled)
+SCENARIO_CSV = 'aerpaw/config/scenario.csv';
 
 persistent sim;
 if isempty(sim)
@@ -76,22 +61,42 @@ numAgents = int32(size(currentPositions, 1));
 if isInit
     if coder.target('MATLAB')
         disp('[guidance_step] Initialising simulation...');
-    end
 
-    % --- Build domain geometry ---
-    dom = rectangularPrism;
-    dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Domain");
+        % MATLAB path: load all parameters and obstacles from scenario CSV.
+        % initializeFromCsv reads the file, builds domain/agents/obstacles,
+        % and calls sim.initialize internally.
+        sim = sim.initializeFromCsv(SCENARIO_CSV);
 
-    % --- Build sensing objective ---
-    dom.objective = sensingObjective;
-    if coder.target('MATLAB')
-        % objectiveFunctionWrapper returns a function handle — MATLAB only.
-        objFcn = objectiveFunctionWrapper(OBJECTIVE_GROUND_POS, 3*eye(2));
-        dom.objective = dom.objective.initialize(objFcn, dom, ...
-            DISCRETIZATION_STEP, PROTECTED_RANGE);
+        disp('[guidance_step] Initialisation complete.');
     else
-        % Evaluate bivariate Gaussian inline (codegen-compatible; no function handle).
-        % Must build the same grid that initializeWithValues uses internally.
+        % ================================================================
+        % Compiled path: unpack scenarioParams array and obstacle arrays.
+        % ================================================================
+        TIMESTEP            = scenarioParams(1);
+        MAX_ITER            = int32(scenarioParams(2));
+        MIN_ALT             = scenarioParams(3);
+        DISCRETIZATION_STEP = scenarioParams(4);
+        PROTECTED_RANGE     = scenarioParams(5);
+        INITIAL_STEP_SIZE   = scenarioParams(6);
+        BARRIER_GAIN        = scenarioParams(7);
+        BARRIER_EXPONENT    = scenarioParams(8);
+        COLLISION_RADIUS    = scenarioParams(9);
+        COMMS_RANGE         = scenarioParams(10);
+        ALPHA_DIST          = scenarioParams(11);
+        BETA_DIST           = scenarioParams(12);
+        ALPHA_TILT          = scenarioParams(13);
+        BETA_TILT           = scenarioParams(14);
+        DOMAIN_MIN                  = scenarioParams(15:17);
+        DOMAIN_MAX                  = scenarioParams(18:20);
+        OBJECTIVE_GROUND_POS        = scenarioParams(21:22);
+        SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(23);
+
+        % --- Build domain geometry ---
+        dom = rectangularPrism;
+        dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Domain");
+
+        % --- Build sensing objective (inline Gaussian; codegen-compatible) ---
+        dom.objective = sensingObjective;
         xGrid = unique([DOMAIN_MIN(1):DISCRETIZATION_STEP:DOMAIN_MAX(1), DOMAIN_MAX(1)]);
         yGrid = unique([DOMAIN_MIN(2):DISCRETIZATION_STEP:DOMAIN_MAX(2), DOMAIN_MAX(2)]);
         [gridX, gridY] = meshgrid(xGrid, yGrid);
@@ -99,33 +104,39 @@ if isInit
         dy = gridY - OBJECTIVE_GROUND_POS(2);
         objValues = exp(-0.5 * (dx .* dx + dy .* dy));
         dom.objective = dom.objective.initializeWithValues(objValues, dom, ...
-            DISCRETIZATION_STEP, PROTECTED_RANGE);
-    end
+            DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
 
-    % --- Build shared sensor model ---
-    sensor = sigmoidSensor;
-    sensor = sensor.initialize(ALPHA_DIST, BETA_DIST, ALPHA_TILT, BETA_TILT);
+        % --- Build shared sensor model ---
+        sensor = sigmoidSensor;
+        sensor = sensor.initialize(ALPHA_DIST, BETA_DIST, ALPHA_TILT, BETA_TILT);
 
-    % --- Initialise agents from GPS positions ---
-    agentList = cell(numAgents, 1);
-    for ii = 1:numAgents
-        pos  = currentPositions(ii, :);
-        geom = spherical;
-        geom = geom.initialize(pos, COLLISION_RADIUS, REGION_TYPE.COLLISION, ...
-                               sprintf("UAV %d Collision", ii));
-        ag = agent;
-        ag = ag.initialize(pos, geom, sensor, COMMS_RANGE, MAX_ITER, ...
-                           INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
-        agentList{ii} = ag;
-    end
+        % --- Initialise agents from GPS positions ---
+        agentList = cell(numAgents, 1);
+        for ii = 1:numAgents
+            pos  = currentPositions(ii, :);
+            geom = spherical;
+            geom = geom.initialize(pos, COLLISION_RADIUS, REGION_TYPE.COLLISION, ...
+                                   sprintf("UAV %d Collision", ii));
+            ag = agent;
+            ag = ag.initialize(pos, geom, sensor, COMMS_RANGE, MAX_ITER, ...
+                               INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
+            agentList{ii} = ag;
+        end
 
-    % --- Initialise simulation (plots and video disabled) ---
-    sim = miSim;
-    sim = sim.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
-                         MIN_ALT, TIMESTEP, MAX_ITER, cell(0, 1), false, false);
+        % --- Build obstacle list from flat arrays ---
+        coder.varsize('obstacleList', [8, 1], [1, 0]);
+        obstacleList = cell(int32(0), 1);
+        for ii = 1:numObstacles
+            obs = rectangularPrism;
+            obs = obs.initialize([obstacleMin(ii, :); obstacleMax(ii, :)], ...
+                                 REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii));
+            obstacleList{ii} = obs;
+        end
 
-    if coder.target('MATLAB')
-        disp('[guidance_step] Initialisation complete.');
+        % --- Initialise simulation (plots and video disabled) ---
+        sim = miSim;
+        sim = sim.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
+                             MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false);
     end
 
     % On the init call return current positions unchanged

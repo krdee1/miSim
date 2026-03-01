@@ -49,7 +49,13 @@ function [obj] = constrainMotion(obj)
             r_sum_ij = obj.agents{ii}.collisionGeometry.radius + obj.agents{jj}.collisionGeometry.radius;
             v_max_ij = max(obj.agents{ii}.initialStepSize, obj.agents{jj}.initialStepSize) / obj.timestep;
             slack = -(4 * r_sum_ij * v_max_ij / obj.barrierGain)^(1 / obj.barrierExponent);
-            b(kk) = obj.barrierGain * max(slack, h(ii, jj))^obj.barrierExponent;
+            if norm(A(kk, :)) < 1e-9
+                % Agents are coincident: A-row is zero, so b < 0 would make
+                % 0 ≤ b unsatisfiable. Fall back to b = 0 (no correction possible).
+                b(kk) = 0;
+            else
+                b(kk) = obj.barrierGain * max(slack, h(ii, jj))^obj.barrierExponent;
+            end
             kk = kk + 1;
         end
     end

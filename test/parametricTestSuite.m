@@ -27,6 +27,43 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
     methods (Test)
         % Test cases
+        function test_scenario(tc)
+            % Load scenario definition
+            tc.csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv");
+            params = tc.testClass.readScenarioCsv(tc.csvPath);
+
+            % Define scenario according to CSV specification
+            tc.domain = tc.domain.initialize([params.domainMin; params.domainMax], REGION_TYPE.DOMAIN, "Domain");
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos), tc.domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
+
+            agents = cell(size(params.initialPositions, 2) / 3, 1);
+            for ii = 1:size(agents, 1)
+                agents{ii} = agent;
+
+                sensorModel = sigmoidSensor;
+                sensorModel = sensorModel.initialize(params.alphaDist, params.betaDist, params.alphaTilt, params.betaTilt);
+
+                collisionGeometry = spherical;
+                collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius, REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
+
+                agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange, params.maxIter, params.initialStepSize, sprintf("Agent %d", ii), tc.plotCommsGeometry);
+            end
+
+            % TODO
+            obstacles = {};
+
+            % Set up simulation
+            tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain, params.barrierExponent, params.minAlt, params.timestep, params.maxIter, obstacles, tc.makePlots, tc.makeVideo);
+
+            % Save simulation parameters to output file
+            tc.testClass.writeInits();
+
+            % Run
+            tc.testClass = tc.testClass.run();
+
+            % Cleanup
+            tc.testClass = tc.testClass.teardown();
+        end
         function csv_parametric_tests_random_agents(tc)
             % Read in parameters to iterate over
             params = tc.testClass.readScenarioCsv(tc.csvPath);

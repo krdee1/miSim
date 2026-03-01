@@ -1,6 +1,6 @@
 function scenario = readScenarioCsv(obj, csvPath)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')};
+        obj (1, 1) {mustBeA(obj, 'miSim')}; %#ok<INUSA>
         csvPath (1, 1) string;
     end
     arguments (Output)
@@ -8,27 +8,62 @@ function scenario = readScenarioCsv(obj, csvPath)
     end
 
     % File input validation
-    assert(isfile(csvPath), "%s is not a valid filepath.");
-    assert(endsWith(csvPath, ".csv"), "%s is not a CSV file.");
+    assert(isfile(csvPath), "%s is not a valid filepath.", csvPath);
+    assert(endsWith(csvPath, ".csv"), "%s is not a CSV file.", csvPath);
 
-    % Read file
-    csv = readtable(csvPath, "TextType", "String", "NumHeaderLines", 0, "VariableNamingRule", "Preserve");
-    csv.Properties.VariableNames = ["timestep", "maxIter", "minAlt", "discretizationStep", "protectedRange", "sensorPerformanceMinimum", "initialStepSize", "barrierGain", "barrierExponent", "numObstacles", "numAgents", "collisionRadius", "comRange", "alphaDist", "betaDist", "alphaTilt", "betaTilt"];
-    
-    for ii = 1:size(csv.Properties.VariableNames, 2)
-        csv.(csv.Properties.VariableNames{ii}) = cell2mat(cellfun(@(x) str2num(x), csv.(csv.Properties.VariableNames{ii}), "UniformOutput", false));
+    % Read the first two lines directly — avoids readtable's quoting
+    % requirement that '"' must immediately follow ',' (no leading space).
+    fid = fopen(csvPath, 'r');
+    headerLine = fgetl(fid);
+    dataLine   = fgetl(fid);
+    fclose(fid);
+
+    assert(ischar(headerLine) && ischar(dataLine), ...
+        "CSV must have a header row and at least one data row.");
+
+    % Parse header: simple comma split + trim (no quoting expected in names)
+    headers = strtrim(strsplit(headerLine, ','));
+
+    % Parse data row: comma split that respects double-quoted fields
+    fields = splitQuotedCSV(dataLine);
+
+    assert(numel(fields) == numel(headers), ...
+        "CSV data row has %d fields but header has %d columns.", ...
+        numel(fields), numel(headers));
+
+    % Build output struct: strip outer quotes, trim whitespace, convert to numeric.
+    % str2num handles scalar ("5") and vector ("1.0, 2.0, 3.0") fields alike.
+    % Empty fields ("") become [] via str2num('') == [].
+    scenario = struct();
+    for ii = 1:numel(headers)
+        raw = strtrim(stripQuotes(fields{ii}));
+        scenario.(headers{ii}) = str2num(raw); %#ok<ST2NM>
     end
-    
-    % Put params into standard structure
-    scenario = struct("timestep", csv.timestep, "maxIter", csv.maxIter, "minAlt", csv.minAlt, "discretizationStep", csv.discretizationStep, ...
-                      "protectedRange", csv.protectedRange, "sensorPerformanceMinimum", csv.sensorPerformanceMinimum, "initialStepSize", csv.initialStepSize, ...
-                      "barrierGain", csv.barrierGain, "barrierExponent", csv.barrierExponent, "numObstacles", csv.numObstacles,...
-                      "numAgents", csv.numAgents, "collisionRadius", csv.collisionRadius, "comRange", csv.comRange, "alphaDist", csv.alphaDist, ...
-                      "betaDist", csv.betaDist, "alphaTilt", csv.alphaTilt, "betaTilt", csv.betaTilt);
+end
 
-    % size check
-    fns = fieldnames(scenario);
-    for ii = 2:size(fns, 1)
-        assert(size(scenario.(fns{ii}), 1) == size(scenario.(fns{ii - 1}), 1), "Mismatched number of rows in scenario definition CSV");
+% -------------------------------------------------------------------------
+function fields = splitQuotedCSV(line)
+% Split a CSV row by commas, respecting double-quoted fields.
+% Fields may have leading/trailing whitespace around quotes.
+    fields = {};
+    inQuote = false;
+    start = 1;
+    for ii = 1:length(line)
+        if line(ii) == '"'
+            inQuote = ~inQuote;
+        elseif line(ii) == ',' && ~inQuote
+            fields{end+1} = line(start:ii-1); %#ok<AGROW>
+            start = ii + 1;
+        end
+    end
+    fields{end+1} = line(start:end);
+end
+
+% -------------------------------------------------------------------------
+function s = stripQuotes(s)
+% Trim whitespace then remove a single layer of enclosing double-quotes.
+    s = strtrim(s);
+    if length(s) >= 2 && s(1) == '"' && s(end) == '"'
+        s = s(2:end-1);
     end
 end
