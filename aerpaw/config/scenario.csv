@@ -1,0 +1,2 @@
+timestep, maxIter, minAlt, discretizationStep, protectedRange, initialStepSize, barrierGain, barrierExponent, collisionRadius, comRange, alphaDist, betaDist, alphaTilt, betaTilt, domainMin, domainMax, objectivePos, sensorPerformanceMinimum, initialPositions, numObstacles, obstacleMin, obstacleMax
+5, 100, 25.0, 0.1, 1.0, 1.0, 100, 3, 3.0, 60.0, 60.0, 0.2, 10.0, 1.0, "0.0, 0.0, 0.0", "20.0, 20.0, 55.0", "10.0, 10.0", 1e-6, "5.0, 10.0, 45.0, 15.0, 10.0, 30.0", 0, "", ""
