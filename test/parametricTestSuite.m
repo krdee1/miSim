@@ -27,7 +27,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
     methods (Test)
         % Test cases
-        function test_scenario(tc)
+        function test_AERPAW_scenario(tc)
             % Load scenario definition
             tc.csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv");
             params = tc.testClass.readScenarioCsv(tc.csvPath);

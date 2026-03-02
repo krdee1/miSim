@@ -79,7 +79,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
     % Guard against near-zero gradient: when sensor performance is saturated
     % or near-zero across the whole partition, rateFactor -> Inf and pNext
     % explodes. Stay put instead.
-    if gradNorm < 1e-10
+    if gradNorm < 1e-100
         pNext = obj.pos;
     else
         pNext = obj.pos + (targetRate / gradNorm) * gradC;
