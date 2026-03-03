@@ -9,7 +9,7 @@ seaToGroundLevel = 110; % meters, measured approximately from USGS national map 
 lla0 = [35.72550610629396, -78.70019657805574, seaToGroundLevel]; % origin (LLA)
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test5", "*.csv"));
+gpsCsvs = dir(fullfile("sandbox", "test6", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
@@ -22,8 +22,8 @@ for ii = 1:size(gpsCsvs, 1)
     verticalSpeed = movmean(abs(diff(G{ii}.Altitude)), [10, 0]);
 
     % Automatically detect start/stop of algorithm flight (ignore takeoff, setup, return to liftoff, landing segments of flight)
-    startIdx = find(verticalSpeed <= prctile(verticalSpeed, 25), 1, 'first'); % 25 pct threshold may need adjusting
-    stopIdx = find(verticalSpeed <= prctile(verticalSpeed, 25), 1, 'last');
+    startIdx = find(verticalSpeed <= prctile(verticalSpeed, 90), 1, 'first'); % 25 pct threshold may need adjusting
+    stopIdx = find(verticalSpeed <= prctile(verticalSpeed, 90), 1, 'last');
 
     % % Plot whole flight, including setup/cleanup
     % startIdx = 1;
