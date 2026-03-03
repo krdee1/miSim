@@ -41,9 +41,6 @@ int loadObstacles(const char* filename,
                   double* obstacleMax,
                   int maxObstacles);
 
-// User interaction
-void waitForUserInput();
-
 // Binary protocol operations
 int sendMessageType(int clientId, int msgType);
 int sendTarget(int clientId, const double* coords);
