@@ -79,7 +79,6 @@ classdef miSim
         [obj] = plotH(obj);
         [obj] = updatePlots(obj);
         [obj] = teardown(obj);
-        inits = readScenarioCsv(csvPath);
         writeInits(obj);
         validate(obj);
     end
