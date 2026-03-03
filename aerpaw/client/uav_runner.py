@@ -229,13 +229,18 @@ class UAVRunner(BasicRunner):
                     target = self.origin + VectorNED(north=enu_y, east=enu_x, down=-enu_z)
 
                     if in_guidance:
-                        # Guidance mode: non-blocking — cancel previous nav and start new
+                        # Guidance mode (event-triggered): navigate to target,
+                        # then send ACK once arrived so the controller knows
+                        # all UAVs have reached their targets before it
+                        # requests positions and computes the next step.
                         print(f"[UAV] Guidance TARGET: E={enu_x:.1f} N={enu_y:.1f} U={enu_z:.1f}")
                         if nav_task and not nav_task.done():
                             nav_task.cancel()
                             await asyncio.gather(nav_task, return_exceptions=True)
-                        nav_task = asyncio.create_task(drone.goto_coordinates(target))
-                        # No ACK/READY in guidance mode
+                        await drone.goto_coordinates(target)
+                        await send_message_type(writer, MessageType.ACK)
+                        print("[UAV] Sent ACK (arrived at guidance target)")
+                        nav_task = None
                     else:
                         # Sequential mode: ACK → navigate → READY
                         waypoint_num += 1

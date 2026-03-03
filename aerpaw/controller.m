@@ -78,7 +78,7 @@ for w = 1:numWaypoints
         target = targets(targetIdx, :);
 
         if coder.target('MATLAB')
-            disp(['Sending TARGET to client ', num2str(i), ' (waypoint ', num2str(w), '): ', ...
+            disp([datestr(now, 'HH:MM:SS'), ' Sending TARGET to client ', num2str(i), ' (waypoint ', num2str(w), '): ', ...
                   num2str(target(1)), ',', num2str(target(2)), ',', num2str(target(3))]);
         else
             coder.ceval('sendTarget', int32(i), coder.ref(target));
@@ -105,7 +105,6 @@ end
 % ---- Phase 2: miSim guidance loop ----------------------------------------
 % Guidance parameters (adjust here and recompile as needed)
 MAX_GUIDANCE_STEPS = int32(100); % number of guidance iterations
-GUIDANCE_RATE_MS   = int32(5000); % ms between iterations (0.2 Hz default)
 
 % Enter guidance mode on all clients
 if ~coder.target('MATLAB')
@@ -124,36 +123,37 @@ end
 guidance_step(positions(1:numClients, :), true, ...
               scenarioParams, obstacleMin, obstacleMax, numObstacles);
 
-% Main guidance loop
+% Main guidance loop (event-triggered)
 for step = 1:MAX_GUIDANCE_STEPS
-    % Query current GPS positions from all clients
-    if ~coder.target('MATLAB')
-        coder.ceval('sendRequestPositions', int32(numClients));
-        coder.ceval('recvPositions', int32(numClients), coder.ref(positions), int32(MAX_CLIENTS));
-    end
-
-    % Run one guidance step: feed GPS positions in, get targets out
+    % Run one guidance step: feed current GPS positions in, get targets out
     nextPositions = guidance_step(positions(1:numClients, :), false, ...
                                   scenarioParams, obstacleMin, obstacleMax, numObstacles);
 
-    % Send target to each client (no ACK/READY expected in guidance mode)
+    % Send target to each client
     for i = 1:numClients
         target = nextPositions(i, :);
         if ~coder.target('MATLAB')
             coder.ceval('sendTarget', int32(i), coder.ref(target));
         else
-            disp(['[guidance] target UAV ', num2str(i), ': ', num2str(target)]);
+            disp([datestr(now, 'HH:MM:SS'), ' [guidance] target UAV ', num2str(i), ': ', num2str(target)]);
         end
     end
 
-    % Simulation: advance positions to guidance outputs for closed-loop feedback
-    if coder.target('MATLAB')
-        positions(1:numClients, :) = nextPositions(1:numClients, :);
+    % Wait for ACK from all clients (each UAV ACKs when it arrives at its target)
+    if ~coder.target('MATLAB')
+        coder.ceval('waitForAllMessageType', int32(numClients), ...
+                    int32(MESSAGE_TYPE.ACK));
+    else
+        disp(['[guidance] step ', num2str(step), ': all UAVs arrived']);
     end
 
-    % Wait for the guidance rate interval before the next iteration
+    % Request current GPS positions from all clients
     if ~coder.target('MATLAB')
-        coder.ceval('sleepMs', int32(GUIDANCE_RATE_MS));
+        coder.ceval('sendRequestPositions', int32(numClients));
+        coder.ceval('recvPositions', int32(numClients), coder.ref(positions), int32(MAX_CLIENTS));
+    else
+        % Simulation: advance positions to guidance outputs for closed-loop feedback
+        positions(1:numClients, :) = nextPositions(1:numClients, :);
     end
 end
 

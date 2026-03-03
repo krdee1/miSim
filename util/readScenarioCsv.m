@@ -1,6 +1,5 @@
-function scenario = readScenarioCsv(obj, csvPath)
+function scenario = readScenarioCsv(csvPath)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, 'miSim')}; %#ok<INUSA>
         csvPath (1, 1) string;
     end
     arguments (Output)

@@ -419,7 +419,13 @@ int sendTarget(int clientId, const double* coords) {
         return 0;
     }
 
-    std::cout << "Sent TARGET to client " << clientId << ": "
+    // Timestamp
+    time_t now = time(nullptr);
+    struct tm* lt = localtime(&now);
+    char ts[16];
+    strftime(ts, sizeof(ts), "%H:%M:%S", lt);
+
+    std::cout << ts << " Sent TARGET to client " << clientId << ": "
               << coords[0] << "," << coords[1] << "," << coords[2] << "\n";
     return 1;
 }
