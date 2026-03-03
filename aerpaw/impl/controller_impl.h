@@ -17,8 +17,9 @@ int loadTargets(const char* filename, double* targets, int maxClients);
 
 // Scenario loading (scenario.csv)
 // Number of elements in the flat params array passed to guidance_step.
-// Indices: 0-13 scalars, 14-16 domainMin, 17-19 domainMax, 20-21 objectivePos.
-#define NUM_SCENARIO_PARAMS 23
+// Indices: 0-13 scalars, 14-16 domainMin, 17-19 domainMax, 20-21 objectivePos,
+//          22-25 objectiveVar (2x2 col-major: [v11,v12,v21,v22]), 26 sensorPerformanceMinimum.
+#define NUM_SCENARIO_PARAMS 27
 // Maximum number of obstacles (upper bound for pre-allocated arrays).
 #define MAX_OBSTACLES 8
 

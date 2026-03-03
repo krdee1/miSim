@@ -27,7 +27,8 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %                         7  barrierGain        15-17 domainMin
 %                         8  barrierExponent    18-20 domainMax
 %                                               21-22 objectivePos
-%                                               23    sensorPerformanceMinimum
+%                                               23-26 objectiveVar (2x2, col-major)
+%                                               27    sensorPerformanceMinimum
 %   obstacleMin       (MAX_OBSTACLES × 3) double  column-major obstacle corners (compiled path)
 %   obstacleMax       (MAX_OBSTACLES × 3) double
 %   numObstacles      (1,1) int32                 actual obstacle count
@@ -89,7 +90,8 @@ if isInit
         DOMAIN_MIN                  = scenarioParams(15:17);
         DOMAIN_MAX                  = scenarioParams(18:20);
         OBJECTIVE_GROUND_POS        = scenarioParams(21:22);
-        SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(23);
+        OBJECTIVE_VAR               = reshape(scenarioParams(23:26), 2, 2);
+        SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(27);
 
         % --- Build domain geometry ---
         dom = rectangularPrism;
@@ -102,7 +104,11 @@ if isInit
         [gridX, gridY] = meshgrid(xGrid, yGrid);
         dx = gridX - OBJECTIVE_GROUND_POS(1);
         dy = gridY - OBJECTIVE_GROUND_POS(2);
-        objValues = exp(-0.5 * (dx .* dx + dy .* dy));
+        % Bivariate Gaussian using objectiveVar covariance matrix (avoids inv())
+        ov_a = OBJECTIVE_VAR(1,1); ov_b = OBJECTIVE_VAR(1,2);
+        ov_c = OBJECTIVE_VAR(2,1); ov_d = OBJECTIVE_VAR(2,2);
+        ov_det = ov_a * ov_d - ov_b * ov_c;
+        objValues = exp((-0.5 / ov_det) .* (ov_d .* dx.*dx - (ov_b + ov_c) .* dx.*dy + ov_a .* dy.*dy));
         dom.objective = dom.objective.initializeWithValues(objValues, dom, ...
             DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
 
