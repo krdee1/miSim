@@ -480,12 +480,6 @@ int waitForAllMessageType(int numClients, int expectedType) {
     return 1;
 }
 
-// Wait for user to press Enter
-void waitForUserInput() {
-    std::cout << "Press Enter to continue...\n";
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-}
-
 // Broadcast GUIDANCE_TOGGLE to all clients
 void sendGuidanceToggle(int numClients) {
     for (int i = 1; i <= numClients; i++) {

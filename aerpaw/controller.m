@@ -107,13 +107,6 @@ end
 MAX_GUIDANCE_STEPS = int32(100); % number of guidance iterations
 GUIDANCE_RATE_MS   = int32(5000); % ms between iterations (0.2 Hz default)
 
-% Wait for user input to start guidance loop
-if coder.target('MATLAB')
-    input('Press Enter to start guidance loop: ', 's');
-else
-    coder.ceval('waitForUserInput');
-end
-
 % Enter guidance mode on all clients
 if ~coder.target('MATLAB')
     coder.ceval('sendGuidanceToggle', int32(numClients));
@@ -173,13 +166,6 @@ if ~coder.target('MATLAB')
                 int32(MESSAGE_TYPE.ACK));
 end
 % --------------------------------------------------------------------------
-
-% Wait for user input before closing experiment (RTL + LAND)
-if coder.target('MATLAB')
-    input('Press Enter to close experiment (RTL + LAND): ', 's');
-else
-    coder.ceval('waitForUserInput');
-end
 
 % Send RTL command to all clients
 for i = 1:numClients

@@ -4,12 +4,23 @@ gf = geoglobe(f);
 hold(gf, "on");
 c = ["g", "b", "m", "c"]; % plotting colors
 
+% paths
+scenarioCsv = fullfile("aerpaw", "config", "scenario.csv");
+
+% configured data
+params = readScenarioCsv(scenarioCsv);
+
 % coordinate system constants
 seaToGroundLevel = 110; % meters, measured approximately from USGS national map viewer
-lla0 = [35.72550610629396, -78.70019657805574, seaToGroundLevel]; % origin (LLA)
+
+fID = fopen(fullfile("aerpaw", "config", "client.yaml"), 'r');
+yaml = fscanf(fID, '%s');
+fclose(fID);
+% origin (LLA)
+lla0 = [str2double(yaml((strfind(yaml, 'lat:') + 4):(strfind(yaml, 'lon:') - 1))), str2double(yaml((strfind(yaml, 'lon:') + 4):(strfind(yaml, 'alt:') - 1))), seaToGroundLevel];
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test6", "*.csv"));
+gpsCsvs = dir(fullfile("sandbox", "test9", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
@@ -22,8 +33,9 @@ for ii = 1:size(gpsCsvs, 1)
     verticalSpeed = movmean(abs(diff(G{ii}.Altitude)), [10, 0]);
 
     % Automatically detect start/stop of algorithm flight (ignore takeoff, setup, return to liftoff, landing segments of flight)
-    startIdx = find(verticalSpeed <= prctile(verticalSpeed, 90), 1, 'first'); % 25 pct threshold may need adjusting
-    stopIdx = find(verticalSpeed <= prctile(verticalSpeed, 90), 1, 'last');
+    pctThreshold = 60; % pctThreshold may need adjusting depending on your flight
+    startIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'first'); 
+    stopIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'last');
 
     % % Plot whole flight, including setup/cleanup
     % startIdx = 1;
@@ -34,13 +46,13 @@ for ii = 1:size(gpsCsvs, 1)
 end
 
 % Plot objective
-objectivePos = [35, 35, 0];
+objectivePos = [params.objectivePos, 0];
 llaObj = enu2lla(objectivePos, lla0, 'flat');
 geoplot3(gf, [llaObj(1), llaObj(1)], [llaObj(2), llaObj(2)], [llaObj(3), llaObj(3) + 50], 'LineWidth', 3, "Color", 'y');
 
 % Plot domain
 altOffset = 1; % to avoid clipping into the ground when displayed
-domain = [lla0; enu2lla([50, 50, 100], lla0, 'flat')];
+domain = [lla0; enu2lla(params.domainMax, lla0, 'flat')];
 geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
 geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(2, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
 geoplot3(gf, [domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
@@ -49,7 +61,7 @@ geoplot3(gf, [domain(1, 1), domain(1, 1)], [domain(2, 2), domain(2, 2)], domain(
 geoplot3(gf, [domain(2, 1), domain(2, 1)], [domain(2, 2), domain(2, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
 
 % Plot floor (minimum altitude constraint)
-floorAlt = 30;
+floorAlt = params.minAlt;
 geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset + floorAlt, 1, 5), 'LineWidth', 3, 'Color', 'r');
 
 % finish
