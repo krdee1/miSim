@@ -29,7 +29,7 @@ arguments (Output)
 end
 
 % ---- Parse CSV via readScenarioCsv ---------------------------------------
-scenario = obj.readScenarioCsv(csvPath);
+scenario = readScenarioCsv(csvPath);
 
 TIMESTEP            = scenario.timestep;
 MAX_ITER            = scenario.maxIter;
@@ -70,19 +70,17 @@ dom.objective = sensingObjective;
 objFcn = objectiveFunctionWrapper(OBJECTIVE_GROUND_POS, OBJECTIVE_VAR);
 dom.objective = dom.objective.initialize(objFcn, dom, DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
 
-% ---- Build shared sensor model -------------------------------------------
-sensor = sigmoidSensor;
-sensor = sensor.initialize(ALPHA_DIST, BETA_DIST, ALPHA_TILT, BETA_TILT);
-
-% ---- Initialise agents from scenario positions ---------------------------
+% ---- Initialise agents from scenario positions (per-UAV parameters) ------
 agentList = cell(numAgents, 1);
 for ii = 1:numAgents
     pos  = positions(ii, :);
+    sensor = sigmoidSensor;
+    sensor = sensor.initialize(ALPHA_DIST(ii), BETA_DIST(ii), ALPHA_TILT(ii), BETA_TILT(ii));
     geom = spherical;
-    geom = geom.initialize(pos, COLLISION_RADIUS, REGION_TYPE.COLLISION, ...
+    geom = geom.initialize(pos, COLLISION_RADIUS(ii), REGION_TYPE.COLLISION, ...
                            sprintf("UAV %d Collision", ii));
     ag = agent;
-    ag = ag.initialize(pos, geom, sensor, COMMS_RANGE, MAX_ITER, ...
+    ag = ag.initialize(pos, geom, sensor, COMMS_RANGE(ii), MAX_ITER, ...
                        INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
     agentList{ii} = ag;
 end

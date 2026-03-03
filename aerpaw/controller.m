@@ -17,8 +17,7 @@ totalLoaded  = int32(0);  % pre-declare type for coder.ceval %#ok<NASGU>
 % Load initial UAV positions from scenario CSV
 if coder.target('MATLAB')
     disp('Loading initial positions from scenario.csv (simulation)...');
-    tmpSim = miSim;
-    sc = tmpSim.readScenarioCsv('aerpaw/config/scenario.csv');
+    sc = readScenarioCsv('aerpaw/config/scenario.csv');
     flatPos = double(sc.initialPositions);  % 1×(3*N) flat vector
     posMatrix = reshape(flatPos, 3, [])';   % N×3, same layout as initializeFromCsv
     totalLoaded = int32(size(posMatrix, 1));
@@ -34,12 +33,14 @@ else
 end
 
 % Load guidance scenario from CSV (parameters for guidance_step)
-NUM_SCENARIO_PARAMS = 27;
+NUM_SCENARIO_PARAMS = 21;
 MAX_OBSTACLES_CTRL  = int32(8);
 scenarioParams = zeros(1, NUM_SCENARIO_PARAMS);
 obstacleMin    = zeros(MAX_OBSTACLES_CTRL, 3);
 obstacleMax    = zeros(MAX_OBSTACLES_CTRL, 3);
 numObstacles   = int32(0);
+perAgentParams = zeros(MAX_CLIENTS, 6);
+numAgentsLoaded = int32(0);
 if ~coder.target('MATLAB')
     coder.cinclude('controller_impl.h');
     scenarioFilename = ['config/scenario.csv', char(0)];
@@ -47,10 +48,15 @@ if ~coder.target('MATLAB')
     numObstacles = coder.ceval('loadObstacles', coder.ref(scenarioFilename), ...
                          coder.ref(obstacleMin), coder.ref(obstacleMax), ...
                          int32(MAX_OBSTACLES_CTRL));
+    numAgentsLoaded = coder.ceval('loadPerAgentParams', coder.ref(scenarioFilename), ...
+                         coder.ref(perAgentParams), int32(MAX_CLIENTS));
 end
-% On MATLAB path, scenarioParams and obstacle arrays are left as zeros.
-% guidance_step's MATLAB path loads parameters directly from scenario.csv
-% via sim.initializeFromCsv and does not use these arrays.
+% On MATLAB path, populate the scalar entries used by controller.m itself
+% (guidance_step reads parameters directly via initializeFromCsv and ignores them).
+if coder.target('MATLAB')
+    scenarioParams(1) = double(sc.timestep);
+    scenarioParams(2) = double(sc.maxIter);
+end
 
 % Initialize server
 if coder.target('MATLAB')
@@ -103,15 +109,15 @@ for w = 1:numWaypoints
 end
 
 % ---- Phase 2: miSim guidance loop ----------------------------------------
-% Guidance parameters (adjust here and recompile as needed)
-MAX_GUIDANCE_STEPS = int32(100); % number of guidance iterations
-GUIDANCE_RATE_MS   = int32(5000); % ms between iterations (0.2 Hz default)
+% Guidance parameters loaded from scenario.csv
+MAX_GUIDANCE_STEPS = int32(scenarioParams(2));        % maxIter
+GUIDANCE_RATE_MS   = int32(scenarioParams(1) * 1000); % timestep (s) → ms
 
-% Wait for user input to start guidance loop
+% Brief pause before starting guidance loop
 if coder.target('MATLAB')
-    input('Press Enter to start guidance loop: ', 's');
+    pause(2);
 else
-    coder.ceval('waitForUserInput');
+    coder.ceval('sleepMs', int32(2000));
 end
 
 % Enter guidance mode on all clients
@@ -119,7 +125,7 @@ if ~coder.target('MATLAB')
     coder.ceval('sendGuidanceToggle', int32(numClients));
 end
 
-% Request initial GPS positions and initialise guidance algorithm
+% Seed initial positions from GPS (compiled) or CSV waypoints (simulation)
 positions = zeros(MAX_CLIENTS, 3);
 if ~coder.target('MATLAB')
     coder.ceval('sendRequestPositions', int32(numClients));
@@ -128,22 +134,64 @@ else
     % Simulation: seed positions from CSV waypoints so agents don't start at origin
     positions(1:totalLoaded, :) = targets(1:totalLoaded, :);
 end
-guidance_step(positions(1:numClients, :), true, ...
-              scenarioParams, obstacleMin, obstacleMax, numObstacles);
 
-% Main guidance loop
+% Initialise guidance algorithm state
+guidance_step(positions(1:numClients, :), true, ...
+              scenarioParams, obstacleMin, obstacleMax, numObstacles, ...
+              perAgentParams, numAgentsLoaded);
+
+% Compute and send first targets to kick off UAV movement
+nextPositions = guidance_step(positions(1:numClients, :), false, ...
+                               scenarioParams, obstacleMin, obstacleMax, numObstacles, ...
+                               perAgentParams, numAgentsLoaded);
+for i = 1:numClients
+    target = nextPositions(i, :);
+    if ~coder.target('MATLAB')
+        coder.ceval('sendTarget', int32(i), coder.ref(target));
+    else
+        disp(['[guidance] initial target UAV ', num2str(i), ': ', num2str(target)]);
+    end
+end
+lastSendTimeMs  = 0.0;
+nowMs           = 0.0;
+sleepDurationMs = 0.0; %#ok<NASGU>
+if ~coder.target('MATLAB')
+    lastSendTimeMs = coder.ceval('getTimeMs');
+end
+if coder.target('MATLAB')
+    positions(1:numClients, :) = nextPositions(1:numClients, :);
+end
+
+% Main guidance loop: arrival-triggered with minimum rate limiting
 for step = 1:MAX_GUIDANCE_STEPS
-    % Query current GPS positions from all clients
+    % 1. Wait for all UAVs to signal arrival at their current target
+    if ~coder.target('MATLAB')
+        coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.ACK));
+    else
+        disp(['[guidance] step ', num2str(step), ': simulating UAV arrival']);
+    end
+
+    % 2. Request and receive current GPS positions from all UAVs
     if ~coder.target('MATLAB')
         coder.ceval('sendRequestPositions', int32(numClients));
         coder.ceval('recvPositions', int32(numClients), coder.ref(positions), int32(MAX_CLIENTS));
     end
 
-    % Run one guidance step: feed GPS positions in, get targets out
+    % 3. Compute new target positions via guidance algorithm
     nextPositions = guidance_step(positions(1:numClients, :), false, ...
-                                  scenarioParams, obstacleMin, obstacleMax, numObstacles);
+                                  scenarioParams, obstacleMin, obstacleMax, numObstacles, ...
+                                  perAgentParams, numAgentsLoaded);
 
-    % Send target to each client (no ACK/READY expected in guidance mode)
+    % 4. Enforce minimum inter-send interval (timestep from scenario.csv)
+    if ~coder.target('MATLAB')
+        nowMs = coder.ceval('getTimeMs');
+        sleepDurationMs = lastSendTimeMs + double(GUIDANCE_RATE_MS) - nowMs;
+        if sleepDurationMs > 0.0
+            coder.ceval('sleepMs', int32(sleepDurationMs));
+        end
+    end
+
+    % 5. Send new targets to each UAV
     for i = 1:numClients
         target = nextPositions(i, :);
         if ~coder.target('MATLAB')
@@ -152,33 +200,37 @@ for step = 1:MAX_GUIDANCE_STEPS
             disp(['[guidance] target UAV ', num2str(i), ': ', num2str(target)]);
         end
     end
+    if ~coder.target('MATLAB')
+        lastSendTimeMs = coder.ceval('getTimeMs');
+    end
 
     % Simulation: advance positions to guidance outputs for closed-loop feedback
     if coder.target('MATLAB')
         positions(1:numClients, :) = nextPositions(1:numClients, :);
     end
+end
 
-    % Wait for the guidance rate interval before the next iteration
-    if ~coder.target('MATLAB')
-        coder.ceval('sleepMs', int32(GUIDANCE_RATE_MS));
-    end
+% Wait for final ACK: all UAVs have arrived at the last guidance target
+if ~coder.target('MATLAB')
+    coder.ceval('waitForAllMessageType', int32(numClients), ...
+                int32(MESSAGE_TYPE.ACK));
 end
 
 % Exit guidance mode on all clients (second toggle)
 if ~coder.target('MATLAB')
     coder.ceval('sendGuidanceToggle', int32(numClients));
-    % Wait for ACK from all clients: confirms each client has finished its
-    % last guidance navigation and is back in sequential (ACK/READY) mode.
+    % Wait for ACK from all clients: confirms each client has exited guidance
+    % mode and is back in sequential (ACK/READY) mode.
     coder.ceval('waitForAllMessageType', int32(numClients), ...
                 int32(MESSAGE_TYPE.ACK));
 end
 % --------------------------------------------------------------------------
 
-% Wait for user input before closing experiment (RTL + LAND)
+% Brief pause before closing experiment (RTL + LAND)
 if coder.target('MATLAB')
-    input('Press Enter to close experiment (RTL + LAND): ', 's');
+    pause(2);
 else
-    coder.ceval('waitForUserInput');
+    coder.ceval('sleepMs', int32(2000));
 end
 
 % Send RTL command to all clients

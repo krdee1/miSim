@@ -180,7 +180,6 @@ class UAVRunner(BasicRunner):
             return
 
         log_task = None
-        nav_task = None
         try:
             # Takeoff to above AERPAW minimum altitude
             print("[UAV] Taking off...")
@@ -201,12 +200,6 @@ class UAVRunner(BasicRunner):
                     in_guidance = not in_guidance
                     print(f"[UAV] Guidance mode: {'ON' if in_guidance else 'OFF'}")
                     if not in_guidance:
-                        # Exiting guidance: wait for current navigation to finish
-                        # before resuming sequential (ACK/READY) mode
-                        if nav_task and not nav_task.done():
-                            print("[UAV] Waiting for current navigation to complete...")
-                            await nav_task
-                            nav_task = None
                         # Acknowledge that we are ready for sequential commands
                         await send_message_type(writer, MessageType.ACK)
                         print("[UAV] Sent ACK (guidance mode exited, ready for sequential commands)")
@@ -229,13 +222,13 @@ class UAVRunner(BasicRunner):
                     target = self.origin + VectorNED(north=enu_y, east=enu_x, down=-enu_z)
 
                     if in_guidance:
-                        # Guidance mode: non-blocking — cancel previous nav and start new
+                        # Guidance mode: blocking — fly to target, ACK on arrival
                         print(f"[UAV] Guidance TARGET: E={enu_x:.1f} N={enu_y:.1f} U={enu_z:.1f}")
-                        if nav_task and not nav_task.done():
-                            nav_task.cancel()
-                            await asyncio.gather(nav_task, return_exceptions=True)
-                        nav_task = asyncio.create_task(drone.goto_coordinates(target))
-                        # No ACK/READY in guidance mode
+                        print(f"[UAV] Moving to guidance target...")
+                        await drone.goto_coordinates(target)
+                        print(f"[UAV] Arrived at guidance target")
+                        await send_message_type(writer, MessageType.ACK)
+                        print("[UAV] Sent ACK")
                     else:
                         # Sequential mode: ACK → navigate → READY
                         waypoint_num += 1
@@ -282,9 +275,6 @@ class UAVRunner(BasicRunner):
             print(f"[UAV] Error: {e}")
 
         finally:
-            if nav_task is not None and not nav_task.done():
-                nav_task.cancel()
-                await asyncio.gather(nav_task, return_exceptions=True)
             if log_task is not None:
                 log_task.cancel()
                 await asyncio.gather(log_task, return_exceptions=True)
