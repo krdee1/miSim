@@ -41,16 +41,20 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 agents{ii} = agent;
 
                 sensorModel = sigmoidSensor;
-                sensorModel = sensorModel.initialize(params.alphaDist, params.betaDist, params.alphaTilt, params.betaTilt);
+                sensorModel = sensorModel.initialize(params.alphaDist(ii), params.betaDist(ii), params.alphaTilt(ii), params.betaTilt(ii));
 
                 collisionGeometry = spherical;
-                collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius, REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
+                collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius(ii), REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
 
-                agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange, params.maxIter, params.initialStepSize, sprintf("Agent %d", ii), tc.plotCommsGeometry);
+                agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange(ii), params.maxIter, params.initialStepSize, sprintf("Agent %d", ii), tc.plotCommsGeometry);
             end
 
-            % TODO
-            obstacles = {};
+            % Create obstacles
+            obstacles = cell(params.numObstacles, 1);
+            for ii = 1:size(obstacles, 1)
+                obstacles{ii} = rectangularPrism;
+                obstacles{ii} = obstacles{ii}.initialize([params.obstacleMin((((ii - 1) * 3) + 1):(ii * 3)); params.obstacleMax((((ii - 1) * 3) + 1):(ii * 3))], "OBSTACLE", sprintf("Obstacle %d", ii));
+            end
 
             % Set up simulation
             tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain, params.barrierExponent, params.minAlt, params.timestep, params.maxIter, obstacles, tc.makePlots, tc.makeVideo);
