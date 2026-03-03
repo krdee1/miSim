@@ -109,8 +109,8 @@ function [obj] = constrainMotion(obj)
         b(kk) = obj.barrierGain * max(0, h_yMax)^obj.barrierExponent;
         kk = kk + 1;
 
-        % Z minimum
-        h_zMin = (obj.agents{ii}.pos(3) - obj.domain.minCorner(3)) - obj.agents{ii}.collisionGeometry.radius;
+        % Z minimum — enforce z >= minAlt + radius (not just z >= domain floor + radius)
+        h_zMin = (obj.agents{ii}.pos(3) - obj.minAlt) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, -1];
         b(kk) = obj.barrierGain * max(0, h_zMin)^obj.barrierExponent;
         kk = kk + 1;

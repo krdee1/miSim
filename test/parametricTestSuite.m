@@ -34,7 +34,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
             % Define scenario according to CSV specification
             tc.domain = tc.domain.initialize([params.domainMin; params.domainMax], REGION_TYPE.DOMAIN, "Domain");
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos), tc.domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos, reshape(params.objectiveVar, [2 2])), tc.domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
 
             agents = cell(size(params.initialPositions, 2) / 3, 1);
             for ii = 1:size(agents, 1)

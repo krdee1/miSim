@@ -49,6 +49,7 @@ BETA_TILT           = scenario.betaTilt;
 DOMAIN_MIN                 = scenario.domainMin;                % 1×3
 DOMAIN_MAX                 = scenario.domainMax;                % 1×3
 OBJECTIVE_GROUND_POS       = scenario.objectivePos;             % 1×2
+OBJECTIVE_VAR              = reshape(scenario.objectiveVar, 2, 2); % 2×2 covariance matrix
 SENSOR_PERFORMANCE_MINIMUM = scenario.sensorPerformanceMinimum; % scalar
 
 % Initial UAV positions: flat vector reshaped to N×3
@@ -66,7 +67,7 @@ dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Dom
 
 % ---- Build sensing objective (MATLAB path: objectiveFunctionWrapper) -----
 dom.objective = sensingObjective;
-objFcn = objectiveFunctionWrapper(OBJECTIVE_GROUND_POS, 3 * eye(2));
+objFcn = objectiveFunctionWrapper(OBJECTIVE_GROUND_POS, OBJECTIVE_VAR);
 dom.objective = dom.objective.initialize(objFcn, dom, DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
 
 % ---- Build shared sensor model -------------------------------------------

@@ -84,6 +84,7 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     % Set CBF parameters
     obj.barrierGain = barrierGain;
     obj.barrierExponent = barrierExponent;
+    obj.minAlt = minAlt;
 
     % Compute adjacency matrix and lesser neighbors
     obj = obj.updateAdjacency();

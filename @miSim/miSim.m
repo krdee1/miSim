@@ -17,6 +17,7 @@ classdef miSim
         performance = 0; % simulation performance timeseries vector
         barrierGain = NaN; % CBF gain parameter
         barrierExponent = NaN; % CBF exponent parameter
+        minAlt = 0; % minimum allowable altitude (m)
         artifactName = "";
         fPerf; % performance plot figure
     end
