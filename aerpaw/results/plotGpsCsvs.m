@@ -7,15 +7,12 @@ seaToGroundLevel = 110; % meters, measured approximately from USGS national map 
 lla0 = [35.72550610629396, -78.70019657805574, seaToGroundLevel]; % origin (LLA)
 
 % Paths to logs
-gpsCsvs = fullfile ("sandbox", "test4", ...
-                   ["GPS_DATA_0c8d904aa159_2026-03-02_14:42:51.csv"; ...
-                    "GPS_DATA_8e4f52dac04d_2026-03-02_14:42:52.csv"; ...
-                   ]);
+gpsCsvs = dir(fullfile("sandbox", "test5", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
      % Read CSV
-    G{ii} = readGpsCsv(gpsCsvs(ii));
+    G{ii} = readGpsCsv(fullfile(gpsCsvs(ii).folder, gpsCsvs(ii).name));
 
     % Find when algorithm begins/ends (using ENU altitude)
     enuTraj = lla2enu([G{ii}.Latitude, G{ii}.Longitude, G{ii}.Altitude], lla0, 'flat');
@@ -41,7 +38,13 @@ llaObj = enu2lla(objectivePos, lla0, 'flat');
 geoplot3(gf, [llaObj(1), llaObj(1)], [llaObj(2), llaObj(2)], [llaObj(3), llaObj(3) + 50], 'LineWidth', 3);
 
 % Plot domain
+altOffset = 1; % to avoid clipping into the ground when displayed
 domain = [lla0; enu2lla([50, 50, 100], lla0, 'flat')];
-geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + 10, 1, 5), 'LineWidth', 3);
+geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
+geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(2, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
+geoplot3(gf, [domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
+geoplot3(gf, [domain(2, 1), domain(2, 1)], [domain(1, 2), domain(1, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
+geoplot3(gf, [domain(1, 1), domain(1, 1)], [domain(2, 2), domain(2, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
+geoplot3(gf, [domain(2, 1), domain(2, 1)], [domain(2, 2), domain(2, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
 
 hold(gf, "off");
