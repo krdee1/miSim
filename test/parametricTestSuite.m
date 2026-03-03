@@ -30,7 +30,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
         function test_AERPAW_scenario(tc)
             % Load scenario definition
             tc.csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv");
-            params = tc.testClass.readScenarioCsv(tc.csvPath);
+            params = readScenarioCsv(tc.csvPath);
 
             % Define scenario according to CSV specification
             tc.domain = tc.domain.initialize([params.domainMin; params.domainMax], REGION_TYPE.DOMAIN, "Domain");
@@ -64,13 +64,10 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
             % Run
             tc.testClass = tc.testClass.run();
-
-            % Cleanup
-            tc.testClass = tc.testClass.teardown();
         end
         function csv_parametric_tests_random_agents(tc)
             % Read in parameters to iterate over
-            params = tc.testClass.readScenarioCsv(tc.csvPath);
+            params = readScenarioCsv(tc.csvPath);
 
             % Test case setup
             l = 10; % domain size
