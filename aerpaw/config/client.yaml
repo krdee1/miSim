@@ -5,6 +5,11 @@ origin:
   lat: 35.72550610629396
   lon: -78.70019657805574
   alt: 0.0  # Alt=0 means ENU z directly becomes target altitude above home
+# Guidance mode arrival parameters
+guidance:
+  arrival_tolerance: 0.1    # metres — client-side GPS polling threshold for goto_coordinates
+  arrival_timeout: 15.0    # seconds — fallback if GPS noise prevents clean arrival detection
+
 # Environment-specific settings
 environments:
   local:

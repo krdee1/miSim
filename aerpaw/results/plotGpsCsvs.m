@@ -20,7 +20,7 @@ fclose(fID);
 lla0 = [str2double(yaml((strfind(yaml, 'lat:') + 4):(strfind(yaml, 'lon:') - 1))), str2double(yaml((strfind(yaml, 'lon:') + 4):(strfind(yaml, 'alt:') - 1))), seaToGroundLevel];
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test8", "*.csv"));
+gpsCsvs = dir(fullfile("sandbox", "test9", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
@@ -33,7 +33,7 @@ for ii = 1:size(gpsCsvs, 1)
     verticalSpeed = movmean(abs(diff(G{ii}.Altitude)), [10, 0]);
 
     % Automatically detect start/stop of algorithm flight (ignore takeoff, setup, return to liftoff, landing segments of flight)
-    pctThreshold = 90; % pctThreshold may need adjusting depending on your flight
+    pctThreshold = 60; % pctThreshold may need adjusting depending on your flight
     startIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'first'); 
     stopIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'last');
 

@@ -144,6 +144,12 @@ class UAVRunner(BasicRunner):
         env = get_environment()
         print(f"[UAV] Environment: {env}")
 
+        # Load guidance parameters
+        guidance = config.get('guidance', {})
+        self.guidance_tolerance = guidance.get('arrival_tolerance', 0.5)
+        self.guidance_timeout   = guidance.get('arrival_timeout', 15.0)
+        print(f"[UAV] Guidance: tolerance={self.guidance_tolerance}m, timeout={self.guidance_timeout}s")
+
         # Load origin
         origin = config['origin']
         self.origin = Coordinate(origin['lat'], origin['lon'], origin['alt'])
@@ -160,9 +166,9 @@ class UAVRunner(BasicRunner):
         """Main mission entry point."""
         print(f"[UAV] Connecting to controller at {self.server_ip}:{self.server_port}")
 
-        # Retry connection up to 10 times (~30 seconds total)
+        # Retry connection up to 50 times 
         reader, writer = None, None
-        for attempt in range(10):
+        for attempt in range(50):
             try:
                 reader, writer = await asyncio.wait_for(
                     asyncio.open_connection(self.server_ip, self.server_port),
@@ -171,12 +177,12 @@ class UAVRunner(BasicRunner):
                 print(f"[UAV] Connected to controller")
                 break
             except (ConnectionRefusedError, asyncio.TimeoutError, OSError) as e:
-                print(f"[UAV] Connection attempt {attempt + 1}/10 failed: {e}")
-                if attempt < 9:
+                print(f"[UAV] Connection attempt {attempt + 1}/50 failed: {e}")
+                if attempt < 49:
                     await asyncio.sleep(3)
 
         if reader is None:
-            print("[UAV] Failed to connect to controller after 10 attempts")
+            print("[UAV] Failed to connect to controller after 50 attempts")
             return
 
         log_task = None
@@ -225,8 +231,15 @@ class UAVRunner(BasicRunner):
                         # Guidance mode: blocking — fly to target, ACK on arrival
                         print(f"[UAV] Guidance TARGET: E={enu_x:.1f} N={enu_y:.1f} U={enu_z:.1f}")
                         print(f"[UAV] Moving to guidance target...")
-                        await drone.goto_coordinates(target)
-                        print(f"[UAV] Arrived at guidance target")
+                        try:
+                            await asyncio.wait_for(
+                                drone.goto_coordinates(target, tolerance=self.guidance_tolerance),
+                                timeout=self.guidance_timeout,
+                            )
+                            print(f"[UAV] Arrived at guidance target")
+                        except asyncio.TimeoutError:
+                            print("[UAV] Guidance arrival timeout — proceeding from current position")
+                            drone._ready_to_move = lambda _: True  # reset so next goto_coordinates can start
                         await send_message_type(writer, MessageType.ACK)
                         print("[UAV] Sent ACK")
                     else:
