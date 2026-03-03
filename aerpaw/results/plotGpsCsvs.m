@@ -20,7 +20,7 @@ fclose(fID);
 lla0 = [str2double(yaml((strfind(yaml, 'lat:') + 4):(strfind(yaml, 'lon:') - 1))), str2double(yaml((strfind(yaml, 'lon:') + 4):(strfind(yaml, 'alt:') - 1))), seaToGroundLevel];
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test6", "*.csv"));
+gpsCsvs = dir(fullfile("sandbox", "test8", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
