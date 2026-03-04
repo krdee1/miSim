@@ -20,7 +20,7 @@ fclose(fID);
 lla0 = [str2double(yaml((strfind(yaml, 'lat:') + 4):(strfind(yaml, 'lon:') - 1))), str2double(yaml((strfind(yaml, 'lon:') + 4):(strfind(yaml, 'alt:') - 1))), seaToGroundLevel];
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test12", "*.csv"));
+gpsCsvs = dir(fullfile("sandbox", "test13", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
@@ -38,8 +38,8 @@ for ii = 1:size(gpsCsvs, 1)
     stopIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'last');
 
     % % Plot whole flight, including setup/cleanup
-    startIdx = 1;
-    stopIdx = length(verticalSpeed);
+    % startIdx = 1;
+    % stopIdx = length(verticalSpeed);
     
     % Plot recorded trajectory over specified range of indices
     geoplot3(gf, G{ii}.Latitude(startIdx:stopIdx), G{ii}.Longitude(startIdx:stopIdx), G{ii}.Altitude(startIdx:stopIdx) + seaToGroundLevel, c(mod(ii, length(c))), 'LineWidth', 2, "MarkerSize", 5);
