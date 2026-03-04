@@ -18,17 +18,17 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %                       On MATLAB path this is ignored; parameters are loaded
 %                       from scenario.csv via initializeFromCsv instead.
 %                       Index mapping (1-based):
-%                         1  timestep            9  collisionRadius
-%                         2  maxIter            10  comRange
-%                         3  minAlt             11  alphaDist
-%                         4  discretizationStep 12  betaDist
-%                         5  protectedRange     13  alphaTilt
-%                         6  initialStepSize    14  betaTilt
-%                         7  barrierGain        15-17 domainMin
-%                         8  barrierExponent    18-20 domainMax
-%                                               21-22 objectivePos
-%                                               23-26 objectiveVar (2x2, col-major)
-%                                               27    sensorPerformanceMinimum
+%                         1  timestep            9-12  collisionRadius[1:4]
+%                         2  maxIter            13-16  comRange[1:4]
+%                         3  minAlt             17-20  alphaDist[1:4]
+%                         4  discretizationStep 21-24  betaDist[1:4]
+%                         5  protectedRange     25-28  alphaTilt[1:4]
+%                         6  initialStepSize    29-32  betaTilt[1:4]
+%                         7  barrierGain        33-35  domainMin
+%                         8  barrierExponent    36-38  domainMax
+%                                               39-40  objectivePos
+%                                               41-44  objectiveVar (2x2, col-major)
+%                                               45     sensorPerformanceMinimum
 %   obstacleMin       (MAX_OBSTACLES × 3) double  column-major obstacle corners (compiled path)
 %   obstacleMax       (MAX_OBSTACLES × 3) double
 %   numObstacles      (1,1) int32                 actual obstacle count
@@ -72,6 +72,8 @@ if isInit
     else
         % ================================================================
         % Compiled path: unpack scenarioParams array and obstacle arrays.
+        % Per-UAV parameters are stored as MAX_CLIENTS-wide blocks; only
+        % the first numAgents entries of each block are used.
         % ================================================================
         TIMESTEP            = scenarioParams(1);
         MAX_ITER            = int32(scenarioParams(2));
@@ -81,17 +83,17 @@ if isInit
         INITIAL_STEP_SIZE   = scenarioParams(6);
         BARRIER_GAIN        = scenarioParams(7);
         BARRIER_EXPONENT    = scenarioParams(8);
-        COLLISION_RADIUS    = scenarioParams(9);
-        COMMS_RANGE         = scenarioParams(10);
-        ALPHA_DIST          = scenarioParams(11);
-        BETA_DIST           = scenarioParams(12);
-        ALPHA_TILT          = scenarioParams(13);
-        BETA_TILT           = scenarioParams(14);
-        DOMAIN_MIN                  = scenarioParams(15:17);
-        DOMAIN_MAX                  = scenarioParams(18:20);
-        OBJECTIVE_GROUND_POS        = scenarioParams(21:22);
-        OBJECTIVE_VAR               = reshape(scenarioParams(23:26), 2, 2);
-        SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(27);
+        COLLISION_RADIUS_VEC = scenarioParams(9:12);   % per-UAV [1:MAX_CLIENTS]
+        COMMS_RANGE_VEC      = scenarioParams(13:16);
+        ALPHA_DIST_VEC       = scenarioParams(17:20);
+        BETA_DIST_VEC        = scenarioParams(21:24);
+        ALPHA_TILT_VEC       = scenarioParams(25:28);
+        BETA_TILT_VEC        = scenarioParams(29:32);
+        DOMAIN_MIN                  = scenarioParams(33:35);
+        DOMAIN_MAX                  = scenarioParams(36:38);
+        OBJECTIVE_GROUND_POS        = scenarioParams(39:40);
+        OBJECTIVE_VAR               = reshape(scenarioParams(41:44), 2, 2);
+        SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(45);
 
         % --- Build domain geometry ---
         dom = rectangularPrism;
@@ -112,19 +114,21 @@ if isInit
         dom.objective = dom.objective.initializeWithValues(objValues, dom, ...
             DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
 
-        % --- Build shared sensor model ---
-        sensor = sigmoidSensor;
-        sensor = sensor.initialize(ALPHA_DIST, BETA_DIST, ALPHA_TILT, BETA_TILT);
-
-        % --- Initialise agents from GPS positions ---
+        % --- Initialise agents from GPS positions (per-UAV parameters) ----
         agentList = cell(numAgents, 1);
         for ii = 1:numAgents
             pos  = currentPositions(ii, :);
+
+            % Per-UAV sensor model
+            sensor = sigmoidSensor;
+            sensor = sensor.initialize(ALPHA_DIST_VEC(ii), BETA_DIST_VEC(ii), ...
+                                       ALPHA_TILT_VEC(ii), BETA_TILT_VEC(ii));
+
             geom = spherical;
-            geom = geom.initialize(pos, COLLISION_RADIUS, REGION_TYPE.COLLISION, ...
+            geom = geom.initialize(pos, COLLISION_RADIUS_VEC(ii), REGION_TYPE.COLLISION, ...
                                    sprintf("UAV %d Collision", ii));
             ag = agent;
-            ag = ag.initialize(pos, geom, sensor, COMMS_RANGE, MAX_ITER, ...
+            ag = ag.initialize(pos, geom, sensor, COMMS_RANGE_VEC(ii), MAX_ITER, ...
                                INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
             agentList{ii} = ag;
         end

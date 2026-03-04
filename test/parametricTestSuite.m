@@ -30,7 +30,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
         function test_AERPAW_scenario(tc)
             % Load scenario definition
             tc.csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv");
-            params = tc.testClass.readScenarioCsv(tc.csvPath);
+            params = readScenarioCsv(tc.csvPath);
 
             % Define scenario according to CSV specification
             tc.domain = tc.domain.initialize([params.domainMin; params.domainMax], REGION_TYPE.DOMAIN, "Domain");
@@ -41,16 +41,20 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 agents{ii} = agent;
 
                 sensorModel = sigmoidSensor;
-                sensorModel = sensorModel.initialize(params.alphaDist, params.betaDist, params.alphaTilt, params.betaTilt);
+                sensorModel = sensorModel.initialize(params.alphaDist(ii), params.betaDist(ii), params.alphaTilt(ii), params.betaTilt(ii));
 
                 collisionGeometry = spherical;
-                collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius, REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
+                collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius(ii), REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
 
-                agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange, params.maxIter, params.initialStepSize, sprintf("Agent %d", ii), tc.plotCommsGeometry);
+                agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange(ii), params.maxIter, params.initialStepSize, sprintf("Agent %d", ii), tc.plotCommsGeometry);
             end
 
-            % TODO
-            obstacles = {};
+            % Create obstacles
+            obstacles = cell(params.numObstacles, 1);
+            for ii = 1:size(obstacles, 1)
+                obstacles{ii} = rectangularPrism;
+                obstacles{ii} = obstacles{ii}.initialize([params.obstacleMin((((ii - 1) * 3) + 1):(ii * 3)); params.obstacleMax((((ii - 1) * 3) + 1):(ii * 3))], "OBSTACLE", sprintf("Obstacle %d", ii));
+            end
 
             % Set up simulation
             tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain, params.barrierExponent, params.minAlt, params.timestep, params.maxIter, obstacles, tc.makePlots, tc.makeVideo);
@@ -60,13 +64,10 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
             % Run
             tc.testClass = tc.testClass.run();
-
-            % Cleanup
-            tc.testClass = tc.testClass.teardown();
         end
         function csv_parametric_tests_random_agents(tc)
             % Read in parameters to iterate over
-            params = tc.testClass.readScenarioCsv(tc.csvPath);
+            params = readScenarioCsv(tc.csvPath);
 
             % Test case setup
             l = 10; % domain size

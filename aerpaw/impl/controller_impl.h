@@ -17,9 +17,21 @@ int loadTargets(const char* filename, double* targets, int maxClients);
 
 // Scenario loading (scenario.csv)
 // Number of elements in the flat params array passed to guidance_step.
-// Indices: 0-13 scalars, 14-16 domainMin, 17-19 domainMax, 20-21 objectivePos,
-//          22-25 objectiveVar (2x2 col-major: [v11,v12,v21,v22]), 26 sensorPerformanceMinimum.
-#define NUM_SCENARIO_PARAMS 27
+// Indices (0-based):
+//   0-7   scalars (timestep..barrierExponent)
+//   8-11  collisionRadius[1:4]  (per-UAV, MAX_CLIENTS slots)
+//   12-15 comRange[1:4]
+//   16-19 alphaDist[1:4]
+//   20-23 betaDist[1:4]
+//   24-27 alphaTilt[1:4]
+//   28-31 betaTilt[1:4]
+//   32-34 domainMin
+//   35-37 domainMax
+//   38-39 objectivePos
+//   40-43 objectiveVar (2x2 col-major)
+//   44    sensorPerformanceMinimum
+#define NUM_SCENARIO_PARAMS 45
+#define MAX_CLIENTS_PER_PARAM 4
 // Maximum number of obstacles (upper bound for pre-allocated arrays).
 #define MAX_OBSTACLES 8
 

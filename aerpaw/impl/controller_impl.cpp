@@ -174,14 +174,19 @@ static int readScenarioDataRow(const char* filename, char* line, int lineSize) {
 
 // Load guidance parameters from scenario.csv into flat params[NUM_SCENARIO_PARAMS].
 // Index mapping (0-based):
-//   0-13 : timestep, maxIter, minAlt, discretizationStep, protectedRange,
-//           initialStepSize, barrierGain, barrierExponent, collisionRadius,
-//           comRange, alphaDist, betaDist, alphaTilt, betaTilt
-//   14-16: domainMin  (east, north, up)
-//   17-19: domainMax  (east, north, up)
-//   20-21: objectivePos (east, north)
-//   22-25: objectiveVar (2x2 col-major: v11, v12, v21, v22)
-//   26   : sensorPerformanceMinimum
+//   0-7  : timestep, maxIter, minAlt, discretizationStep, protectedRange,
+//           initialStepSize, barrierGain, barrierExponent
+//   8-11 : collisionRadius[1:4]  (per-UAV, MAX_CLIENTS_PER_PARAM slots)
+//   12-15: comRange[1:4]
+//   16-19: alphaDist[1:4]
+//   20-23: betaDist[1:4]
+//   24-27: alphaTilt[1:4]
+//   28-31: betaTilt[1:4]
+//   32-34: domainMin  (east, north, up)
+//   35-37: domainMax  (east, north, up)
+//   38-39: objectivePos (east, north)
+//   40-43: objectiveVar (2x2 col-major: v11, v12, v21, v22)
+//   44   : sensorPerformanceMinimum
 // Returns 1 on success, 0 on failure.
 int loadScenario(const char* filename, double* params) {
     char line[4096];
@@ -198,16 +203,52 @@ int loadScenario(const char* filename, double* params) {
         return 0;
     }
 
-    // Scalar fields (columns 0–13)
-    for (int i = 0; i < 14; i++) {
+    // Zero-initialise all params so unused per-UAV slots default to 0
+    for (int i = 0; i < NUM_SCENARIO_PARAMS; i++) params[i] = 0.0;
+
+    // Scalar fields (columns 0–7): timestep..barrierExponent
+    for (int i = 0; i < 8; i++) {
         params[i] = atof(trimField(fields[i]));
+    }
+
+    // Per-UAV fields (columns 8–13): collisionRadius, comRange,
+    // alphaDist, betaDist, alphaTilt, betaTilt.
+    // Each is a quoted comma-separated list with up to MAX_CLIENTS_PER_PARAM values.
+    // Stored in params as consecutive blocks of MAX_CLIENTS_PER_PARAM (4) slots.
+    {
+        const int perUavCols[] = {8, 9, 10, 11, 12, 13};
+        const int perUavOffsets[] = {8, 12, 16, 20, 24, 28};  // 0-based param indices
+        const char* perUavNames[] = {"collisionRadius", "comRange",
+                                     "alphaDist", "betaDist",
+                                     "alphaTilt", "betaTilt"};
+        for (int p = 0; p < 6; p++) {
+            char tmp[256];
+            strncpy(tmp, fields[perUavCols[p]], sizeof(tmp) - 1);
+            tmp[sizeof(tmp) - 1] = '\0';
+            char* t = trimField(tmp);
+            // Parse comma-separated values
+            double vals[4] = {0, 0, 0, 0};
+            int count = 0;
+            char* tok = strtok(t, ",");
+            while (tok && count < MAX_CLIENTS_PER_PARAM) {
+                vals[count++] = atof(tok);
+                tok = strtok(nullptr, ",");
+            }
+            if (count == 0) {
+                fprintf(stderr, "loadScenario: failed to parse %s\n", perUavNames[p]);
+                return 0;
+            }
+            for (int k = 0; k < MAX_CLIENTS_PER_PARAM; k++) {
+                params[perUavOffsets[p] + k] = vals[k];
+            }
+        }
     }
 
     // domainMin: column 14, format "east, north, up"
     {
         char tmp[256]; strncpy(tmp, fields[14], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
-        if (sscanf(t, "%lf , %lf , %lf", &params[14], &params[15], &params[16]) != 3) {
+        if (sscanf(t, "%lf , %lf , %lf", &params[32], &params[33], &params[34]) != 3) {
             fprintf(stderr, "loadScenario: failed to parse domainMin: %s\n", t);
             return 0;
         }
@@ -217,7 +258,7 @@ int loadScenario(const char* filename, double* params) {
     {
         char tmp[256]; strncpy(tmp, fields[15], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
-        if (sscanf(t, "%lf , %lf , %lf", &params[17], &params[18], &params[19]) != 3) {
+        if (sscanf(t, "%lf , %lf , %lf", &params[35], &params[36], &params[37]) != 3) {
             fprintf(stderr, "loadScenario: failed to parse domainMax: %s\n", t);
             return 0;
         }
@@ -227,7 +268,7 @@ int loadScenario(const char* filename, double* params) {
     {
         char tmp[256]; strncpy(tmp, fields[16], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
-        if (sscanf(t, "%lf , %lf", &params[20], &params[21]) != 2) {
+        if (sscanf(t, "%lf , %lf", &params[38], &params[39]) != 2) {
             fprintf(stderr, "loadScenario: failed to parse objectivePos: %s\n", t);
             return 0;
         }
@@ -237,7 +278,7 @@ int loadScenario(const char* filename, double* params) {
     {
         char tmp[256]; strncpy(tmp, fields[17], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
-        if (sscanf(t, "%lf , %lf , %lf , %lf", &params[22], &params[23], &params[24], &params[25]) != 4) {
+        if (sscanf(t, "%lf , %lf , %lf , %lf", &params[40], &params[41], &params[42], &params[43]) != 4) {
             fprintf(stderr, "loadScenario: failed to parse objectiveVar: %s\n", t);
             return 0;
         }
@@ -246,11 +287,11 @@ int loadScenario(const char* filename, double* params) {
     // sensorPerformanceMinimum: column 18
     {
         char tmp[64]; strncpy(tmp, fields[18], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
-        params[26] = atof(trimField(tmp));
+        params[44] = atof(trimField(tmp));
     }
 
     printf("Loaded scenario: domain [%g,%g,%g] to [%g,%g,%g]\n",
-           params[14], params[15], params[16], params[17], params[18], params[19]);
+           params[32], params[33], params[34], params[35], params[36], params[37]);
     return 1;
 }
 
