@@ -48,13 +48,13 @@ function [obj] = constrainMotion(obj)
             % Correction splits between 2 agents, so |A| = 2*r_sum
             r_sum_ij = obj.agents{ii}.collisionGeometry.radius + obj.agents{jj}.collisionGeometry.radius;
             v_max_ij = max(obj.agents{ii}.initialStepSize, obj.agents{jj}.initialStepSize) / obj.timestep;
-            slack = -(4 * r_sum_ij * v_max_ij / obj.barrierGain)^(1 / obj.barrierExponent);
+            hMin = -(4 * r_sum_ij * v_max_ij / obj.barrierGain)^(1 / obj.barrierExponent);
             if norm(A(kk, :)) < 1e-9
                 % Agents are coincident: A-row is zero, so b < 0 would make
                 % 0 ≤ b unsatisfiable. Fall back to b = 0 (no correction possible).
                 b(kk) = 0;
             else
-                b(kk) = obj.barrierGain * max(slack, h(ii, jj))^obj.barrierExponent;
+                b(kk) = obj.barrierGain * max(hMin, h(ii, jj))^obj.barrierExponent;
             end
             kk = kk + 1;
         end
@@ -73,8 +73,8 @@ function [obj] = constrainMotion(obj)
             % Floor for single-agent constraint: full correction on one agent, |A| = 2*r_i
             r_i = obj.agents{ii}.collisionGeometry.radius;
             v_max_i = obj.agents{ii}.initialStepSize / obj.timestep;
-            h_floor_i = -(2 * r_i * v_max_i / obj.barrierGain)^(1 / obj.barrierExponent);
-            b(kk) = obj.barrierGain * max(h_floor_i, hObs(ii, jj))^obj.barrierExponent;
+            hMin = -(2 * r_i * v_max_i / obj.barrierGain)^(1 / obj.barrierExponent);
+            b(kk) = obj.barrierGain * max(hMin, hObs(ii, jj))^obj.barrierExponent;
 
             kk = kk + 1;
         end
@@ -157,17 +157,24 @@ function [obj] = constrainMotion(obj)
     end
     opt = optimoptions("quadprog", "Display", "off", "Algorithm", "active-set", "UseCodegenSolver", true);
     x0 = zeros(size(H, 1), 1);
-    [vNew, ~, exitflag, m] = quadprog(H, double(f), A, b, [], [], [], [], x0, opt);
-    if coder.target('MATLAB')
-        assert(exitflag == 1, sprintf("quadprog failure... %s%s", newline, m.message));
-    end
+    [vNew, ~, exitflag] = quadprog(H, double(f), A, b, [], [], [], [], x0, opt);
     vNew = reshape(vNew, 3, nAgents)';
 
-    if exitflag <= 0
+    if exitflag < 0
+        % Infeasible or other hard failure: hold all agents at current positions
         if coder.target('MATLAB')
-            warning("QP failed, continuing with unconstrained solution...")
+            warning("QP infeasible (exitflag=%d), holding positions.", int16(exitflag));
+        else
+            fprintf("[constrainMotion] QP infeasible (exitflag=%d), holding positions\n", int16(exitflag));
         end
-        vNew = v;
+        vNew = zeros(nAgents, 3);
+    elseif exitflag == 0
+        % Max iterations exceeded: use suboptimal solution already in vNew
+        if coder.target('MATLAB')
+            warning("QP max iterations exceeded, using suboptimal solution.");
+        else
+            fprintf("[constrainMotion] QP max iterations exceeded, using suboptimal solution\n");
+        end
     end
 
     % Update the "next position" that was previously set by unconstrained
