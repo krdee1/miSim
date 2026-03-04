@@ -20,7 +20,7 @@ fclose(fID);
 lla0 = [str2double(yaml((strfind(yaml, 'lat:') + 4):(strfind(yaml, 'lon:') - 1))), str2double(yaml((strfind(yaml, 'lon:') + 4):(strfind(yaml, 'alt:') - 1))), seaToGroundLevel];
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test9", "*.csv"));
+gpsCsvs = dir(fullfile("sandbox", "test10", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
@@ -38,17 +38,12 @@ for ii = 1:size(gpsCsvs, 1)
     stopIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'last');
 
     % % Plot whole flight, including setup/cleanup
-    % startIdx = 1;
-    % stopIdx = length(verticalSpeed);
+    startIdx = 1;
+    stopIdx = length(verticalSpeed);
     
     % Plot recorded trajectory over specified range of indices
     geoplot3(gf, G{ii}.Latitude(startIdx:stopIdx), G{ii}.Longitude(startIdx:stopIdx), G{ii}.Altitude(startIdx:stopIdx) + seaToGroundLevel, c(mod(ii, length(c))), 'LineWidth', 2, "MarkerSize", 5);
 end
-
-% Plot objective
-objectivePos = [params.objectivePos, 0];
-llaObj = enu2lla(objectivePos, lla0, 'flat');
-geoplot3(gf, [llaObj(1), llaObj(1)], [llaObj(2), llaObj(2)], [llaObj(3), llaObj(3) + 50], 'LineWidth', 3, "Color", 'y');
 
 % Plot domain
 altOffset = 1; % to avoid clipping into the ground when displayed
@@ -63,6 +58,11 @@ geoplot3(gf, [domain(2, 1), domain(2, 1)], [domain(2, 2), domain(2, 2)], domain(
 % Plot floor (minimum altitude constraint)
 floorAlt = params.minAlt;
 geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset + floorAlt, 1, 5), 'LineWidth', 3, 'Color', 'r');
+
+% Plot objective
+objectivePos = [params.objectivePos, 0];
+llaObj = enu2lla(objectivePos, lla0, 'flat');
+geoplot3(gf, [llaObj(1), llaObj(1)], [llaObj(2), llaObj(2)], [llaObj(3), domain(2, 3)], 'LineWidth', 3, "Color", 'y');
 
 % finish
 hold(gf, "off");

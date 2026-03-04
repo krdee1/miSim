@@ -14,9 +14,12 @@ function obj = initializeFromCsv(obj, csvPath)
 %
 % Expected CSV columns (see scenario.csv):
 %   timestep, maxIter, minAlt, discretizationStep, protectedRange,
-%   initialStepSize, barrierGain, barrierExponent, collisionRadius, comRange,
-%   alphaDist, betaDist, alphaTilt, betaTilt,
+%   initialStepSize, barrierGain, barrierExponent,
+%   collisionRadius (per-UAV), comRange (per-UAV),
+%   alphaDist (per-UAV), betaDist (per-UAV),
+%   alphaTilt (per-UAV), betaTilt (per-UAV),
 %   domainMin ("x,y,z"), domainMax ("x,y,z"), objectivePos ("x,y"),
+%   objectiveVar ("v11,v12,v21,v22"), sensorPerformanceMinimum,
 %   initialPositions (flat "x1,y1,z1, x2,y2,z2,..."),
 %   numObstacles, obstacleMin (flat), obstacleMax (flat)
 
@@ -39,12 +42,13 @@ PROTECTED_RANGE     = scenario.protectedRange;
 INITIAL_STEP_SIZE   = scenario.initialStepSize;
 BARRIER_GAIN        = scenario.barrierGain;
 BARRIER_EXPONENT    = scenario.barrierExponent;
-COLLISION_RADIUS    = scenario.collisionRadius;
-COMMS_RANGE         = scenario.comRange;
-ALPHA_DIST          = scenario.alphaDist;
-BETA_DIST           = scenario.betaDist;
-ALPHA_TILT          = scenario.alphaTilt;
-BETA_TILT           = scenario.betaTilt;
+% Per-UAV parameters (vectors with one element per UAV)
+COLLISION_RADIUS_VEC = scenario.collisionRadius;   % 1×N
+COMMS_RANGE_VEC      = scenario.comRange;           % 1×N
+ALPHA_DIST_VEC       = scenario.alphaDist;          % 1×N
+BETA_DIST_VEC        = scenario.betaDist;           % 1×N
+ALPHA_TILT_VEC       = scenario.alphaTilt;          % 1×N
+BETA_TILT_VEC        = scenario.betaTilt;           % 1×N
 
 DOMAIN_MIN                 = scenario.domainMin;                % 1×3
 DOMAIN_MAX                 = scenario.domainMax;                % 1×3
@@ -59,6 +63,20 @@ assert(mod(numel(flatPos), 3) == 0, ...
 positions  = reshape(flatPos, 3, [])';        % N×3
 numAgents  = size(positions, 1);
 
+% Validate per-UAV parameter lengths match numAgents
+assert(numel(COLLISION_RADIUS_VEC) == numAgents, ...
+    "collisionRadius has %d values but expected %d (one per UAV)", numel(COLLISION_RADIUS_VEC), numAgents);
+assert(numel(COMMS_RANGE_VEC) == numAgents, ...
+    "comRange has %d values but expected %d (one per UAV)", numel(COMMS_RANGE_VEC), numAgents);
+assert(numel(ALPHA_DIST_VEC) == numAgents, ...
+    "alphaDist has %d values but expected %d (one per UAV)", numel(ALPHA_DIST_VEC), numAgents);
+assert(numel(BETA_DIST_VEC) == numAgents, ...
+    "betaDist has %d values but expected %d (one per UAV)", numel(BETA_DIST_VEC), numAgents);
+assert(numel(ALPHA_TILT_VEC) == numAgents, ...
+    "alphaTilt has %d values but expected %d (one per UAV)", numel(ALPHA_TILT_VEC), numAgents);
+assert(numel(BETA_TILT_VEC) == numAgents, ...
+    "betaTilt has %d values but expected %d (one per UAV)", numel(BETA_TILT_VEC), numAgents);
+
 numObstacles = scenario.numObstacles;
 
 % ---- Build domain --------------------------------------------------------
@@ -70,19 +88,23 @@ dom.objective = sensingObjective;
 objFcn = objectiveFunctionWrapper(OBJECTIVE_GROUND_POS, OBJECTIVE_VAR);
 dom.objective = dom.objective.initialize(objFcn, dom, DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
 
-% ---- Build shared sensor model -------------------------------------------
-sensor = sigmoidSensor;
-sensor = sensor.initialize(ALPHA_DIST, BETA_DIST, ALPHA_TILT, BETA_TILT);
-
 % ---- Initialise agents from scenario positions ---------------------------
+% Each agent gets its own sensor model and collision/comms radii from the
+% per-UAV parameter vectors.
 agentList = cell(numAgents, 1);
 for ii = 1:numAgents
     pos  = positions(ii, :);
+
+    % Per-UAV sensor model
+    sensor = sigmoidSensor;
+    sensor = sensor.initialize(ALPHA_DIST_VEC(ii), BETA_DIST_VEC(ii), ...
+                               ALPHA_TILT_VEC(ii), BETA_TILT_VEC(ii));
+
     geom = spherical;
-    geom = geom.initialize(pos, COLLISION_RADIUS, REGION_TYPE.COLLISION, ...
+    geom = geom.initialize(pos, COLLISION_RADIUS_VEC(ii), REGION_TYPE.COLLISION, ...
                            sprintf("UAV %d Collision", ii));
     ag = agent;
-    ag = ag.initialize(pos, geom, sensor, COMMS_RANGE, MAX_ITER, ...
+    ag = ag.initialize(pos, geom, sensor, COMMS_RANGE_VEC(ii), MAX_ITER, ...
                        INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
     agentList{ii} = ag;
 end
