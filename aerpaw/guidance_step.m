@@ -135,7 +135,7 @@ if isInit
 
         % --- Build obstacle list from flat arrays ---
         coder.varsize('obstacleList', [8, 1], [1, 0]);
-        obstacleList = cell(int32(0), 1);
+        obstacleList = repmat({rectangularPrism}, numObstacles, 1);
         for ii = 1:numObstacles
             obs = rectangularPrism;
             obs = obs.initialize([obstacleMin(ii, :); obstacleMax(ii, :)], ...

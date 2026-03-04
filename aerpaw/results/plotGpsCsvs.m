@@ -20,7 +20,7 @@ fclose(fID);
 lla0 = [str2double(yaml((strfind(yaml, 'lat:') + 4):(strfind(yaml, 'lon:') - 1))), str2double(yaml((strfind(yaml, 'lon:') + 4):(strfind(yaml, 'alt:') - 1))), seaToGroundLevel];
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test10", "*.csv"));
+gpsCsvs = dir(fullfile("sandbox", "test12", "*.csv"));
 
 G = cell(size(gpsCsvs));
 for ii = 1:size(gpsCsvs, 1)
@@ -63,6 +63,17 @@ geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 
 objectivePos = [params.objectivePos, 0];
 llaObj = enu2lla(objectivePos, lla0, 'flat');
 geoplot3(gf, [llaObj(1), llaObj(1)], [llaObj(2), llaObj(2)], [llaObj(3), domain(2, 3)], 'LineWidth', 3, "Color", 'y');
+
+% Plot obstacles
+for ii = 1:params.numObstacles
+    obstacle = enu2lla([params.obstacleMin((1 + (ii - 1) * 3):(ii * 3)); params.obstacleMax((1 + (ii - 1) * 3):(ii * 3))], lla0, 'flat');
+    geoplot3(gf, [obstacle(1, 1), obstacle(2, 1), obstacle(2, 1), obstacle(1, 1), obstacle(1, 1)], [obstacle(1, 2), obstacle(1, 2), obstacle(2, 2), obstacle(2, 2), obstacle(1, 2)], repmat(obstacle(1, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'r');
+    geoplot3(gf, [obstacle(1, 1), obstacle(2, 1), obstacle(2, 1), obstacle(1, 1), obstacle(1, 1)], [obstacle(1, 2), obstacle(1, 2), obstacle(2, 2), obstacle(2, 2), obstacle(1, 2)], repmat(obstacle(2, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'r');
+    geoplot3(gf, [obstacle(1, 1), obstacle(1, 1)], [obstacle(1, 2), obstacle(1, 2)], obstacle(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'r');
+    geoplot3(gf, [obstacle(2, 1), obstacle(2, 1)], [obstacle(1, 2), obstacle(1, 2)], obstacle(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'r');
+    geoplot3(gf, [obstacle(1, 1), obstacle(1, 1)], [obstacle(2, 2), obstacle(2, 2)], obstacle(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'r');
+    geoplot3(gf, [obstacle(2, 1), obstacle(2, 1)], [obstacle(2, 2), obstacle(2, 2)], obstacle(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'r');
+end
 
 % finish
 hold(gf, "off");
