@@ -1,9 +1,11 @@
-function f = plotGpsLogs(logDirs)
+function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel)
     arguments (Input)
         logDirs (1, 1) string;
+        seaToGroundLevel (1, 1) double = 110; % measured approximately from USGS national map viewer for the AERPAW test field
     end
     arguments (Output)
         f (1, 1) matlab.ui.Figure;
+        G cell;
     end
     % Plot setup
     f = uifigure;
@@ -16,9 +18,6 @@ function f = plotGpsLogs(logDirs)
     
     % configured data
     params = readScenarioCsv(scenarioCsv);
-    
-    % coordinate system constants
-    seaToGroundLevel = 110; % meters, measured approximately from USGS national map viewer
     
     fID = fopen(fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "client1.yaml"), 'r');
     yaml = fscanf(fID, '%s');
@@ -45,12 +44,19 @@ function f = plotGpsLogs(logDirs)
     
         % Automatically detect start/stop of algorithm flight (ignore takeoff, setup, return to liftoff, landing segments of flight)
         pctThreshold = 60; % pctThreshold may need adjusting depending on your flight
-        startIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'first');
-        stopIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, 'last');
+        startIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, "first");
+        stopIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, "last");
     
         % % Plot whole flight, including setup/cleanup
         % startIdx = 1;
         % stopIdx = length(verticalSpeed);
+
+        % Convert LLA trajectory data to ENU for external analysis
+        % NaN out entries outside the algorithm flight range so they don't plot
+        enu = NaN(height(G{ii}), 3);
+        enu(startIdx:stopIdx, :) = lla2enu([G{ii}.Latitude(startIdx:stopIdx), G{ii}.Longitude(startIdx:stopIdx), G{ii}.Altitude(startIdx:stopIdx)], lla0, "flat");
+        enu = array2table(enu, 'VariableNames', ["East", "North", "Up"]);
+        G{ii} = [G{ii}, enu];
     
         % Plot recorded trajectory over specified range of indices
         geoplot3(gf, G{ii}.Latitude(startIdx:stopIdx), G{ii}.Longitude(startIdx:stopIdx), G{ii}.Altitude(startIdx:stopIdx) + seaToGroundLevel, c(mod(ii, length(c))), 'LineWidth', 2, "MarkerSize", 5);
@@ -58,7 +64,7 @@ function f = plotGpsLogs(logDirs)
     
     % Plot domain
     altOffset = 1; % to avoid clipping into the ground when displayed
-    domain = [lla0; enu2lla(params.domainMax, lla0, 'flat')];
+    domain = [lla0; enu2lla(params.domainMax, lla0, "flat")];
     geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
     geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(2, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
     geoplot3(gf, [domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
@@ -72,12 +78,12 @@ function f = plotGpsLogs(logDirs)
     
     % Plot objective
     objectivePos = [params.objectivePos, 0];
-    llaObj = enu2lla(objectivePos, lla0, 'flat');
+    llaObj = enu2lla(objectivePos, lla0, "flat");
     geoplot3(gf, [llaObj(1), llaObj(1)], [llaObj(2), llaObj(2)], [llaObj(3), domain(2, 3)], 'LineWidth', 3, "Color", 'y');
     
     % Plot obstacles
     for ii = 1:params.numObstacles
-        obstacle = enu2lla([params.obstacleMin((1 + (ii - 1) * 3):(ii * 3)); params.obstacleMax((1 + (ii - 1) * 3):(ii * 3))], lla0, 'flat');
+        obstacle = enu2lla([params.obstacleMin((1 + (ii - 1) * 3):(ii * 3)); params.obstacleMax((1 + (ii - 1) * 3):(ii * 3))], lla0, "flat");
         geoplot3(gf, [obstacle(1, 1), obstacle(2, 1), obstacle(2, 1), obstacle(1, 1), obstacle(1, 1)], [obstacle(1, 2), obstacle(1, 2), obstacle(2, 2), obstacle(2, 2), obstacle(1, 2)], repmat(obstacle(1, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'r');
         geoplot3(gf, [obstacle(1, 1), obstacle(2, 1), obstacle(2, 1), obstacle(1, 1), obstacle(1, 1)], [obstacle(1, 2), obstacle(1, 2), obstacle(2, 2), obstacle(2, 2), obstacle(1, 2)], repmat(obstacle(2, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'r');
         geoplot3(gf, [obstacle(1, 1), obstacle(1, 1)], [obstacle(1, 2), obstacle(1, 2)], obstacle(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'r');

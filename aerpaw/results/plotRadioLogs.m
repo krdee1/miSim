@@ -1,10 +1,10 @@
-function f = plotRadioLogs(resultsPath)
+function [f, R] = plotRadioLogs(resultsPath)
     arguments (Input)
         resultsPath (1, 1) string;
     end
-    
     arguments (Output)
         f (1, 1) matlab.ui.Figure;
+        R cell;
     end
 
     logDirs = dir(resultsPath);
