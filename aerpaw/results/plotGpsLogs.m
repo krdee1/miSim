@@ -3,7 +3,7 @@ function f = plotGpsLogs(logDirs)
         logDirs (1, 1) string;
     end
     arguments (Output)
-        f (1, 1) uifigure;
+        f (1, 1) matlab.ui.Figure;
     end
     % Plot setup
     f = uifigure;
