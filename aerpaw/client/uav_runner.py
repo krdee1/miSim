@@ -116,8 +116,9 @@ def _gps_log_row(vehicle, line_num, writer):
 
 async def _gps_log_loop(drone):
     """Background async task that logs GPS data at 1Hz."""
-    host = platform.node()
-    filename = f"/root/Results/GPS_DATA_{host}_{datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.csv"
+    results_dir = os.environ.get('RESULTS_DIR', '/root/Results')
+    log_prefix = os.environ.get('LOG_PREFIX', datetime.datetime.now().strftime('%Y-%m-%d_%H_%M_%S'))
+    filename = os.path.join(results_dir, f"{log_prefix}_gps_log.csv")
     print(f"[UAV] GPS logging to {filename}")
     line_num = 1
     try:
