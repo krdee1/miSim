@@ -46,8 +46,9 @@ class MessageType(IntEnum):
     POSITION         = 8
 
 
-AERPAW_DIR = Path(__file__).parent.parent
-CONFIG_FILE = AERPAW_DIR / "config" / "client.yaml"
+AERPAW_DIR = Path('/root/miSim/aerpaw')
+CONFIG_FILE = Path(os.environ.get('AERPAW_CLIENT_CONFIG',
+                                  AERPAW_DIR / "config" / "client.yaml"))
 
 
 def load_config():
