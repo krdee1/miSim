@@ -13,19 +13,26 @@ params = readScenarioCsv(scenarioCsv);
 % coordinate system constants
 seaToGroundLevel = 110; % meters, measured approximately from USGS national map viewer
 
-fID = fopen(fullfile("aerpaw", "config", "client.yaml"), 'r');
+fID = fopen(fullfile("aerpaw", "config", "client1.yaml"), 'r');
 yaml = fscanf(fID, '%s');
 fclose(fID);
 % origin (LLA)
 lla0 = [str2double(yaml((strfind(yaml, 'lat:') + 4):(strfind(yaml, 'lon:') - 1))), str2double(yaml((strfind(yaml, 'lon:') + 4):(strfind(yaml, 'alt:') - 1))), seaToGroundLevel];
 
 % Paths to logs
-gpsCsvs = dir(fullfile("sandbox", "test14", "*.csv"));
+logDirs = dir(fullfile("sandbox", "t1"));
+logDirs = logDirs(3:end);
+logDirs = logDirs([logDirs(:).isdir] == 1);
 
-G = cell(size(gpsCsvs));
-for ii = 1:size(gpsCsvs, 1)
-     % Read CSV
-    G{ii} = readGpsCsv(fullfile(gpsCsvs(ii).folder, gpsCsvs(ii).name));
+G = cell(size(logDirs));
+for ii = 1:size(logDirs, 1)
+    % Find GPS log CSV
+    gpsCsv = dir(fullfile(logDirs(ii).folder, logDirs(ii).name));
+    gpsCsv = gpsCsv(endsWith({gpsCsv(:).name}, "_gps_log.csv"));
+    gpsCsv = fullfile(gpsCsv.folder, gpsCsv.name);
+
+    % Read GPS log CSV
+    G{ii} = readGpsCsv(gpsCsv);
 
     % Find when algorithm begins/ends (using ENU altitude rate change)
     enuTraj = lla2enu([G{ii}.Latitude, G{ii}.Longitude, G{ii}.Altitude], lla0, 'flat');
