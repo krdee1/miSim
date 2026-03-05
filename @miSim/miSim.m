@@ -21,6 +21,8 @@ classdef miSim
         artifactName = "";
         f; % main plotting tiled layout figure
         fPerf; % performance plot figure
+        % Indicies for various plot types in the main tiled layout figure
+        spatialPlotIndices = [6, 4, 3, 2];
     end
 
     properties (Access = private)
@@ -41,7 +43,6 @@ classdef miSim
         trailPlot; % objects for agent trail plot
 
         % Indicies for various plot types in the main tiled layout figure
-        spatialPlotIndices = [6, 4, 3, 2];
         objectivePlotIndices = [6, 4];
         networkGraphIndex = 5;
         partitionGraphIndex = 1;

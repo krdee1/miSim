@@ -59,8 +59,10 @@ comparison = figure;
 copyobj(sim.f.Children, comparison);
 
 % Plot trajectories on top
-hold(comparison.Children.Children(end), "on");
 for ii = 1:size(G, 1)
-    plot3(comparison.Children(1).Children(end), G{ii}.East, G{ii}.North, G{ii}.Up + seaToGroundLevel, 'Color', 'r', 'LineWidth', 1);
+    for jj = 1:size(sim.spatialPlotIndices, 2)
+        hold(comparison.Children.Children(sim.spatialPlotIndices(jj)), "on");
+        plot3(comparison.Children(1).Children(sim.spatialPlotIndices(jj)), G{ii}.East, G{ii}.North, G{ii}.Up + seaToGroundLevel, 'Color', 'r', 'LineWidth', 1);
+        hold(comparison.Children.Children(sim.spatialPlotIndices(jj)), "off");
+    end
 end
-hold(comparison.Children.Children(end), "off");
