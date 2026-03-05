@@ -1,5 +1,15 @@
 # AERPAW UAV (Client) Configuration
 
+# Unique 0-indexed UAV identifier (each UAV must have a distinct value)
+uav_id: 0
+
+# TDM (Time-Division Multiplexing) radio settings
+# All UAVs share a common frequency; each transmits only during its time slot.
+# Slot assignment uses wall-clock modular arithmetic (GPS/NTP synced).
+tdm:
+  slot_duration: 0.5      # seconds per slot
+  guard_interval: 0.05    # seconds of silence at slot boundaries
+
 # ENU coordinate system origin (AERPAW Lake Wheeler Road Field)
 origin:
   lat: 35.72550610629396

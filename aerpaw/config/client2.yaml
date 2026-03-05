@@ -1,0 +1,38 @@
+# AERPAW UAV (Client) Configuration
+
+# Unique 0-indexed UAV identifier (each UAV must have a distinct value)
+uav_id: 1
+
+# TDM (Time-Division Multiplexing) radio settings
+# All UAVs share a common frequency; each transmits only during its time slot.
+# Slot assignment uses wall-clock modular arithmetic (GPS/NTP synced).
+tdm:
+  slot_duration: 0.5      # seconds per slot
+  guard_interval: 0.05    # seconds of silence at slot boundaries
+
+# ENU coordinate system origin (AERPAW Lake Wheeler Road Field)
+origin:
+  lat: 35.72550610629396
+  lon: -78.70019657805574
+  alt: 0.0  # Alt=0 means ENU z directly becomes target altitude above home
+# Environment-specific settings
+environments:
+  local:
+    # MAVLink connection for SITL simulation (UDP)
+    mavlink:
+      ip: "127.0.0.1"
+      port: 14550
+    # Controller server address
+    controller:
+      ip: "127.0.0.1"
+      port: 5000
+
+  testbed:
+    # AERPAW testbed: E-VM listens, MAVLink Filter connects TO us (UDP)
+    mavlink:
+      ip: "192.168.32.26"
+      port: 14550
+    # Controller runs on host machine (192.168.122.1 from E-VM perspective)
+    controller:
+      ip: "192.168.122.1"
+      port: 5000
