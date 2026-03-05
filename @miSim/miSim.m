@@ -19,6 +19,7 @@ classdef miSim
         barrierExponent = NaN; % CBF exponent parameter
         minAlt = 0; % minimum allowable altitude (m)
         artifactName = "";
+        f; % main plotting tiled layout figure
         fPerf; % performance plot figure
     end
 
@@ -31,7 +32,6 @@ classdef miSim
         % Plot objects
         makePlots = true; % enable/disable simulation plotting (performance implications)
         makeVideo = true; % enable/disable VideoWriter (performance implications)
-        f; % main plotting tiled layout figure
         connectionsPlot; % objects for lines connecting agents in spatial plots
         graphPlot; % objects for abstract network graph plot
         partitionPlot; % objects for partition plot
