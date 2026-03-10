@@ -4,19 +4,19 @@ function R = readRadioLogs(logPath)
     end
 
     arguments (Output)
-        R (:, 6) table;
+        R (:, 8) table;
     end
 
     % Extract receiving UAV ID from directory name (e.g. "uav0_..." → 0)
     [~, dirName] = fileparts(logPath);
     rxID = int32(sscanf(dirName, 'uav%d'));
 
-    metrics = ["quality", "snr", "power"];
+    metrics = ["quality", "snr", "power", "noisefloor", "freqoffset"];
     logs = dir(logPath);
     logs = logs(endsWith({logs(:).name}, metrics + "_log.txt"));
 
-    R = table(datetime.empty(0,1), zeros(0,1,'int32'), zeros(0,1,'int32'), zeros(0,1), zeros(0,1), zeros(0,1), ...
-        'VariableNames', ["Timestamp", "TxUAVID", "RxUAVID", "SNR", "Power", "Quality"]);
+    R = table(datetime.empty(0,1), zeros(0,1,'int32'), zeros(0,1,'int32'), zeros(0,1), zeros(0,1), zeros(0,1), zeros(0,1), zeros(0,1), ...
+        'VariableNames', ["Timestamp", "TxUAVID", "RxUAVID", "SNR", "Power", "Quality", "NoiseFloor", "FreqOffset"]);
 
     for ii = 1:numel(logs)
         filepath = fullfile(logs(ii).folder, logs(ii).name);
@@ -43,13 +43,15 @@ function R = readRadioLogs(logPath)
         val = data{3};
 
         n = numel(ts);
-        t = table(ts, txId, repmat(rxID, n, 1), NaN(n,1), NaN(n,1), NaN(n,1), ...
-            'VariableNames', ["Timestamp", "TxUAVID", "RxUAVID", "SNR", "Power", "Quality"]);
+        t = table(ts, txId, repmat(rxID, n, 1), NaN(n,1), NaN(n,1), NaN(n,1), NaN(n,1), NaN(n,1), ...
+            'VariableNames', ["Timestamp", "TxUAVID", "RxUAVID", "SNR", "Power", "Quality", "NoiseFloor", "FreqOffset"]);
 
         switch metric
-            case "snr",     t.SNR = val;
-            case "power",   t.Power = val;
-            case "quality", t.Quality = val;
+            case "snr",        t.SNR = val;
+            case "power",      t.Power = val;
+            case "quality",    t.Quality = val;
+            case "noisefloor", t.NoiseFloor = val;
+            case "freqoffset", t.FreqOffset = val;
         end
 
         R = [R; t]; %#ok<AGROW>
