@@ -24,16 +24,25 @@ function [f, R] = plotRadioLogs(resultsPath)
         R{ii}(bad, :) = [];
     end
 
+    % Compute path loss from Power (post-processing)
+    % Power = 20*log10(peak_mag) - rxGain; path loss = txGain - rxGain - Power
+    txGain_dB = 76;   % from startchannelsounderTXGRC.sh GAIN_TX
+    rxGain_dB = 30;   % from startchannelsounderRXGRC.sh GAIN_RX
+    for ii = 1:numel(R)
+        R{ii}.PathLoss = txGain_dB - rxGain_dB - R{ii}.Power;
+        R{ii}.FreqOffset = R{ii}.FreqOffset / 1e6; % Hz to MHz
+    end
+
     % Build legend labels and color map for up to 4 UAVs
     nUAV = numel(R);
     colors = lines(nUAV * nUAV);
     styles = ["-o", "-s", "-^", "-d", "-v", "-p", "-h", "-<", "->", "-+", "-x", "-*"];
 
-    metricNames = ["SNR", "Power", "Quality"];
-    yLabels     = ["SNR (dB)", "Power (dB)", "Quality"];
+    metricNames = ["SNR", "Power", "Quality", "PathLoss", "NoiseFloor", "FreqOffset"];
+    yLabels     = ["SNR (dB)", "Power (dB)", "Quality", "Path Loss (dB)", "Noise Floor (dB)", "Freq Offset (MHz)"];
 
     f = figure;
-    tl = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+    tl = tiledlayout(numel(metricNames), 1, 'TileSpacing', 'compact', 'Padding', 'compact');
 
     for mi = 1:numel(metricNames)
         ax = nexttile(tl);

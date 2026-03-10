@@ -267,6 +267,10 @@ class CSwSNRRX(gr.top_block):
             '/root/Quality', num_uavs, slot_duration, guard_interval)
         self.blocks_file_sink_0 = TdmTaggedFileSink(
             '/root/Power', num_uavs, slot_duration, guard_interval)
+        self.blocks_file_sink_noisefloor = TdmTaggedFileSink(
+            '/root/NoiseFloor', num_uavs, slot_duration, guard_interval)
+        self._freqoffset_file = open('/root/FreqOffset', 'w')
+        self._freqoffset_file.write('tx_uav_id,value\n')
         self.blocks_divide_xx_0 = blocks.divide_ff(1)
         self.blocks_complex_to_real_0_0 = blocks.complex_to_real(1)
         self.blocks_complex_to_real_0 = blocks.complex_to_real(1)
@@ -310,6 +314,7 @@ class CSwSNRRX(gr.top_block):
         self.connect((self.blocks_nlog10_ff_0_0, 0), (self.blocks_add_const_vxx_0, 0))
         self.connect((self.blocks_nlog10_ff_0_0, 0), (self.blocks_sub_xx_0, 0))
         self.connect((self.blocks_nlog10_ff_0_0_0, 0), (self.blocks_sub_xx_0, 1))
+        self.connect((self.blocks_nlog10_ff_0_0_0, 0), (self.blocks_file_sink_noisefloor, 0))
         self.connect((self.blocks_stream_to_vector_0_0, 0), (self.epy_block_0, 0))
         self.connect((self.blocks_sub_xx_0, 0), (self.blocks_file_sink_0_0_0, 0))
         self.connect((self.blocks_vector_to_stream_0_0, 0), (self.blocks_keep_m_in_n_0, 0))
@@ -320,6 +325,26 @@ class CSwSNRRX(gr.top_block):
         self.connect((self.epy_block_0, 0), (self.blocks_vector_to_stream_0_0, 0))
         self.connect((self.freq_xlating_fft_filter_ccc_0_0, 0), (self.blocks_stream_to_vector_0_0, 0))
         self.connect((self.uhd_usrp_source_0, 0), (self.blocks_multiply_xx_0, 0))
+
+        ##################################################
+        # Frequency offset polling thread
+        ##################################################
+        def _freq_offset_probe():
+            frame_dur = slot_duration * num_uavs
+            while True:
+                val = self.digital_fll_band_edge_cc_0_0.get_frequency()
+                freq_hz = val * samp_rate / (2 * math.pi)
+                now = time.time()
+                slot_time = now % frame_dur
+                current_slot = int(slot_time / slot_duration)
+                time_into_slot = slot_time - current_slot * slot_duration
+                tx_id = -1 if time_into_slot < guard_interval else current_slot
+                self._freqoffset_file.write(f'{tx_id},{freq_hz}\n')
+                self._freqoffset_file.flush()
+                time.sleep(0.01)
+        _freq_offset_thread = threading.Thread(target=_freq_offset_probe)
+        _freq_offset_thread.daemon = True
+        _freq_offset_thread.start()
 
 
     def get_args(self):
