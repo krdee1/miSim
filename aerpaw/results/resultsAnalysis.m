@@ -10,7 +10,7 @@ seaToGroundLevel = 110; % measured approximately from USGS national map viewer
 
 %% Run simulation
 % Run miSim using same AERPAW scenario definition CSV
-csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario_2uavs.csv");
+csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv");
 params = readScenarioCsv(csvPath);
 
 % Visualization settings
