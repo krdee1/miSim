@@ -23,7 +23,7 @@ cd /root/miSim/aerpaw
 
 # Use screen/ts/tee aerpawism from sample script
 screen -S vehicle -dm \
-       bash -c "stdbuf -oL -eL ./run_uav.sh testbed /root/miSim/aerpaw/config/client1.yaml \
+       bash -c "stdbuf -oL -eL ./run_uav.sh testbed \
        | ts $TS_FORMAT \
        | tee $RESULTS_DIR/$LOG_PREFIX\_vehicle_log.txt"     
 

@@ -32,8 +32,8 @@ else
     exit 1
 fi
 
-# Client config file (optional 2nd argument)
-CONFIG_FILE="${2:-config/client.yaml}"
+# Client config file: 2nd argument > AERPAW_CLIENT_CONFIG env var > default
+CONFIG_FILE="${2:-${AERPAW_CLIENT_CONFIG:-config/client.yaml}}"
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Error: Config file not found: $CONFIG_FILE"
     exit 1

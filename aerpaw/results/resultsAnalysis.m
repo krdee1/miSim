@@ -1,5 +1,5 @@
 %% Plot AERPAW logs (trajectory, radio)
-resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "t2"); % Define path to results copied from AERPAW platform
+resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "three_around_wall_2uavs"); % Define path to results copied from AERPAW platform
 
 % Plot GPS logged data and scenario information (domain, objective, obstacles)
 seaToGroundLevel = 110; % measured approximately from USGS national map viewer
@@ -10,7 +10,7 @@ seaToGroundLevel = 110; % measured approximately from USGS national map viewer
 
 %% Run simulation
 % Run miSim using same AERPAW scenario definition CSV
-csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv");
+csvPath = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario_2uavs.csv");
 params = readScenarioCsv(csvPath);
 
 % Visualization settings
