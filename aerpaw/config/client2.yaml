@@ -12,8 +12,8 @@ tdm:
 
 # ENU coordinate system origin (AERPAW Lake Wheeler Road Field)
 origin:
-  lat: 35.72550610629396
-  lon: -78.70019657805574
+  lat: 35.72595214250436
+  lon: -78.69917609299937
   alt: 0.0  # Alt=0 means ENU z directly becomes target altitude above home
 # Environment-specific settings
 environments:
@@ -32,7 +32,7 @@ environments:
     mavlink:
       ip: "192.168.32.26"
       port: 14550
-    # Controller runs on host machine (192.168.122.1 from E-VM perspective)
+    # Controller runs on host machine (192.168.109.1 from E-VM perspective)
     controller:
-      ip: "192.168.122.1"
+      ip: "192.168.109.1"
       port: 5000

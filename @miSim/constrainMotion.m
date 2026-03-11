@@ -133,11 +133,22 @@ function [obj] = constrainMotion(obj)
     for ii = 1:(nAgents - 1)
         for jj = (ii + 1):nAgents
             if obj.constraintAdjacencyMatrix(ii, jj)
-                hComms(ii, jj) = min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius])^2 - norm(obj.agents{ii}.pos - obj.agents{jj}.pos)^2;
+                paddingFactor = 0.9; % Barrier at 90% of actual range; real comms still work beyond this
+                r_comms = paddingFactor * min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius]);
+                hComms(ii, jj) = r_comms^2 - norm(obj.agents{ii}.pos - obj.agents{jj}.pos)^2;
 
                 A(kk, (3 * ii - 2):(3 * ii)) =  2 * (obj.agents{ii}.pos - obj.agents{jj}.pos);
                 A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
-                b(kk) = obj.barrierGain * max(0, hComms(ii, jj))^obj.barrierExponent;
+
+                % One-step forward invariance: b = h/dt ensures h cannot
+                % go negative in a single timestep (linear approximation)
+                v_max_ij = max(obj.agents{ii}.initialStepSize, obj.agents{jj}.initialStepSize) / obj.timestep;
+                hMin = -4 * r_comms * v_max_ij * obj.timestep;
+                if norm(A(kk, :)) < 1e-9
+                    b(kk) = 0;
+                else
+                    b(kk) = max(hMin, hComms(ii, jj)) / obj.timestep;
+                end
 
                 kk = kk + 1;
             end

@@ -1,7 +1,7 @@
 # AERPAW UAV (Client) Configuration
 
 # Unique 0-indexed UAV identifier (each UAV must have a distinct value)
-uav_id: 0
+uav_id: 2
 
 # TDM (Time-Division Multiplexing) radio settings
 # All UAVs share a common frequency; each transmits only during its time slot.
