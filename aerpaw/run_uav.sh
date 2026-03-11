@@ -59,7 +59,7 @@ echo "[run_uav] MAVLink connection: $CONN"
 
 # Run via aerpawlib
 echo "[run_uav] Starting UAV runner..."
-python3 -m aerpawlib \
+python3 -u -m aerpawlib \
     --script client.uav_runner \
     --conn "$CONN" \
     --vehicle drone
