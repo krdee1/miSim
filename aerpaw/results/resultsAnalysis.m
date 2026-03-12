@@ -1,5 +1,5 @@
 %% Plot AERPAW logs (trajectory, radio)
-resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "three_around_wall_2uavs"); % Define path to results copied from AERPAW platform
+resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "two_around_wall"); % Define path to results copied from AERPAW platform
 
 % Plot GPS logged data and scenario information (domain, objective, obstacles)
 seaToGroundLevel = 110; % measured approximately from USGS national map viewer
