@@ -20,4 +20,4 @@ else
 fi
 
 cd $PROFILE_DIR"/SDR_control/Channel_Sounderv3"
-python3 CSwSNRTX.py --freq $TX_FREQ --gaintx $GAIN_TX --args $ARGS --offset $OFFSET --samp-rate $SAMP_RATE --sps $SPS
+python3 CSwSNRTX.py --freq $TX_FREQ --gaintx $GAIN_TX --args $ARGS --offset $OFFSET --samp-rate $SAMP_RATE --sps $SPS "$@"
