@@ -33,6 +33,8 @@ classdef test_miSim < matlab.unittest.TestCase
         initialStepSize = 0.2; % gradient ascent step size at the first iteration. Decreases linearly to 0 based on maxIter.
         minAgents = 3; % Minimum number of agents to be randomly generated
         maxAgents = 4; % Maximum number of agents to be randomly generated
+        useDoubleIntegrator = false;
+        dampingCoeff = 2;
         agents = cell(0, 1);
         
         % Collision
@@ -52,6 +54,7 @@ classdef test_miSim < matlab.unittest.TestCase
         sensor = sigmoidSensor;
 
         % Communications
+        useFixedTopology = false;
         minCommsRange = 3; % Minimum randomly generated collision geometry size
         maxCommsRange = 5; % Maximum randomly generated collision geometry size
         commsRanges = NaN;
@@ -224,7 +227,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
         end
         function miSim_run(tc)
             % randomly create obstacles
@@ -363,7 +366,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
 
             % Write out initialization state
             tc.testClass.writeInits();
@@ -397,7 +400,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.obstacles = cell(0, 1);
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
         
             centerIdx = floor(size(tc.testClass.partitioning, 1) / 2);
             tc.verifyEqual(tc.testClass.partitioning(centerIdx, centerIdx:(centerIdx + 2)), [2, 3, 1]); % all three near center
@@ -422,7 +425,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.obstacles = cell(0, 1);
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
             close(tc.testClass.fPerf);
 
             tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1]);
@@ -450,7 +453,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
             
             % Run the simulation
             tc.testClass = tc.testClass.run();end
@@ -485,7 +488,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
             
             % Run the simulation
             tc.testClass.run();
@@ -531,7 +534,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, tc.collisionRanges(2)  *1.1 + yOffset, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
             
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
             
             % Run the simulation
             tc.testClass.run();
@@ -571,7 +574,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
@@ -614,7 +617,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.minAlt = 0;
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
 
             % Communications link should be established
             tc.assertEqual(tc.testClass.adjacency, logical(true(2)));
@@ -659,7 +662,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.minAlt = 0;
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
 
             % Constraint adjacency matrix defined by LNA should be as follows
             tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
@@ -713,7 +716,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.minAlt = 0;
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
 
             % Constraint adjacency matrix defined by LNA should be as follows
             tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
