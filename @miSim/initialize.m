@@ -1,4 +1,4 @@
-function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo)
+function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "miSim")};
         domain (1, 1) {mustBeGeometry};
@@ -11,6 +11,8 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         obstacles (:, 1) cell {mustBeGeometry} = cell(0, 1);
         makePlots(1, 1) logical = true;
         makeVideo (1, 1) logical = true;
+        useDoubleIntegrator (1, 1) logical = false;
+        dampingCoeff (1, 1) double = 2.0;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "miSim")};
@@ -86,6 +88,10 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.barrierExponent = barrierExponent;
     obj.minAlt = minAlt;
 
+    % Set dynamics model
+    obj.useDoubleIntegrator = useDoubleIntegrator;
+    obj.dampingCoeff = dampingCoeff;
+
     % Compute adjacency matrix and lesser neighbors
     obj = obj.updateAdjacency();
     obj = obj.lesserNeighbor();
@@ -119,6 +125,9 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         % Initialize variable that will store agent positions for trail plots
         obj.posHist = NaN(size(obj.agents, 1), obj.maxIter + 1, 3);
         obj.posHist(1:size(obj.agents, 1), 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, "UniformOutput", false)), size(obj.agents, 1), 1, 3);
+
+        % Initialize velocity history (zeros at t=0, all agents start at rest)
+        obj.velHist = zeros(size(obj.agents, 1), obj.maxIter + 1, 3);
 
         % Initialize variable that will store barrier function values per timestep for analysis purposes
         obj.barriers = NaN(obj.numBarriers, size(obj.times, 1));

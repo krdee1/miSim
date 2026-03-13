@@ -6,6 +6,8 @@ classdef agent
         % State
         lastPos = NaN(1, 3); % position from previous timestep
         pos = NaN(1, 3); % current position
+        vel = zeros(1, 3); % velocity (double-integrator mode)
+        lastVel = zeros(1, 3); % pre-step velocity (double-integrator mode)
 
         % Sensor
         sensorModel;

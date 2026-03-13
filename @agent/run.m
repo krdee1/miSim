@@ -1,4 +1,4 @@
-function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
+function obj = run(obj, domain, partitioning, timestepIndex, index, agents, useDoubleIntegrator, dampingCoeff, dt)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "agent")};
         domain (1, 1) {mustBeGeometry};
@@ -6,6 +6,9 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
         timestepIndex (1, 1) double;
         index (1, 1) double;
         agents (:, 1) {mustBeA(agents, "cell")};
+        useDoubleIntegrator (1, 1) logical = false;
+        dampingCoeff (1, 1) double = 2.0;
+        dt (1, 1) double = 1.0;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "agent")};
@@ -75,19 +78,26 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents)
     targetRate = obj.initialStepSize - obj.stepDecayRate * timestepIndex; % slow down as you get closer
     gradNorm = norm(gradC);
 
-    % Compute unconstrained next position.
-    % Guard against near-zero gradient: when sensor performance is saturated
-    % or near-zero across the whole partition, rateFactor -> Inf and pNext
-    % explodes. Stay put instead.
-    if gradNorm < 1e-100
-        pNext = obj.pos;
-    else
-        pNext = obj.pos + (targetRate / gradNorm) * gradC;
-    end
-
-    % Move to next position
+    % Compute unconstrained next state
     obj.lastPos = obj.pos;
-    obj.pos = pNext;
+    if useDoubleIntegrator
+        % Double-integrator: gradient produces desired acceleration with damping
+        obj.lastVel = obj.vel;
+        if gradNorm < 1e-100
+            a_gradient = zeros(1, 3);
+        else
+            % Scale so steady-state step ≈ targetRate (matching SI behavior)
+            a_gradient = (targetRate * dampingCoeff / (gradNorm * dt)) * gradC;
+        end
+        % Semi-implicit Euler: unconditionally stable for any dampingCoeff and dt
+        obj.vel = (obj.vel + a_gradient * dt) / (1 + dampingCoeff * dt);
+        obj.pos = obj.lastPos + obj.vel * dt;
+    else
+        % Single-integrator: gradient directly sets position step
+        if gradNorm >= 1e-100
+            obj.pos = obj.pos + (targetRate / gradNorm) * gradC;
+        end
+    end
 
     % Reinitialize collision geometry in the new position
     d = obj.pos - obj.collisionGeometry.center;

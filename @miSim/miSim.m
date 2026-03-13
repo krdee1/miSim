@@ -18,6 +18,8 @@ classdef miSim
         barrierGain = NaN; % CBF gain parameter
         barrierExponent = NaN; % CBF exponent parameter
         minAlt = 0; % minimum allowable altitude (m)
+        useDoubleIntegrator = false; % false = single-integrator, true = double-integrator dynamics
+        dampingCoeff = 2.0; % velocity-proportional damping for double-integrator mode
         artifactName = "";
         f; % main plotting tiled layout figure
         fPerf; % performance plot figure
@@ -42,6 +44,7 @@ classdef miSim
         performancePlot; % objects for sensor performance plot
 
         posHist; % data for trail plot
+        velHist; % velocity history (double-integrator mode)
         trailPlot; % objects for agent trail plot
 
         % Indicies for various plot types in the main tiled layout figure
