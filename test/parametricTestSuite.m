@@ -64,6 +64,9 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
             % Run
             tc.testClass = tc.testClass.run();
+
+            % Save results and clean up
+            tc.testClass = tc.testClass.teardown();
         end
         function csv_parametric_tests_random_agents(tc)
             % Read in parameters to iterate over

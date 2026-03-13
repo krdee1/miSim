@@ -23,6 +23,8 @@ classdef miSim
         fPerf; % performance plot figure
         % Indicies for various plot types in the main tiled layout figure
         spatialPlotIndices = [6, 4, 3, 2];
+        numBarriers = 0; % Number of barrier functions needed
+        barriers = []; % log barrier function values at each timestep for analysis
     end
 
     properties (Access = private)

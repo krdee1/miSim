@@ -63,10 +63,12 @@ function [obj] = run(obj)
         end
     end
 
+    % Close video
     if coder.target('MATLAB')
         if obj.makeVideo
             % Close video file
             v.close();
         end
     end
+    
 end

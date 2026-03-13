@@ -8,12 +8,6 @@ function [obj] = constrainMotion(obj)
 
     nAgents = size(obj.agents, 1);
 
-    if nAgents < 2
-        nAAPairs = 0;
-    else
-        nAAPairs = nchoosek(nAgents, 2); % unique agent/agent pairs
-    end
-
     % Compute velocity matrix from unconstrained gradient-ascent step
     v = zeros(nAgents, 3);
     for ii = 1:nAgents
@@ -26,13 +20,9 @@ function [obj] = constrainMotion(obj)
     end
 
     % Initialize QP based on number of agents and obstacles
-    nAOPairs = nAgents * size(obj.obstacles, 1); % unique agent/obstacle pairs
-    nADPairs = nAgents * 6; % agents x (4 walls + 1 floor + 1 ceiling)
-    nLNAPairs = sum(obj.constraintAdjacencyMatrix, "all") - nAgents;
-    total = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
     kk = 1;
-    A = zeros(total, 3 * nAgents);
-    b = zeros(total, 1);
+    A = zeros(obj.numBarriers, 3 * nAgents);
+    b = zeros(obj.numBarriers, 1);
 
     % Set up collision avoidance constraints
     h = NaN(nAgents, nAgents);
@@ -60,6 +50,10 @@ function [obj] = constrainMotion(obj)
         end
     end
 
+    idx = length(h(triu(true(size(h)), 1)));
+    obj.barriers(1:idx, obj.timestepIndex) = h(triu(true(size(h)), 1));
+    idx = idx + 1;
+
     hObs = NaN(nAgents, size(obj.obstacles, 1));
     % Set up obstacle avoidance constraints
     for ii = 1:nAgents
@@ -79,6 +73,9 @@ function [obj] = constrainMotion(obj)
             kk = kk + 1;
         end
     end
+
+    obj.barriers(idx:(idx + numel(hObs) - 1), obj.timestepIndex) = reshape(hObs, [], 1);
+    idx = idx + numel(hObs);
 
     % Set up domain constraints (walls and ceiling only)
     % Floor constraint is implicit with an obstacle corresponding to the
@@ -120,6 +117,9 @@ function [obj] = constrainMotion(obj)
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, 1];
         b(kk) = obj.barrierGain * max(0, h_zMax)^obj.barrierExponent;
         kk = kk + 1;
+
+        obj.barriers(idx:(idx + 5), obj.timestepIndex) = [h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax];
+        idx = idx + 6;
     end
 
     if coder.target('MATLAB')
@@ -154,6 +154,7 @@ function [obj] = constrainMotion(obj)
             end
         end
     end
+    obj.barriers(idx:(idx + length(hComms(triu(true(size(hComms)), 1))) - 1), obj.timestepIndex) = hComms(triu(true(size(hComms)), 1));
 
     % Solve QP program generated earlier
     vhat = reshape(v', 3 * nAgents, 1);

@@ -104,10 +104,24 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     % Create initial partitioning
     obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
+    % Determine number of barrier functions that will be necessary
+    if size(obj.agents, 1) < 2
+        nAAPairs = 0;
+    else
+        nAAPairs = nchoosek(size(obj.agents, 1), 2); % unique agent/agent pairs
+    end
+    nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
+    nADPairs = size(obj.agents, 1) * 6; % agents x (4 walls + 1 floor + 1 ceiling)
+    nLNAPairs = sum(triu(obj.constraintAdjacencyMatrix, 1), "all");
+    obj.numBarriers = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
+
     if coder.target('MATLAB')
         % Initialize variable that will store agent positions for trail plots
         obj.posHist = NaN(size(obj.agents, 1), obj.maxIter + 1, 3);
         obj.posHist(1:size(obj.agents, 1), 1, 1:3) = reshape(cell2mat(cellfun(@(x) x.pos, obj.agents, "UniformOutput", false)), size(obj.agents, 1), 1, 3);
+
+        % Initialize variable that will store barrier function values per timestep for analysis purposes
+        obj.barriers = NaN(obj.numBarriers, size(obj.times, 1));
 
         % Set up plots showing initialized state
         obj = obj.plot();
