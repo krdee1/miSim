@@ -1,4 +1,4 @@
-function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff)
+function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "miSim")};
         domain (1, 1) {mustBeGeometry};
@@ -13,6 +13,7 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         makeVideo (1, 1) logical = true;
         useDoubleIntegrator (1, 1) logical = false;
         dampingCoeff (1, 1) double = 2.0;
+        useFixedTopology (1, 1) logical = false;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "miSim")};
@@ -91,10 +92,15 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     % Set dynamics model
     obj.useDoubleIntegrator = useDoubleIntegrator;
     obj.dampingCoeff = dampingCoeff;
+    obj.useFixedTopology = useFixedTopology;
 
-    % Compute adjacency matrix and lesser neighbors
+    % Compute adjacency matrix and network topology
     obj = obj.updateAdjacency();
-    obj = obj.lesserNeighbor();
+    if obj.useFixedTopology
+        obj.constraintAdjacencyMatrix = obj.adjacency;
+    else
+        obj = obj.lesserNeighbor();
+    end
 
     % Set up times to iterate over
     obj.times = linspace(0, obj.timestep * obj.maxIter, obj.maxIter+1)';

@@ -90,6 +90,11 @@ if isfield(scenario, 'dampingCoeff')
 else
     DAMPING_COEFF = 2.0;
 end
+if isfield(scenario, 'useFixedTopology')
+    USE_FIXED_TOPOLOGY = logical(scenario.useFixedTopology);
+else
+    USE_FIXED_TOPOLOGY = false;
+end
 
 % ---- Build domain --------------------------------------------------------
 dom = rectangularPrism;
@@ -137,6 +142,6 @@ end
 % ---- Initialise simulation (plots and video disabled) --------------------
 obj = obj.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
                      MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
-                     USE_DOUBLE_INTEGRATOR, DAMPING_COEFF);
+                     USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY);
 
 end

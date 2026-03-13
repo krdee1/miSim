@@ -57,7 +57,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
             end
 
             % Set up simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain, params.barrierExponent, params.minAlt, params.timestep, params.maxIter, obstacles, tc.makePlots, tc.makeVideo, logical(params.useDoubleIntegrator), params.dampingCoeff);
+            tc.testClass = tc.testClass.initialize(tc.domain, agents, params.barrierGain, params.barrierExponent, params.minAlt, params.timestep, params.maxIter, obstacles, tc.makePlots, tc.makeVideo, logical(params.useDoubleIntegrator), params.dampingCoeff, logical(params.useFixedTopology));
 
             % Save simulation parameters to output file
             tc.testClass.writeInits();

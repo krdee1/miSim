@@ -30,7 +30,9 @@ function [obj] = run(obj)
         obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
         % Determine desired communications links
-        obj = obj.lesserNeighbor();
+        if ~obj.useFixedTopology
+            obj = obj.lesserNeighbor();
+        end
 
         % Moving
         % Iterate over agents to simulate their unconstrained motion

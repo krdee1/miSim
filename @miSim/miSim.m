@@ -20,6 +20,7 @@ classdef miSim
         minAlt = 0; % minimum allowable altitude (m)
         useDoubleIntegrator = false; % false = single-integrator, true = double-integrator dynamics
         dampingCoeff = 2.0; % velocity-proportional damping for double-integrator mode
+        useFixedTopology = false; % false = lesser neighbor (dynamic), true = fixed initial topology
         artifactName = "";
         f; % main plotting tiled layout figure
         fPerf; % performance plot figure
