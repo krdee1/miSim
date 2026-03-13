@@ -6,19 +6,22 @@ function obj = teardown(obj)
         obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
-    % Close plots
-    close(obj.hf);
-    close(obj.fPerf);
-    close(obj.f);
+    % % Close plots
+    % close(obj.hf);
+    % close(obj.fPerf);
+    % close(obj.f);
 
     % Log results into matfile
     histPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", strcat(obj.artifactName, "_miSimHist.mat"));
-    out = struct("agent", repmat(struct("pos", [], "perf", [], "sensor", struct("alphaDist", [], "betaDist", [], "alphaTilt", [], "betaTilt", []), "collisionRadius", [], "commsRadius", []), size(obj.agents)), "perf", [], "barriers", []);
+    out = struct("agent", repmat(struct("pos", [], "vel", [], "perf", [], "sensor", struct("alphaDist", [], "betaDist", [], "alphaTilt", [], "betaTilt", []), "collisionRadius", [], "commsRadius", []), size(obj.agents)), "perf", [], "barriers", [], "useDoubleIntegrator", [], "dampingCoeff", []);
 
     out.perf = obj.performance(1:(end - 1));
     out.barriers = [zeros(size(obj.barriers(1:end, 1), 1), 1), obj.barriers(1:end, 1:(end - 1))];
+    out.dampingCoeff = obj.dampingCoeff;
+    out.useDoubleIntegrator = obj.useDoubleIntegrator;
     for ii = 1:size(obj.agents, 1)
         out.agent(ii).pos = squeeze(obj.posHist(ii, 1:(end - 1), 1:3));
+        out.agent(ii).vel = squeeze(obj.velHist(ii, 1:(end - 1), 1:3));
         out.agent(ii).perf = obj.agents{ii}.performance(1:(end - 2));
         out.agent(ii).sensor.alphaDist = obj.agents{ii}.sensorModel.alphaDist;
         out.agent(ii).sensor.betaDist = obj.agents{ii}.sensorModel.betaDist;
@@ -44,6 +47,8 @@ function obj = teardown(obj)
     obj.performance = 0;
     obj.barrierGain = NaN;
     obj.barrierExponent = NaN;
+    obj.useDoubleIntegrator = false;
+    obj.dampingCoeff = 2.0;
     obj.artifactName = "";
 
 end

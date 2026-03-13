@@ -79,6 +79,18 @@ assert(numel(BETA_TILT_VEC) == numAgents, ...
 
 numObstacles = scenario.numObstacles;
 
+% Dynamics model (optional columns — backward compatible with older CSVs)
+if isfield(scenario, 'useDoubleIntegrator')
+    USE_DOUBLE_INTEGRATOR = logical(scenario.useDoubleIntegrator);
+else
+    USE_DOUBLE_INTEGRATOR = false;
+end
+if isfield(scenario, 'dampingCoeff')
+    DAMPING_COEFF = scenario.dampingCoeff;
+else
+    DAMPING_COEFF = 2.0;
+end
+
 % ---- Build domain --------------------------------------------------------
 dom = rectangularPrism;
 dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Domain");
@@ -124,6 +136,7 @@ end
 
 % ---- Initialise simulation (plots and video disabled) --------------------
 obj = obj.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
-                     MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false);
+                     MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
+                     USE_DOUBLE_INTEGRATOR, DAMPING_COEFF);
 
 end

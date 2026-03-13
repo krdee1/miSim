@@ -8,14 +8,24 @@ function [obj] = constrainMotion(obj)
 
     nAgents = size(obj.agents, 1);
 
-    % Compute velocity matrix from unconstrained gradient-ascent step
-    v = zeros(nAgents, 3);
+    % Compute current velocity and desired control input
+    v = zeros(nAgents, 3);        % current velocity (for drift term in DI mode)
+    u_desired = zeros(nAgents, 3); % desired control: velocity (SI) or acceleration (DI)
     for ii = 1:nAgents
-        v(ii, :) = (obj.agents{ii}.pos - obj.agents{ii}.lastPos) ./ obj.timestep;
+        if obj.useDoubleIntegrator
+            v(ii, :) = obj.agents{ii}.lastVel;
+            u_desired(ii, :) = (obj.agents{ii}.vel - obj.agents{ii}.lastVel) / obj.timestep;
+        else
+            v(ii, :) = (obj.agents{ii}.pos - obj.agents{ii}.lastPos) ./ obj.timestep;
+            u_desired(ii, :) = v(ii, :);
+        end
     end
-    if all(isnan(v), "all") || all(v == zeros(nAgents, 3), "all")
-        % Agents are not attempting to move, so there is no motion to be
-        % constrained
+    if ~obj.useDoubleIntegrator && (all(isnan(v), "all") || all(v == zeros(nAgents, 3), "all"))
+        % Single-integrator: agents are not attempting to move
+        return;
+    end
+    if obj.useDoubleIntegrator && all(u_desired == 0, "all") && all(v == 0, "all")
+        % Double-integrator: no desired acceleration and no existing velocity
         return;
     end
 
@@ -156,10 +166,18 @@ function [obj] = constrainMotion(obj)
     end
     obj.barriers(idx:(idx + length(hComms(triu(true(size(hComms)), 1))) - 1), obj.timestepIndex) = hComms(triu(true(size(hComms)), 1));
 
-    % Solve QP program generated earlier
-    vhat = reshape(v', 3 * nAgents, 1);
+    % Double-integrator: transform QP from velocity to acceleration space.
+    % Single-integrator constraint: A * v <= b
+    % Double-integrator: A * a <= (b - A * v_current) / dt
+    if obj.useDoubleIntegrator
+        v_flat = reshape(v', 3 * nAgents, 1);
+        b = (b - A * v_flat) / obj.timestep;
+    end
+
+    % Solve QP: minimize ||u - u_desired||²
+    uhat = reshape(u_desired', 3 * nAgents, 1);
     H = 2 * eye(3 * nAgents);
-    f = -2 * vhat;
+    f = -2 * uhat;
 
     % Update solution based on constraints
     if coder.target('MATLAB')
@@ -169,8 +187,8 @@ function [obj] = constrainMotion(obj)
     end
     opt = optimoptions("quadprog", "Display", "off", "Algorithm", "active-set", "UseCodegenSolver", true);
     x0 = zeros(size(H, 1), 1);
-    [vNew, ~, exitflag] = quadprog(H, double(f), A, b, [], [], [], [], x0, opt);
-    vNew = reshape(vNew, 3, nAgents)';
+    [uNew, ~, exitflag] = quadprog(H, double(f), A, b, [], [], [], [], x0, opt);
+    uNew = reshape(uNew, 3, nAgents)';
 
     if exitflag < 0
         % Infeasible or other hard failure: hold all agents at current positions
@@ -179,9 +197,9 @@ function [obj] = constrainMotion(obj)
         else
             fprintf("[constrainMotion] QP infeasible (exitflag=%d), holding positions\n", int16(exitflag));
         end
-        vNew = zeros(nAgents, 3);
+        uNew = zeros(nAgents, 3);
     elseif exitflag == 0
-        % Max iterations exceeded: use suboptimal solution already in vNew
+        % Max iterations exceeded: use suboptimal solution already in uNew
         if coder.target('MATLAB')
             warning("QP max iterations exceeded, using suboptimal solution.");
         else
@@ -189,10 +207,16 @@ function [obj] = constrainMotion(obj)
         end
     end
 
-    % Update the "next position" that was previously set by unconstrained
-    % GA using the constrained solution produced here
-    for ii = 1:size(vNew, 1)
-        obj.agents{ii}.pos = obj.agents{ii}.lastPos + vNew(ii, :) * obj.timestep;
+    % Update agent state using the constrained control input
+    for ii = 1:size(uNew, 1)
+        if obj.useDoubleIntegrator
+            % uNew is constrained acceleration
+            obj.agents{ii}.vel = obj.agents{ii}.lastVel + uNew(ii, :) * obj.timestep;
+            obj.agents{ii}.pos = obj.agents{ii}.lastPos + obj.agents{ii}.vel * obj.timestep;
+        else
+            % uNew is constrained velocity
+            obj.agents{ii}.pos = obj.agents{ii}.lastPos + uNew(ii, :) * obj.timestep;
+        end
     end
 
     % Here we run this at the simulation level, but in reality there is no

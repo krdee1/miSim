@@ -15,6 +15,8 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
     end
 
     obj.pos = pos;
+    obj.vel = zeros(1, 3);
+    obj.lastVel = zeros(1, 3);
     obj.collisionGeometry = collisionGeometry;
     obj.sensorModel = sensorModel;
     obj.label = label;
