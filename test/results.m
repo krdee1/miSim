@@ -10,8 +10,18 @@ classdef results < matlab.unittest.TestCase
         %% Diagnostic Parameters
         % No effect on simulation dynamics
         makeVideo = false; % disable video writing for big performance increase
-        makePlots = true; % disable plotting for big performance increase (also disables video)
+        makePlots = false; % disable plotting for big performance increase (also disables video)
         plotCommsGeometry = false; % disable plotting communications geometries
+
+        %% Scenario Reinitialization
+        % Number of extra reinitializations per test case (3 n-values x 4 configs = 12).
+        % Order: n3/A_1_alpha, n3/A_1_beta, n3/A_2_alpha, n3/B_1_beta,
+        %        n5/A_1_alpha, ..., n6/B_1_beta
+        % Set inspectScenarios = true to pause after init for manual review.
+        % At the keyboard prompt, type the number of reinits needed into
+        % the variable 'reinitCount', then 'dbcont' to continue.
+        inspectScenarios = false;
+        reinit = zeros(1, 12);
 
         %% Fixed Test Parameters
         useFixedTopology = true; % No lesser neighbor, fixed network instead
@@ -22,7 +32,7 @@ classdef results < matlab.unittest.TestCase
         collisionRadius = 5;
         sensorPerformanceMinimum = 0.005;
         comRange = 20;
-        maxIter = 200;
+        maxIter = 250;
         initialStepSize = 1;
         numObstacles = 3;
         barrierGain = 1;
@@ -84,6 +94,18 @@ classdef results < matlab.unittest.TestCase
             % n = 3;
             % config = struct('numDist', 1, 'sensor', struct('alphaDist', 100, 'alphaTilt', 2, 'betaDist', 10, 'betaTilt', 0.5), 'doubleIntegrator', false);
            
+            % Compute test case index for reinit lookup
+            nKeys = fieldnames(tc.n);
+            configKeys = fieldnames(tc.config);
+            nIdx = find(cellfun(@(k) tc.n.(k) == n, nKeys));
+            configIdx = find(cellfun(@(k) isequal(tc.config.(k), config), configKeys));
+            testIdx = (nIdx - 1) * numel(configKeys) + configIdx;
+
+            % Determine number of reinitializations
+            reinitCount = tc.reinit(testIdx);
+
+            for reroll = 0:reinitCount
+
             % Set up random cube domain
             minAlt = tc.minDimension(1) * rand() * 0.5;
             tc.testClass.domain = tc.testClass.domain.initializeRandom(REGION_TYPE.DOMAIN, "Domain", tc.minDimension, tc.maxDimension, tc.testClass.domain, minAlt);
@@ -98,7 +120,8 @@ classdef results < matlab.unittest.TestCase
                 notPosDef = true;
                 while notPosDef
                     sig = reshape(sort(rand(1, 4) * min(tc.testClass.domain.dimensions(1:2))), [1, 2, 2]);
-                    sig(1, 2, 1) = sig(1, 1, 2);
+                    sig(1, 2, 1) = max([sig(1, 1, 2), sig(1, 2, 1)]);
+                    sig(1, 1, 2) = sig(1, 2, 1);
                     [~, notPosDef] = chol(squeeze(sig));
                 end
                 objectiveMu = [objectiveMu; mu(1:2)];
@@ -205,14 +228,13 @@ classdef results < matlab.unittest.TestCase
             % Randomly shuffle agents to vary index-based topology
             agents = agents(randperm(numel(agents)));
 
-            % Add random obstacles
+            % Add random obstacles (each limited to 1/4 domain size in X and Y)
             obstacles = cell(tc.numObstacles, 1);
             [obstacles{:}] = deal(rectangularPrism);
 
             % Define target region for obstacles (between agents and objective)
             agentExtent = max(cell2mat(cellfun(@(x) x.pos(1:2), agents, "UniformOutput", false))) + max(cellfun(@(x) x.collisionGeometry.radius, agents));
             objExtent = tc.testClass.domain.objective.groundPos - tc.testClass.domain.objective.protectedRange;
-            % Per-axis: use gap if valid, else fall back to full domain
             obsMin = zeros(1, 2);
             obsMax = zeros(1, 2);
             for dim = 1:2
@@ -224,15 +246,17 @@ classdef results < matlab.unittest.TestCase
                     obsMax(dim) = tc.testClass.domain.maxCorner(dim);
                 end
             end
+            maxObsSize = 3 * tc.collisionRadius * ones(1, 3);
 
             for jj = 1:size(obstacles, 1)
                 retry = true;
                 while retry
                     retry = false;
 
-                    % Generate corners within target region
-                    cornersXY = obsMin + sort(rand(2, 2), 1, "ascend") .* (obsMax - obsMin);
-                    corners = [cornersXY, [minAlt; minAlt + rand * (tc.testClass.domain.maxCorner(3) - minAlt)]];
+                    % Generate random anchor point, then random size up to 3x collision radius
+                    anchor = [obsMin + rand(1, 2) .* (obsMax - obsMin), minAlt];
+                    obsSize = rand(1, 3) .* maxObsSize;
+                    corners = [anchor; anchor + obsSize];
 
                     % Initialize obstacle using proposed coordinates
                     obstacles{jj} = obstacles{jj}.initialize(corners, REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", jj));
@@ -269,6 +293,18 @@ classdef results < matlab.unittest.TestCase
                 end
             end
 
+            end % reroll loop
+
+            % Inspect scenario if enabled
+            if tc.inspectScenarios
+                tc.testClass = tc.testClass.initialize(tc.testClass.domain, agents, tc.barrierGain, tc.barrierExponent, minAlt, tc.timestep, tc.maxIter, obstacles, tc.makePlots, tc.makeVideo, config.doubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+                fprintf("Test %d (n=%d, config=%s): reinit=%d. Inspect plot.\n", testIdx, n, configKeys{configIdx}, reinitCount);
+                fprintf("To add reinits, update tc.reinit(%d) and rerun.\n", testIdx);
+                keyboard;
+                tc.testClass = tc.testClass.teardown();
+                return;
+            end
+
             % Set up simulation
             tc.testClass = tc.testClass.initialize(tc.testClass.domain, agents, tc.barrierGain, tc.barrierExponent, minAlt, tc.timestep, tc.maxIter, obstacles, tc.makePlots, tc.makeVideo, config.doubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
 
@@ -294,5 +330,6 @@ classdef results < matlab.unittest.TestCase
                 end
             end
         end
+
     end
 end
