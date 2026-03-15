@@ -7,7 +7,6 @@ classdef miSim
         timestepIndex = NaN; % index of the current timestep (useful for time-indexed arrays)
         maxIter = NaN; % maximum number of simulation iterations
         domain;
-        objective;
         obstacles; % geometries that define obstacles within the domain
         agents; % agents that move within the domain
         adjacency = false(0, 0); % Adjacency matrix representing communications network graph
@@ -67,7 +66,6 @@ classdef miSim
                 obj (1, 1) miSim
             end
             obj.domain = rectangularPrism;
-            obj.objective = sensingObjective;
             obj.obstacles = {rectangularPrism};
             obj.agents = {agent};
         end

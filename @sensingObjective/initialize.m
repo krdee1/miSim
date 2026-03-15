@@ -1,4 +1,4 @@
-function obj = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange, sensorPerformanceMinimum)
+function obj = initialize(obj, objectiveFunction, domain, discretizationStep, protectedRange, sensorPerformanceMinimum, objectiveMu, objectiveSigma)
     arguments (Input)
         obj (1,1) {mustBeA(obj, "sensingObjective")};
         objectiveFunction (1, 1) {mustBeA(objectiveFunction, "function_handle")};
@@ -6,6 +6,8 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
         discretizationStep (1, 1) double = 1;
         protectedRange (1, 1) double = 1;
         sensorPerformanceMinimum (1, 1) double = 1e-6;
+        objectiveMu (:, 2) double = NaN(1, 2);
+        objectiveSigma (:, 2, 2) double = NaN(1, 2, 2);
     end
     arguments (Output)
         obj (1,1) {mustBeA(obj, "sensingObjective")};
@@ -37,8 +39,13 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
 
     % store ground position
     idx = obj.values == 1;
-    obj.groundPos = [obj.X(idx), obj.Y(idx)];
-    obj.groundPos = obj.groundPos(1, 1:2); % for safety, in case 2 points are maximal (somehow)
+    if any(isnan(objectiveMu))
+        obj.groundPos = [obj.X(idx), obj.Y(idx)];
+        obj.groundPos = obj.groundPos(1, 1:2); % for safety, in case 2 points are maximal (somehow)
+    else
+        obj.groundPos = objectiveMu;
+    end
+    obj.objectiveSigma = objectiveSigma;
 
-    assert(domain.distance([obj.groundPos, domain.center(3)]) > protectedRange, "Domain is crowding the sensing objective")
+    assert(domain.distance([obj.groundPos, ones(size(obj.groundPos, 1), 1) .* domain.center(3)]) > protectedRange, "Domain is crowding the sensing objective")
 end

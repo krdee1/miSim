@@ -11,7 +11,7 @@ function obj = initializeRandomMvnpdf(obj, domain, discretizationStep, protected
 
     % Set random objective position
     mu = domain.minCorner;
-    while domain.distance(mu) < protectedRange
+    while domain.distance(mu) < protectedRange * 1.01
         mu = domain.random();
     end
 

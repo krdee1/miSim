@@ -2,7 +2,8 @@ classdef sensingObjective
     % Sensing objective definition parent class
     properties (SetAccess = private, GetAccess = public)
         label = "";
-        groundPos = [NaN, NaN];
+        groundPos = NaN(1, 2);
+        objectiveSigma = NaN(1, 2, 2);
         discretizationStep = NaN;
         X = [];
         Y = [];

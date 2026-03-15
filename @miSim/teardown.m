@@ -39,7 +39,6 @@ function obj = teardown(obj)
     obj.timestepIndex = NaN;
     obj.maxIter = NaN;
     obj.domain = rectangularPrism;
-    obj.objective = sensingObjective;
     obj.obstacles = cell(0, 1);
     obj.agents = cell(0, 1);
     obj.adjacency = NaN;

@@ -150,7 +150,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 end
 
                 % randomly shuffle agents to make the network more interesting (probably)
-                agents = agents(randperm(numel(agents))); 
+                agents = agents(randperm(numel(agents)));
 
                 % Set up obstacles
                 obstacles = cell(params.numObstacles(ii), 1);
