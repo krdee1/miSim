@@ -1,6 +1,6 @@
 clear;
 % Load data
-dataPath = fullfile('.', 'sandbox', 'plot1');
+dataPath = fullfile('.', 'sandbox', 'plot1_3');
 simHists = dir(dataPath); simHists = simHists(3:end);
 simInits = simHists(endsWith({simHists.name}, 'miSimInits.mat'));
 simHists = simHists(endsWith({simHists.name}, 'miSimHist.mat'));
@@ -80,14 +80,16 @@ n_unique = sort(unique(n));
 C = [];
 for ii = 1:length(n_unique)
     nIdx = n == n_unique(ii);
-    C = [C; [Cfinal(nIdx)]']; 
+    C = [C; [Cfinal(nIdx)]'];
 end
 bar(C);
+set(x1, 'XTickLabel', string(n_unique));
 xlabel("Number of agents");
-ylabel("Final coverage (fraction of maximum)");
+ylabel("Final coverage (normalized)");
 title("Final performance of parameterizations");
-legend(["$AI\alpha$"; "$AI\beta$"; "$AII\alpha$"; "$BI\beta$"], "Interpreter", "latex");
+legend(["$AI\alpha$"; "$AI\beta$"; "$AII\alpha$"; "$BI\beta$"], "Interpreter", "latex", "Location", "northwest");
 grid("on");
+ylim([0, 1]);
 
 f2 = figure;
 x2 = axes;
@@ -152,4 +154,4 @@ grid(x2, "on");
 yline(collisionRadius, 'r--', "Label", "Collision Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
 yline(commsRadius, 'r--', "Label", "Communications Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
 
-ylim([0, commsRadius + 5]);
+ylim([0, inf]);

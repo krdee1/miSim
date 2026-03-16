@@ -1,6 +1,7 @@
 classdef results < matlab.unittest.TestCase
     properties (Constant, Access = private)
         seed = 1;
+        domainSize = [150, 150, 100]; % fixed domain size [X, Y, Z]
     end
 
     properties (Access = private)
@@ -25,16 +26,16 @@ classdef results < matlab.unittest.TestCase
 
         %% Fixed Test Parameters
         useFixedTopology = true; % No lesser neighbor, fixed network instead
-        minDimension = 50; % minimum domain size
-        maxDimension = 100; % maximum domain size
-        discretizationStep = 0.1;
+        discretizationStep = 0.5;
         protectedRange = 5;
         collisionRadius = 5;
         sensorPerformanceMinimum = 0.005;
         comRange = 20;
-        maxIter = 250;
+        maxIter = 400;
         initialStepSize = 1;
-        numObstacles = 3;
+        % Each row: [minX minY minZ maxX maxY maxZ]
+        obstacleCorners = [results.domainSize(1)/2, results.domainSize(2)*5/8, 0, results.domainSize(1)*5/8, results.domainSize(2), 35;
+                           results.domainSize(1)/3, 0, 0, results.domainSize(1)/2, results.domainSize(2)*3/8, 40];
         barrierGain = 1;
         barrierExponent = 1;
         timestep = 0.5;
@@ -54,35 +55,35 @@ classdef results < matlab.unittest.TestCase
         end
     end
 
-    methods (Static, Access = private)
+    methods (Static, Access = public)
         function c = makeConfigs()
             rng(results.seed);
             abMin = 6; % alpha*beta >= 6 ensures membership(0) = tanh(3) >= 0.995
-            alphaDist = rand(1, 2) .* [100, 100];
+            alphaDist = rand(1, 2) .* [75, 40];
             betaDist = abMin ./ alphaDist + rand(1, 2) .* (20 - abMin ./ alphaDist);
             alphaTilt = 10 + rand(1, 2) .* [20, 20];
             betaTilt = abMin ./ alphaTilt + rand(1, 2) .* (50 - abMin ./ alphaTilt);
             sensors = struct('alphaDist', num2cell(alphaDist), 'alphaTilt', num2cell(alphaTilt), 'betaDist', num2cell(betaDist), 'betaTilt', num2cell(betaTilt));
-            sensor1 = sigmoidSensor;
-            sensor2 = sigmoidSensor;
-            sensor1 = sensor1.initialize(sensors(1).alphaDist, sensors(1).betaDist, sensors(1).alphaTilt, sensors(1).betaTilt);
-            sensor2 = sensor2.initialize(sensors(2).alphaDist, sensors(2).betaDist, sensors(2).alphaTilt, sensors(2).betaTilt);
-            sensor1.plotParameters;
-            sensor2.plotParameters;
-            c = struct('A_1_alpha', struct('numDist', 1, 'sensor', sensors(1), 'doubleIntegrator', false), ...
-                        'A_1_beta',  struct('numDist', 1, 'sensor', sensors(1), 'doubleIntegrator', true), ...
-                        'A_2_alpha', struct('numDist', 1, 'sensor', sensors(2), 'doubleIntegrator', false), ...
-                        'B_1_beta',  struct('numDist', 2, 'sensor', sensors(1), 'doubleIntegrator', true));
+            % sensor1 = sigmoidSensor;
+            % sensor2 = sigmoidSensor;
+            % sensor1 = sensor1.initialize(sensors(1).alphaDist, sensors(1).betaDist, sensors(1).alphaTilt, sensors(1).betaTilt);
+            % sensor2 = sensor2.initialize(sensors(2).alphaDist, sensors(2).betaDist, sensors(2).alphaTilt, sensors(2).betaTilt);
+            % sensor1.plotParameters;
+            % sensor2.plotParameters;
+            c = struct('A_1_alpha', struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(1), 'doubleIntegrator', false), ...
+                        'A_1_beta',  struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(1), 'doubleIntegrator', true), ...
+                        'A_2_alpha', struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(2), 'doubleIntegrator', false), ...
+                        'B_1_beta',  struct('objectivePos', [[3, 1] / 4 .* results.domainSize(1:2); [3, 1] / 4 .* results.domainSize(1:2) + 12.5 .* [-1, 1] ./ sqrt(2)], 'sensor', sensors(1), 'doubleIntegrator', true));
         end
     end
 
     methods (Test)
         function plot1_runs(tc, n, config)
-        % OVERRIDES
-        % function plot1_runs(tc)
-            % n = 3;
-            % config = struct('numDist', 1, 'sensor', struct('alphaDist', 100, 'alphaTilt', 2, 'betaDist', 10, 'betaTilt', 0.5), 'doubleIntegrator', false);
-           
+            % if n == 5 && config.doubleIntegrator == true
+            %     tc.makePlots = true;
+            % else
+            %     tc.makePlots = false;
+            % end
             % Compute test case index for reinit lookup
             nKeys = fieldnames(tc.n);
             configKeys = fieldnames(tc.config);
@@ -95,29 +96,23 @@ classdef results < matlab.unittest.TestCase
 
             for reroll = 0:reinitCount
 
-            % Set up random cube domain
-            minAlt = tc.minDimension(1) * rand() * 0.5;
-            tc.testClass.domain = tc.testClass.domain.initializeRandom(REGION_TYPE.DOMAIN, "Domain", tc.minDimension, tc.maxDimension, tc.testClass.domain, minAlt);
-            % Place sensing objective(s)
-            objectiveMu = [];
+            % Set up fixed-size domain
+            minAlt = tc.domainSize(3)/10 + rand * 1/10 * tc.domainSize(3);
+            % Place sensing objective(s) at fixed positions from config
+            objectiveMu = config.objectivePos;
+            numDist = size(objectiveMu, 1);
             objectiveSigma = [];
-            for ii = 1:config.numDist
-                mu = tc.testClass.domain.minCorner;
-                while tc.testClass.domain.distance(mu) < tc.protectedRange * 1.01
-                    mu = tc.testClass.domain.random();
+            for ii = 1:numDist
+                sig = [200, 140; 140, 280];
+                if ~mod(ii, 2)
+                    sig = rot90(sig, 2);
                 end
-                notPosDef = true;
-                while notPosDef
-                    sig = reshape(sort(rand(1, 4) * min(tc.testClass.domain.dimensions(1:2))), [1, 2, 2]);
-                    sig(1, 2, 1) = max([sig(1, 1, 2), sig(1, 2, 1)]);
-                    sig(1, 1, 2) = sig(1, 2, 1);
-                    [~, notPosDef] = chol(squeeze(sig));
-                end
-                objectiveMu = [objectiveMu; mu(1:2)];
+                sig = reshape(sig, [1, 2, 2]);
                 objectiveSigma = cat(1, objectiveSigma, sig);
             end
+            tc.testClass.domain = tc.testClass.domain.initialize([zeros(1, 3); tc.domainSize], REGION_TYPE.DOMAIN, "Domain");
             tc.testClass.domain.objective = tc.testClass.domain.objective.initialize(objectiveFunctionWrapper(objectiveMu, objectiveSigma), tc.testClass.domain, tc.discretizationStep, tc.protectedRange, tc.sensorPerformanceMinimum, objectiveMu, objectiveSigma);
-
+            
             % Initialize agents
             agents = cell(n, 1);
             [agents{:}] = deal(agent);
@@ -126,28 +121,44 @@ classdef results < matlab.unittest.TestCase
             sensorModel = sigmoidSensor;
             sensorModel = sensorModel.initialize(config.sensor.alphaDist, config.sensor.betaDist, config.sensor.alphaTilt, config.sensor.betaTilt);
 
-            % Place agents in a quadrant that contains no objective peaks
+            % Initialize fixed obstacles from corner coordinates
+            nObs = size(tc.obstacleCorners, 1);
+            obstacles = cell(nObs, 1);
+            for jj = 1:nObs
+                corners = [tc.obstacleCorners(jj, 1:3); tc.obstacleCorners(jj, 4:6)];
+                obstacles{jj} = rectangularPrism;
+                obstacles{jj} = obstacles{jj}.initialize(corners, REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", jj));
+            end
+
+            % Place agents in small-x, large-y quadrant (opposite objectives)
+            % with chain topology: each agent connected only to its neighbors
             midXY = (tc.testClass.domain.minCorner(1:2) + tc.testClass.domain.maxCorner(1:2)) / 2;
-            occupied = false(2, 2);
-            for ii = 1:size(objectiveMu, 1)
-                occupied(1 + (objectiveMu(ii, 1) >= midXY(1)), ...
-                         1 + (objectiveMu(ii, 2) >= midXY(2))) = true;
+            quadrantSize = tc.testClass.domain.maxCorner(1:2) / 2;
+            margin = quadrantSize / 6;
+            agentBounds = [tc.testClass.domain.minCorner(1) + margin(1), ...
+                           midXY(2) + margin(2); ...
+                           midXY(1) - margin(1), ...
+                           tc.testClass.domain.maxCorner(2) - margin(2)];
+            % Find a fixed altitude where sensor performance passes at ALL
+            % corners of the placement bounds (worst-case XY)
+            corners = [agentBounds(1,1), agentBounds(1,2);
+                       agentBounds(2,1), agentBounds(1,2);
+                       agentBounds(1,1), agentBounds(2,2);
+                       agentBounds(2,1), agentBounds(2,2)];
+            agentAlt = tc.testClass.domain.maxCorner(3) - tc.collisionRadius;
+            while agentAlt > minAlt + 2 * tc.collisionRadius
+                worstPerf = inf;
+                for cc = 1:4
+                    p = sensorModel.sensorPerformance([corners(cc,:), agentAlt], [corners(cc,:), 0]);
+                    worstPerf = min(worstPerf, p);
+                end
+                if worstPerf >= tc.sensorPerformanceMinimum * 10
+                    break;
+                end
+                agentAlt = agentAlt - 1;
             end
-            freeQ = find(~occupied);
-            if isempty(freeQ)
-                qi = 1;
-            else
-                qi = freeQ(randi(numel(freeQ)));
-            end
-            [xi, yi] = ind2sub([2, 2], qi);
-            xLim = [tc.testClass.domain.minCorner(1), midXY(1), tc.testClass.domain.maxCorner(1)];
-            yLim = [tc.testClass.domain.minCorner(2), midXY(2), tc.testClass.domain.maxCorner(2)];
-            agentBounds = [max(xLim(xi),   tc.testClass.domain.minCorner(1) + tc.collisionRadius), ...
-                           max(yLim(yi),   tc.testClass.domain.minCorner(2) + tc.collisionRadius), ...
-                           minAlt + tc.collisionRadius; ...
-                           min(xLim(xi+1), tc.testClass.domain.maxCorner(1) - tc.collisionRadius), ...
-                           min(yLim(yi+1), tc.testClass.domain.maxCorner(2) - tc.collisionRadius), ...
-                           tc.testClass.domain.maxCorner(3) - tc.collisionRadius];
+            chainSpacingMin = 0.7 * tc.comRange;
+            chainSpacingMax = 0.9 * tc.comRange;
             collisionGeometry = spherical;
             for jj = 1:n
                 retry = true;
@@ -155,54 +166,66 @@ classdef results < matlab.unittest.TestCase
                     retry = false;
 
                     if jj == 1
-                        % First agent: uniform random within placement bounds
-                        agentPos = agentBounds(1, :) + (agentBounds(2, :) - agentBounds(1, :)) .* rand(1, 3);
+                        % First agent: random XY within bounds, fixed altitude
+                        agentPos = [agentBounds(1, :) + (agentBounds(2, :) - agentBounds(1, :)) .* rand(1, 2), agentAlt];
                     else
-                        % Sample near centroid of existing agents to maximize
-                        % probability of being within comRange of all others
-                        positions = cell2mat(cellfun(@(x) x.pos, agents(1:(jj-1)), 'UniformOutput', false));
-                        centroid = mean(positions, 1);
-                        maxSpread = max(vecnorm(positions - centroid, 2, 2));
-                        safeRadius = tc.comRange - maxSpread;
-
-                        if safeRadius > 2 * tc.collisionRadius
-                            % Uniform random within guaranteed-connected sphere
-                            dir = randn(1, 3);
-                            dir = dir / norm(dir);
-                            r = safeRadius * rand()^(1/3);
-                            agentPos = centroid + r * dir;
-                        else
-                            % Safe sphere too small; sample within comms sphere
-                            % of random existing agent (comRange check below)
-                            baseIdx = randi(jj - 1);
-                            agentPos = agents{baseIdx}.commsGeometry.random();
-                        end
+                        % Place at 0.7-0.9 * comRange in XY from previous agent, same altitude
+                        dir = randn(1, 2);
+                        dir = dir / norm(dir);
+                        r = chainSpacingMin + rand * (chainSpacingMax - chainSpacingMin);
+                        agentPos = [agents{jj-1}.pos(1:2) + r * dir, agentAlt];
                     end
 
-                    % Check within placement bounds
-                    if any(agentPos <= agentBounds(1, :)) || any(agentPos >= agentBounds(2, :))
+                    % Check within placement bounds (XY only, Z is fixed)
+                    if any(agentPos(1:2) <= agentBounds(1, :)) || any(agentPos(1:2) >= agentBounds(2, :))
                         retry = true;
                         continue;
                     end
 
-                    % Check sensor performance threshold
+                    % Check sensor performance threshold; lower altitude if it fails
                     if sensorModel.sensorPerformance(agentPos, [agentPos(1:2), 0]) < tc.sensorPerformanceMinimum * 10
+                        agentAlt = max(agentAlt - tc.collisionRadius, minAlt + 1.1 * tc.collisionRadius);
+                        agentPos(3) = agentAlt;
+                        % If we've hit the floor and still failing, widen XY search
+                        if agentAlt <= minAlt + 2 * tc.collisionRadius
+                            agentBounds = [tc.testClass.domain.minCorner(1) + tc.collisionRadius, ...
+                                           tc.testClass.domain.minCorner(2) + tc.collisionRadius; ...
+                                           tc.testClass.domain.maxCorner(1) - tc.collisionRadius, ...
+                                           tc.testClass.domain.maxCorner(2) - tc.collisionRadius];
+                        end
                         retry = true;
                         continue;
                     end
 
-                    % Check within comRange of ALL existing agents (complete graph)
+                    % Must be within comRange of previous agent (chain link)
+                    if jj > 1 && norm(agents{jj-1}.pos - agentPos) >= tc.comRange
+                        retry = true;
+                        continue;
+                    end
+
+                    % Must be BEYOND comRange of all non-adjacent agents (sparsity)
+                    % for kk = 1:(jj - 2)
+                    %     if norm(agents{kk}.pos - agentPos) < tc.comRange
+                    %         retry = true;
+                    %         break;
+                    %     end
+                    % end
+                    % if retry, continue; end
+
+                    % No collision with any existing agent
                     for kk = 1:(jj - 1)
-                        if norm(agents{kk}.pos - agentPos) >= tc.comRange
+                        if norm(agents{kk}.pos - agentPos) < agents{kk}.collisionGeometry.radius + tc.collisionRadius
                             retry = true;
                             break;
                         end
                     end
                     if retry, continue; end
 
-                    % Check collision with ALL existing agents
-                    for kk = 1:(jj - 1)
-                        if norm(agents{kk}.pos - agentPos) < agents{kk}.collisionGeometry.radius + tc.collisionRadius
+                    % No collision with any obstacle
+                    for kk = 1:nObs
+                        P = min(max(agentPos, obstacles{kk}.minCorner), obstacles{kk}.maxCorner);
+                        d = agentPos - P;
+                        if dot(d, d) <= tc.collisionRadius^2
                             retry = true;
                             break;
                         end
@@ -216,71 +239,6 @@ classdef results < matlab.unittest.TestCase
 
             % Randomly shuffle agents to vary index-based topology
             agents = agents(randperm(numel(agents)));
-
-            % Add random obstacles (each limited to 1/4 domain size in X and Y)
-            obstacles = cell(tc.numObstacles, 1);
-            [obstacles{:}] = deal(rectangularPrism);
-
-            % Define target region for obstacles (between agents and objective)
-            agentExtent = max(cell2mat(cellfun(@(x) x.pos(1:2), agents, "UniformOutput", false))) + max(cellfun(@(x) x.collisionGeometry.radius, agents));
-            objExtent = tc.testClass.domain.objective.groundPos - tc.testClass.domain.objective.protectedRange;
-            obsMin = zeros(1, 2);
-            obsMax = zeros(1, 2);
-            for dim = 1:2
-                if agentExtent(dim) < objExtent(dim)
-                    obsMin(dim) = agentExtent(dim);
-                    obsMax(dim) = objExtent(dim);
-                else
-                    obsMin(dim) = tc.testClass.domain.minCorner(dim);
-                    obsMax(dim) = tc.testClass.domain.maxCorner(dim);
-                end
-            end
-            maxObsSize = 3 * tc.collisionRadius * ones(1, 3);
-
-            for jj = 1:size(obstacles, 1)
-                retry = true;
-                while retry
-                    retry = false;
-
-                    % Generate random anchor point, then random size up to 3x collision radius
-                    anchor = [obsMin + rand(1, 2) .* (obsMax - obsMin), minAlt];
-                    obsSize = rand(1, 3) .* maxObsSize;
-                    corners = [anchor; anchor + obsSize];
-
-                    % Initialize obstacle using proposed coordinates
-                    obstacles{jj} = obstacles{jj}.initialize(corners, REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", jj));
-
-                    % Make sure the obstacle doesn't crowd the objective
-                    for kk = 1:size(tc.testClass.domain.objective.groundPos, 1)
-                        if ~retry && obstacles{jj}.distance([tc.testClass.domain.objective.groundPos(kk, 1:2), minAlt]) <= tc.testClass.domain.objective.protectedRange
-                            retry = true;
-                            continue;
-                        end
-                    end
-
-                    % Check if the obstacle collides with an existing obstacle
-                    if ~retry && jj > 1 && tc.obstacleCollisionCheck(obstacles(1:(jj - 1)), obstacles{jj})
-                        retry = true;
-                        continue;
-                    end
-
-                    % Check if the obstacle collides with an agent
-                    if ~retry
-                        for kk = 1:size(agents, 1)
-                            P = min(max(agents{kk}.pos, obstacles{jj}.minCorner), obstacles{jj}.maxCorner);
-                            d = agents{kk}.pos - P;
-                            if dot(d, d) <= agents{kk}.collisionGeometry.radius^2
-                                retry = true;
-                                break;
-                            end
-                        end
-                    end
-
-                    if retry
-                        continue;
-                    end
-                end
-            end
 
             end % reroll loop
 
@@ -296,7 +254,7 @@ classdef results < matlab.unittest.TestCase
 
             % Set up simulation
             tc.testClass = tc.testClass.initialize(tc.testClass.domain, agents, tc.barrierGain, tc.barrierExponent, minAlt, tc.timestep, tc.maxIter, obstacles, tc.makePlots, tc.makeVideo, config.doubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
-
+            
             % Save simulation parameters to output file
             tc.testClass.writeInits();
 
@@ -305,6 +263,11 @@ classdef results < matlab.unittest.TestCase
 
             % Cleanup
             tc.testClass = tc.testClass.teardown();
+            close all;
+        end
+        function AIIbeta_plots_3_4(tc)
+            configs = results.makeConfigs();
+            config = configs.A_2_alpha;
         end
     end
 
