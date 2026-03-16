@@ -38,11 +38,20 @@ for ii = 1:length(simHists)
         assert(hist.out.agent(jj).commsRadius == commsRadius(ii));
         assert(hist.out.agent(jj).collisionRadius == collisionRadius(ii));
     end
+
+    alphaDist2 = unique(alphaDist);
+    if length(alphaDist2) > 1
+        alphaDist2 = alphaDist2(1);
+    end
+    if doubleIntegrator(ii) && unique(alphaDist(:, ii)) == alphaDist2 && numObjective(ii) == 1
+        a2betaIdx = ii;
+        a2beta = struct("init", init, "hist", hist.out);
+    end
 end
 
 commsRadius = unique(commsRadius); assert(isscalar(commsRadius));
 collisionRadius = unique(collisionRadius); assert(isscalar(collisionRadius));
-sensors = unique(alphaDist(1, :));
+sensors = flip(unique(alphaDist(1, :)));
 
 config = [];
 for ii = 1:length(simHists)
@@ -72,6 +81,7 @@ for ii = 1:length(simHists)
     config = [config; s];
 end
 
+%%
 close all;
 f1 = figure;
 x1 = axes;
@@ -91,6 +101,7 @@ legend(["$AI\alpha$"; "$AI\beta$"; "$AII\alpha$"; "$BI\beta$"], "Interpreter", "
 grid("on");
 ylim([0, 1]);
 
+%%
 f2 = figure;
 x2 = axes;
 
@@ -155,3 +166,17 @@ yline(collisionRadius, 'r--', "Label", "Collision Radius", "LabelHorizontalAlign
 yline(commsRadius, 'r--', "Label", "Communications Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
 
 ylim([0, inf]);
+
+f3 = figure;
+x3 = axes;
+assert(size(a2beta.init.objectivePos, 1) == 1)
+assert(a2beta.hist.useDoubleIntegrator);
+assert(a2beta.hist.agent(1).sensor.alphaDist == sensors(2))
+
+plot(a2beta.hist.perf./a2beta.init.objectiveIntegral);
+hold("on");
+for ii = 1:length(a2beta.hist.agent)
+    plot(a2beta.hist.agent(ii).perf./a2beta.init.objectiveIntegral);
+end
+grid("on");
+xlabel("Performance");
