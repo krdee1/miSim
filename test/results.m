@@ -10,7 +10,7 @@ classdef results < matlab.unittest.TestCase
         %% Diagnostic Parameters
         % No effect on simulation dynamics
         makeVideo = false; % disable video writing for big performance increase
-        makePlots = false; % disable plotting for big performance increase (also disables video)
+        makePlots = true; % disable plotting for big performance increase (also disables video)
         plotCommsGeometry = false; % disable plotting communications geometries
 
         %% Scenario Reinitialization
@@ -52,17 +52,6 @@ classdef results < matlab.unittest.TestCase
         function setSeed(tc)
             rng(tc.seed);
         end
-    end
-
-    methods (TestMethodSetup)
-        % % Generate a random domain for each test
-        % function tc = setDomain(tc)
-        %     tc.testClass.domain = rectangularPrism;
-        %     % random integer-dimensioned cubic domain
-        %     tc.testClass.domain = tc.testClass.domain.initializeRandom(REGION_TYPE.DOMAIN, "Domain", tc.minDimension);
-        %     % Random bivariate normal PDF objective
-        %     tc.testClass.domain.objective = tc.testClass.domain.objective.initializeRandomMvnpdf(tc.testClass.domain, tc.discretizationStep, tc.protectedRange);
-        % end
     end
 
     methods (Static, Access = private)
