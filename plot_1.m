@@ -1,6 +1,6 @@
 clear;
 % Load data
-dataPath = fullfile('.', 'sandbox', 'plot1_3');
+dataPath = fullfile('.', 'sandbox', 'plot1');
 simHists = dir(dataPath); simHists = simHists(3:end);
 simInits = simHists(endsWith({simHists.name}, 'miSimInits.mat'));
 simHists = simHists(endsWith({simHists.name}, 'miSimHist.mat'));
@@ -99,7 +99,7 @@ ylabel("Final coverage (normalized)");
 title("Final performance of parameterizations");
 legend(["$AI\alpha$"; "$AI\beta$"; "$AII\alpha$"; "$BI\beta$"], "Interpreter", "latex", "Location", "northwest");
 grid("on");
-ylim([0, 1]);
+ylim([0, 1/2]);
 
 %%
 f2 = figure;
@@ -117,6 +117,14 @@ for ii = 1:nRuns
             pp = pp + 1;
             pairDist{pp, ii} = vecnorm(positions{jj, ii} - positions{kk, ii}, 2, 2);
         end
+    end
+end
+
+% Cap pairwise distances at communications range
+for ii = 1:nRuns
+    nPairs = nchoosek(n(ii), 2);
+    for pp = 1:nPairs
+        pairDist{pp, ii} = min(pairDist{pp, ii}, commsRadius);
     end
 end
 
@@ -164,19 +172,4 @@ grid(x2, "on");
 
 yline(collisionRadius, 'r--', "Label", "Collision Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
 yline(commsRadius, 'r--', "Label", "Communications Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
-
-ylim([0, inf]);
-
-f3 = figure;
-x3 = axes;
-assert(size(a2beta.init.objectivePos, 1) == 1)
-assert(a2beta.hist.useDoubleIntegrator);
-assert(a2beta.hist.agent(1).sensor.alphaDist == sensors(2))
-
-plot(a2beta.hist.perf./a2beta.init.objectiveIntegral);
-hold("on");
-for ii = 1:length(a2beta.hist.agent)
-    plot(a2beta.hist.agent(ii).perf./a2beta.init.objectiveIntegral);
-end
-grid("on");
-xlabel("Performance");
+ylim([0, commsRadius + 5]);

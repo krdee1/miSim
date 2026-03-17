@@ -59,21 +59,21 @@ classdef results < matlab.unittest.TestCase
         function c = makeConfigs()
             rng(results.seed);
             abMin = 6; % alpha*beta >= 6 ensures membership(0) = tanh(3) >= 0.995
-            alphaDist = rand(1, 2) .* [75, 40];
-            betaDist = abMin ./ alphaDist + rand(1, 2) .* (20 - abMin ./ alphaDist);
+            alphaDist = rand(1, 2) .* [75, 45];
+            betaDist = abMin ./ alphaDist + rand(1, 2) .* [1, 1/8] .* (20 - abMin ./ alphaDist);
             alphaTilt = 10 + rand(1, 2) .* [20, 20];
             betaTilt = abMin ./ alphaTilt + rand(1, 2) .* (50 - abMin ./ alphaTilt);
             sensors = struct('alphaDist', num2cell(alphaDist), 'alphaTilt', num2cell(alphaTilt), 'betaDist', num2cell(betaDist), 'betaTilt', num2cell(betaTilt));
-            % sensor1 = sigmoidSensor;
-            % sensor2 = sigmoidSensor;
-            % sensor1 = sensor1.initialize(sensors(1).alphaDist, sensors(1).betaDist, sensors(1).alphaTilt, sensors(1).betaTilt);
-            % sensor2 = sensor2.initialize(sensors(2).alphaDist, sensors(2).betaDist, sensors(2).alphaTilt, sensors(2).betaTilt);
-            % sensor1.plotParameters;
-            % sensor2.plotParameters;
+            sensor1 = sigmoidSensor;
+            sensor2 = sigmoidSensor;
+            sensor1 = sensor1.initialize(sensors(1).alphaDist, sensors(1).betaDist, sensors(1).alphaTilt, sensors(1).betaTilt);
+            sensor2 = sensor2.initialize(sensors(2).alphaDist, sensors(2).betaDist, sensors(2).alphaTilt, sensors(2).betaTilt);
+            sensor1.plotParameters;
+            sensor2.plotParameters;
             c = struct('A_1_alpha', struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(1), 'doubleIntegrator', false), ...
                         'A_1_beta',  struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(1), 'doubleIntegrator', true), ...
                         'A_2_alpha', struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(2), 'doubleIntegrator', false), ...
-                        'B_1_beta',  struct('objectivePos', [[3, 1] / 4 .* results.domainSize(1:2); [3, 1] / 4 .* results.domainSize(1:2) + 12.5 .* [-1, 1] ./ sqrt(2)], 'sensor', sensors(1), 'doubleIntegrator', true));
+                        'B_1_beta',  struct('objectivePos', [[3, 1] / 4 .* results.domainSize(1:2); [3, 1] / 4 .* results.domainSize(1:2) + 25 .* [-1, 1] ./ sqrt(2)], 'sensor', sensors(1), 'doubleIntegrator', true));
         end
     end
 
@@ -105,7 +105,7 @@ classdef results < matlab.unittest.TestCase
             for ii = 1:numDist
                 sig = [200, 140; 140, 280];
                 if ~mod(ii, 2)
-                    sig = rot90(sig, 2);
+                    sig = rot90(sig,2);
                 end
                 sig = reshape(sig, [1, 2, 2]);
                 objectiveSigma = cat(1, objectiveSigma, sig);
@@ -267,10 +267,13 @@ classdef results < matlab.unittest.TestCase
         end
         function AIIbeta_plots_3_4(tc)
             % test-specific parameters
+            tc.makePlots = true;
+            tc.makeVideo = true;
             maxIters = 400;
 
             configs = results.makeConfigs();
             c = configs.A_2_alpha;
+            c.doubleIntegrator = true; % make a2alpha into a2beta
 
             % Set up fixed-size domain
             minAlt = tc.domainSize(3)/10 + rand * 1/10 * tc.domainSize(3);
