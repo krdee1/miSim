@@ -43,7 +43,7 @@ for ii = 1:length(simHists)
     if length(alphaDist2) > 1
         alphaDist2 = alphaDist2(1);
     end
-    if doubleIntegrator(ii) && unique(alphaDist(:, ii)) == alphaDist2 && numObjective(ii) == 1
+    if doubleIntegrator(ii) && all(alphaDist(1:n(ii), ii) == alphaDist2) && numObjective(ii) == 1
         a2betaIdx = ii;
         a2beta = struct("init", init, "hist", hist.out);
     end
@@ -52,47 +52,57 @@ end
 commsRadius = unique(commsRadius); assert(isscalar(commsRadius));
 collisionRadius = unique(collisionRadius); assert(isscalar(collisionRadius));
 sensors = flip(unique(alphaDist(1, :)));
+n_unique = sort(unique(n));
+nGroups = length(n_unique);
 
-config = [];
-for ii = 1:length(simHists)
-    % number of agents
-    s = num2str(n(ii));
-
-    % number of objectives
+% Build config label for each run
+config = strings(nRuns, 1);
+baseConfig = strings(nRuns, 1);
+for ii = 1:nRuns
+    s = "";
     if numObjective(ii) == 1
-        s = strcat(s, "_A");
+        s = s + "A";
     elseif numObjective(ii) == 2
-        s = strcat(s, "_B");
+        s = s + "B";
     end
-
-    % sensor pararmeter set
     if alphaDist(1, ii) == sensors(1)
-        s = strcat(s, "_I");
+        s = s + "_I";
     elseif alphaDist(1, ii) == sensors(2)
-        s = strcat(s, "_II");
+        s = s + "_II";
     end
-
-    % agent dynamics
     if ~doubleIntegrator(ii)
-        s = strcat(s, '_alpha');
-    elseif doubleIntegrator(ii)
-        s = strcat(s, '_beta');
+        s = s + "_alpha";
+    else
+        s = s + "_beta";
     end
-    config = [config; s];
+    baseConfig(ii) = s;
+    config(ii) = n(ii) + "_" + s;
 end
+configOrder = unique(baseConfig(n == n_unique(1)), 'stable');
+nConfigsPerN = length(configOrder);
 
 %%
 close all;
 f1 = figure;
 x1 = axes;
 
-n_unique = sort(unique(n));
-C = [];
-for ii = 1:length(n_unique)
-    nIdx = n == n_unique(ii);
-    C = [C; [Cfinal(nIdx)]'];
+C_mean = NaN(nGroups, nConfigsPerN);
+C_var = NaN(nGroups, nConfigsPerN);
+for ii = 1:nGroups
+    for jj = 1:nConfigsPerN
+        mask = (n == n_unique(ii)) & (baseConfig == configOrder(jj));
+        C_mean(ii, jj) = mean(Cfinal(mask));
+        C_var(ii, jj) = var(Cfinal(mask));
+    end
 end
-bar(C);
+
+hBar = bar(x1, C_mean);
+hold(x1, 'on');
+for jj = 1:nConfigsPerN
+    xPos = hBar(jj).XEndPoints;
+    errorbar(x1, xPos, C_mean(:, jj), C_var(:, jj), 'k.', 'LineWidth', 1, 'HandleVisibility', 'off');
+end
+hold(x1, 'off');
 set(x1, 'XTickLabel', string(n_unique));
 xlabel("Number of agents");
 ylabel("Final coverage (normalized)");
@@ -105,10 +115,8 @@ ylim([0, 1/2]);
 f2 = figure;
 x2 = axes;
 
-% Compute pairwise distances between agents in each column of positions
-% cell array
 % Compute pairwise distances between agents
-maxPairs = nchoosek(6, 2); % 15 pairs for max 6 agents
+maxPairs = nchoosek(6, 2);
 pairDist = cell(maxPairs, nRuns);
 for ii = 1:nRuns
     pp = 0;
@@ -140,25 +148,25 @@ for ii = 1:nRuns
     maxPairDist(ii) = max(D);
 end
 
-% Group pairwise distance stats by n-value (same layout as bar plot)
-nConfigs = nRuns / length(n_unique);
-meanD = NaN(length(n_unique), nConfigs);
-minD = NaN(length(n_unique), nConfigs);
-maxD = NaN(length(n_unique), nConfigs);
-for ii = 1:length(n_unique)
-    idx = find(n == n_unique(ii));
-    meanD(ii, :) = meanPairDist(idx)';
-    minD(ii, :) = minPairDist(idx)';
-    maxD(ii, :) = maxPairDist(idx)';
+% Group pairwise distance stats by (n, config), aggregating across reps
+meanD = NaN(nGroups, nConfigsPerN);
+minD = NaN(nGroups, nConfigsPerN);
+maxD = NaN(nGroups, nConfigsPerN);
+for ii = 1:nGroups
+    for jj = 1:nConfigsPerN
+        mask = (n == n_unique(ii)) & (baseConfig == configOrder(jj));
+        meanD(ii, jj) = mean(meanPairDist(mask));
+        minD(ii, jj) = min(minPairDist(mask));
+        maxD(ii, jj) = max(maxPairDist(mask));
+    end
 end
 
 % Plot whiskers (min to max) with mean markers
-nGroups = length(n_unique);
 barWidth = 0.8;
-groupWidth = barWidth / nConfigs;
+groupWidth = barWidth / nConfigsPerN;
 hold(x2, 'on');
-for jj = 1:nConfigs
-    xPos = (1:nGroups) + (jj - (nConfigs + 1) / 2) * groupWidth;
+for jj = 1:nConfigsPerN
+    xPos = (1:nGroups) + (jj - (nConfigsPerN + 1) / 2) * groupWidth;
     errorbar(x2, xPos, meanD(:, jj), meanD(:, jj) - minD(:, jj), maxD(:, jj) - meanD(:, jj), ...
         'o', 'LineWidth', 1.5, 'MarkerSize', 6, 'CapSize', 10);
 end

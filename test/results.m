@@ -11,7 +11,7 @@ classdef results < matlab.unittest.TestCase
         %% Diagnostic Parameters
         % No effect on simulation dynamics
         makeVideo = false; % disable video writing for big performance increase
-        makePlots = true; % disable plotting for big performance increase (also disables video)
+        makePlots = false; % disable plotting for big performance increase (also disables video)
         plotCommsGeometry = false; % disable plotting communications geometries
 
         %% Scenario Reinitialization
@@ -49,9 +49,13 @@ classdef results < matlab.unittest.TestCase
         config = results.makeConfigs();
     end
 
-    methods (TestClassSetup)
-        function setSeed(tc)
-            rng(tc.seed);
+    properties (MethodSetupParameter)
+        trials = struct('r1', 1, 'r2', 2, 'r3', 3, 'r4', 4, 'r5', 5);
+    end
+
+    methods (TestMethodSetup)
+        function setSeed(tc, trials)
+            rng(tc.seed + trials);
         end
     end
 
