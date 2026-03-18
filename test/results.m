@@ -10,8 +10,8 @@ classdef results < matlab.unittest.TestCase
 
         %% Diagnostic Parameters
         % No effect on simulation dynamics
-        makeVideo = true; % disable video writing for big performance increase
-        makePlots = true; % disable plotting for big performance increase (also disables video)
+        makeVideo = false; % disable video writing for big performance increase
+        makePlots = false; % disable plotting for big performance increase (also disables video)
         plotCommsGeometry = false; % disable plotting communications geometries
 
         %% Scenario Reinitialization
@@ -72,8 +72,8 @@ classdef results < matlab.unittest.TestCase
             sensor2 = sigmoidSensor;
             sensor1 = sensor1.initialize(sensors(1).alphaDist, sensors(1).betaDist, sensors(1).alphaTilt, sensors(1).betaTilt);
             sensor2 = sensor2.initialize(sensors(2).alphaDist, sensors(2).betaDist, sensors(2).alphaTilt, sensors(2).betaTilt);
-            sensor1.plotParameters;
-            sensor2.plotParameters;
+            % sensor1.plotParameters;
+            % sensor2.plotParameters;
             c = struct('A_1_alpha', struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(1), 'doubleIntegrator', false), ...
                         'A_1_beta',  struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(1), 'doubleIntegrator', true), ...
                         'A_2_alpha', struct('objectivePos', [3, 1] / 4 .* results.domainSize(1:2), 'sensor', sensors(2), 'doubleIntegrator', false), ...
@@ -269,57 +269,57 @@ classdef results < matlab.unittest.TestCase
             tc.testClass = tc.testClass.teardown();
             close all;
         end
-        function AIIbeta_plots_3_4(tc)
-            % test-specific parameters
-            tc.makePlots = true;
-            tc.makeVideo = true;
-            maxIters = 400;
-
-            configs = results.makeConfigs();
-            c = configs.A_2_alpha;
-            c.doubleIntegrator = true; % make a2alpha into a2beta
-
-            % Set up fixed-size domain
-            minAlt = tc.domainSize(3)/10 + rand * 1/10 * tc.domainSize(3);
-            tc.testClass.domain = tc.testClass.domain.initialize([zeros(1, 3); tc.domainSize], REGION_TYPE.DOMAIN, "Domain");
-            
-            % Set objective
-            objectiveMu = [tc.domainSize(1) * 2 / 3, tc.domainSize(2) * 3 / 4];
-            objectiveSigma = reshape([215, 100; 100, 175], [1, 2, 2]);
-            tc.testClass.domain.objective = tc.testClass.domain.objective.initialize(objectiveFunctionWrapper(objectiveMu, objectiveSigma), tc.testClass.domain, tc.discretizationStep, tc.protectedRange, tc.sensorPerformanceMinimum, objectiveMu, objectiveSigma);
-            
-            % Set agent initial states (fully connected network of 4)
-            centerPos = [tc.domainSize(1) / 4, tc.domainSize(2) / 4];
-            d = tc.collisionRadius + (tc.comRange - tc.collisionRadius) / 4;
-            agentsPos = centerPos + [1, 1; 1, -1; -1, -1; -1, 1] / sqrt(2) * d;
-            agentAlt = minAlt * 1.5;
-            agentsPos = [agentsPos, agentAlt * ones(4, 1) + rand * 5 - 2.5];
-
-            agents = {agent, agent, agent, agent};
-            cg = spherical;
-            sensorModel = sigmoidSensor;
-            sensorModel = sensorModel.initialize(c.sensor.alphaDist, c.sensor.betaDist, c.sensor.alphaTilt, c.sensor.betaTilt);
-            agents{1} = agents{1}.initialize(agentsPos(1, :), cg.initialize(agentsPos(1, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 1 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 1", false);
-            agents{2} = agents{2}.initialize(agentsPos(2, :), cg.initialize(agentsPos(2, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 2 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 2", false);
-            agents{3} = agents{3}.initialize(agentsPos(3, :), cg.initialize(agentsPos(3, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 3 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 3", false);
-            agents{4} = agents{4}.initialize(agentsPos(4, :), cg.initialize(agentsPos(4, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 4 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 4", false);
-            
-            obstacles = cell(1, 1);
-            obstacles{1} = rectangularPrism;
-            obstacles{1} = obstacles{1}.initialize([0, tc.domainSize(2)/2, 0; tc.domainSize(1) * 0.4, tc.domainSize(2), 40],REGION_TYPE.OBSTACLE, "Obstacle 1");
-
-            % Set up simulation
-            tc.testClass = tc.testClass.initialize(tc.testClass.domain, agents, tc.barrierGain, tc.barrierExponent, minAlt, tc.timestep, maxIters, obstacles, tc.makePlots, tc.makeVideo, c.doubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
-            
-            % Save simulation parameters to output file
-            tc.testClass.writeInits();
-
-            % Run
-            tc.testClass = tc.testClass.run();
-
-            % Cleanup
-            tc.testClass = tc.testClass.teardown();
-        end
+        % function AIIbeta_plots_3_4(tc)
+        %     % test-specific parameters
+        %     tc.makePlots = true;
+        %     tc.makeVideo = true;
+        %     maxIters = 400;
+        % 
+        %     configs = results.makeConfigs();
+        %     c = configs.A_2_alpha;
+        %     c.doubleIntegrator = true; % make a2alpha into a2beta
+        % 
+        %     % Set up fixed-size domain
+        %     minAlt = tc.domainSize(3)/10 + rand * 1/10 * tc.domainSize(3);
+        %     tc.testClass.domain = tc.testClass.domain.initialize([zeros(1, 3); tc.domainSize], REGION_TYPE.DOMAIN, "Domain");
+        % 
+        %     % Set objective
+        %     objectiveMu = [tc.domainSize(1) * 2 / 3, tc.domainSize(2) * 3 / 4];
+        %     objectiveSigma = reshape([215, 100; 100, 175], [1, 2, 2]);
+        %     tc.testClass.domain.objective = tc.testClass.domain.objective.initialize(objectiveFunctionWrapper(objectiveMu, objectiveSigma), tc.testClass.domain, tc.discretizationStep, tc.protectedRange, tc.sensorPerformanceMinimum, objectiveMu, objectiveSigma);
+        % 
+        %     % Set agent initial states (fully connected network of 4)
+        %     centerPos = [tc.domainSize(1) / 4, tc.domainSize(2) / 4];
+        %     d = tc.collisionRadius + (tc.comRange - tc.collisionRadius) / 4;
+        %     agentsPos = centerPos + [1, 1; 1, -1; -1, -1; -1, 1] / sqrt(2) * d;
+        %     agentAlt = minAlt * 1.5;
+        %     agentsPos = [agentsPos, agentAlt * ones(4, 1) + rand * 5 - 2.5];
+        % 
+        %     agents = {agent, agent, agent, agent};
+        %     cg = spherical;
+        %     sensorModel = sigmoidSensor;
+        %     sensorModel = sensorModel.initialize(c.sensor.alphaDist, c.sensor.betaDist, c.sensor.alphaTilt, c.sensor.betaTilt);
+        %     agents{1} = agents{1}.initialize(agentsPos(1, :), cg.initialize(agentsPos(1, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 1 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 1", false);
+        %     agents{2} = agents{2}.initialize(agentsPos(2, :), cg.initialize(agentsPos(2, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 2 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 2", false);
+        %     agents{3} = agents{3}.initialize(agentsPos(3, :), cg.initialize(agentsPos(3, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 3 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 3", false);
+        %     agents{4} = agents{4}.initialize(agentsPos(4, :), cg.initialize(agentsPos(4, :), tc.collisionRadius, REGION_TYPE.COLLISION, "Agent 4 Collision Geometry"), sensorModel, tc.comRange, maxIters, tc.initialStepSize, "Agent 4", false);
+        % 
+        %     obstacles = cell(1, 1);
+        %     obstacles{1} = rectangularPrism;
+        %     obstacles{1} = obstacles{1}.initialize([0, tc.domainSize(2)/2, 0; tc.domainSize(1) * 0.4, tc.domainSize(2), 40],REGION_TYPE.OBSTACLE, "Obstacle 1");
+        % 
+        %     % Set up simulation
+        %     tc.testClass = tc.testClass.initialize(tc.testClass.domain, agents, tc.barrierGain, tc.barrierExponent, minAlt, tc.timestep, maxIters, obstacles, tc.makePlots, tc.makeVideo, c.doubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+        % 
+        %     % Save simulation parameters to output file
+        %     tc.testClass.writeInits();
+        % 
+        %     % Run
+        %     tc.testClass = tc.testClass.run();
+        % 
+        %     % Cleanup
+        %     tc.testClass = tc.testClass.teardown();
+        % end
     end
 
     methods

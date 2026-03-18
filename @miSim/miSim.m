@@ -27,6 +27,7 @@ classdef miSim
         spatialPlotIndices = [6, 4, 3, 2];
         numBarriers = 0; % Number of barrier functions needed
         barriers = []; % log barrier function values at each timestep for analysis
+        constraintAdjacencyHist = []; % log constraint adjacency matrix at each timestep
     end
 
     properties (Access = private)

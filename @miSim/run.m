@@ -34,6 +34,11 @@ function [obj] = run(obj)
             obj = obj.lesserNeighbor();
         end
 
+        % Log constraint adjacency for this timestep
+        if coder.target('MATLAB')
+            obj.constraintAdjacencyHist(:, :, ii) = obj.constraintAdjacencyMatrix;
+        end
+
         % Moving
         % Iterate over agents to simulate their unconstrained motion
         for jj = 1:size(obj.agents, 1)

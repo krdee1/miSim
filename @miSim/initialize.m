@@ -138,6 +138,11 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         % Initialize variable that will store barrier function values per timestep for analysis purposes
         obj.barriers = NaN(obj.numBarriers, size(obj.times, 1));
 
+        % Initialize constraint adjacency history (nAgents x nAgents x nTimesteps)
+        nAgents = size(obj.agents, 1);
+        obj.constraintAdjacencyHist = false(nAgents, nAgents, size(obj.times, 1));
+        obj.constraintAdjacencyHist(:, :, 1) = obj.constraintAdjacencyMatrix;
+
         % Set up plots showing initialized state
         obj = obj.plot();
 
