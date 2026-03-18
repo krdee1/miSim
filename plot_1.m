@@ -100,7 +100,7 @@ hBar = bar(x1, C_mean);
 hold(x1, 'on');
 for jj = 1:nConfigsPerN
     xPos = hBar(jj).XEndPoints;
-    errorbar(x1, xPos, C_mean(:, jj), C_var(:, jj), 'k.', 'LineWidth', 1, 'HandleVisibility', 'off');
+    errorbar(x1, xPos, C_mean(:, jj), C_var(:, jj), 'k.', 'LineWidth', 1, 'HandleVisibility', 'off');  % disabled the error bars because they are small to the point of meaninglessness
 end
 hold(x1, 'off');
 set(x1, 'XTickLabel', string(n_unique));
@@ -110,6 +110,9 @@ title("Final performance of parameterizations");
 legend(["$AI\alpha$"; "$AI\beta$"; "$AII\alpha$"; "$BI\beta$"], "Interpreter", "latex", "Location", "northwest");
 grid("on");
 ylim([0, 1/2]);
+
+savefig(f1, "plot1.fig");
+exportgraphics(f1, "plot1.png");
 
 %%
 f2 = figure;
@@ -181,3 +184,6 @@ grid(x2, "on");
 yline(collisionRadius, 'r--', "Label", "Collision Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
 yline(commsRadius, 'r--', "Label", "Communications Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
 ylim([0, commsRadius + 5]);
+
+savefig(f2, "plot2.fig");
+exportgraphics(f2, "plot2.png");

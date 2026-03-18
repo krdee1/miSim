@@ -19,16 +19,19 @@ x3 = axes;
 assert(size(init.objectivePos, 1) == 1)
 assert(hist.useDoubleIntegrator);
 
-plot(hist.perf./init.objectiveIntegral);
+plot(hist.perf./init.objectiveIntegral, "LineWidth", 2);
 hold("on");
 for ii = 1:length(hist.agent)
-    plot(hist.agent(ii).perf./init.objectiveIntegral);
+    plot(hist.agent(ii).perf./init.objectiveIntegral, "LineWidth", 2);
 end
 grid("on");
 ylabel("Performance (normalized)");
 xlabel("Timestep");
 legend(["Cumulative"; "Agent 1"; "Agent 2"; "Agent 3"; "Agent 4"], "Location", "northwest");
 title("$AII\beta$ Performance", "Interpreter", "latex");
+
+savefig(f3, "plot3.fig");
+exportgraphics(f3, "plot3.png");
 
 f4 = figure;
 x4 = axes;
@@ -55,7 +58,7 @@ end
 hold(x4, 'on');
 hLeft = gobjects(nPairs, 1);
 for pp = 1:nPairs
-    hLeft(pp) = plot(x4, pairDistMat(:, pp), 'LineWidth', 1);
+    hLeft(pp) = plot(x4, pairDistMat(:, pp), 'LineWidth', 2);
 end
 yline(x4, collisionRadius, 'r--', "Label", "Collision Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
 yline(x4, commsRadius, 'r--', "Label", "Communications Radius", "LabelHorizontalAlignment", "left", "HandleVisibility", "off");
@@ -75,7 +78,11 @@ for jj = 1:nAgents-1
         pairLabels(pp) = sprintf("Agents %d-%d Distance", jj, kk);
     end
 end
-% Left legend created after right-axis plots (see below)
+
+l = legend(hLeft(:), pairLabels(:), "Location", "northeast");
+
+savefig(f4, "plot4_distanceOnly.fig");
+exportgraphics(f4, "plot4_distanceOnly.png");
 
 % Plot all barrier function values on right Y-axis
 nObs = init.numObstacles;
@@ -102,32 +109,34 @@ comStart = domStart + nAD;
 hRight = gobjects(0, 1);
 rightLabels = strings(0, 1);
 for pp = 1:nAA
-    hRight(end+1) = plot(x4, hist.barriers(colStart + pp - 1, :), '--', 'LineWidth', 1, 'Color', pairColors(pp, :));
+    hRight(end+1) = plot(x4, hist.barriers(colStart + pp - 1, :), '--', 'LineWidth', 1.5, 'Color', pairColors(pp, :));
     rightLabels(end+1) = sprintf('h_{col} %d', pp);
 end
 for pp = 1:nComms
-    hRight(end+1) = plot(x4, hist.barriers(comStart + pp - 1, :), '-', 'LineWidth', 1.5, 'Color', pairColors(pp, :));
+    hRight(end+1) = plot(x4, hist.barriers(comStart + pp - 1, :), '-.', 'LineWidth', 1.5, 'Color', pairColors(pp, :));
     rightLabels(end+1) = sprintf('h_{com} %d', pp);
 end
 
 % Obstacle barriers — colored by agent
-idx = obsStart;
-for aa = 1:nAgents
-    for oo = 1:nObs
-        hRight(end+1) = plot(x4, hist.barriers(idx, :), ':', 'LineWidth', 1, 'Color', agentColors(aa, :));
-        rightLabels(end+1) = sprintf('h_{obs} a%d-o%d', aa, oo);
-        idx = idx + 1;
-    end
-end
-
+% idx = obsStart;
+% for aa = 1:nAgents
+%     for oo = 1:nObs
+%         hRight(end+1) = plot(x4, hist.barriers(idx, :), ':', 'LineWidth', 1, 'Color', agentColors(aa, :));
+%         rightLabels(end+1) = sprintf('h_{obs} a%d-o%d', aa, oo);
+%         idx = idx + 1;
+%     end
+% end
 
 hold(x4, 'off');
 ylabel(x4, "Barrier function $h$", "Interpreter", "latex");
 
 % Clamp both Y-axes to start at 0
 yyaxis(x4, 'left');  ylim(x4, [0, 25]);
-yyaxis(x4, 'right'); ylim(x4, [0, inf]);
+yyaxis(x4, 'right'); ylim(x4, [0, 275]);
 x4.YAxis(2).Color = 'k';
 
 % Combined legend
-legend([hLeft(:); hRight(:)], [pairLabels(:); rightLabels(:)], "Location", "eastoutside");
+l = legend([hLeft(:); hRight(:)], [pairLabels(:); rightLabels(:)], "Location", "eastoutside");
+
+savefig(f4, "plot4.fig");
+exportgraphics(f4, "plot4.png");

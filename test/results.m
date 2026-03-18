@@ -10,8 +10,8 @@ classdef results < matlab.unittest.TestCase
 
         %% Diagnostic Parameters
         % No effect on simulation dynamics
-        makeVideo = false; % disable video writing for big performance increase
-        makePlots = false; % disable plotting for big performance increase (also disables video)
+        makeVideo = true; % disable video writing for big performance increase
+        makePlots = true; % disable plotting for big performance increase (also disables video)
         plotCommsGeometry = false; % disable plotting communications geometries
 
         %% Scenario Reinitialization
