@@ -166,8 +166,8 @@ classdef test_miSim < matlab.unittest.TestCase
                     end
 
                     % Initialize candidate agent collision geometry
-                    candidateGeometry = rectangularPrism;
-                    candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION);
+                    candidateGeometry = spherical;
+                    candidateGeometry = candidateGeometry.initialize(candidatePos, tc.collisionRanges(ii), REGION_TYPE.COLLISION);
 
                     % Initialize candidate agent sensor model
                     tc.sensor = tc.sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
@@ -441,8 +441,8 @@ classdef test_miSim < matlab.unittest.TestCase
         
             % Initialize agent collision geometry
             tc.agents = {agent};
-            geometry1 = rectangularPrism;
-            geometry1 = geometry1.initialize([[tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3] - tc.collisionRanges(1) * ones(1, 3); [tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3] + tc.collisionRanges(1) * ones(1, 3)], REGION_TYPE.COLLISION);
+            geometry1 = spherical;
+            geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
             
             % Initialize agent sensor model with fixed parameters
             tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 20, 3);
