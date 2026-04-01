@@ -61,13 +61,15 @@ function [obj] = updatePlots(obj)
     end
 
     % Update h function plots
-    for ii = 1:size(obj.caPlot, 1)
-        obj.caPlot(ii).YData(obj.timestepIndex) = obj.h(ii, obj.timestepIndex);
+    nCA  = size(obj.caPlot, 1);
+    nObs = size(obj.obsPlot, 1);
+    for ii = 1:nCA
+        obj.caPlot(ii).YData(obj.timestepIndex) = obj.barriers(ii, obj.timestepIndex);
     end
-    for ii = 1:size(obj.obsPlot, 1)
-        obj.obsPlot(ii).YData(obj.timestepIndex) = obj.h(ii + size(obj.caPlot, 1), obj.timestepIndex);
+    for ii = 1:nObs
+        obj.obsPlot(ii).YData(obj.timestepIndex) = obj.barriers(nCA + ii, obj.timestepIndex);
     end
     for ii = 1:size(obj.domPlot, 1)
-        obj.domPlot(ii).YData(obj.timestepIndex) = obj.h(ii + size(obj.caPlot, 1) + size(obj.obsPlot, 1), obj.timestepIndex);
+        obj.domPlot(ii).YData(obj.timestepIndex) = obj.barriers(nCA + nObs + ii, obj.timestepIndex);
     end
 end

@@ -132,11 +132,6 @@ function [obj] = constrainMotion(obj)
         idx = idx + 6;
     end
 
-    if coder.target('MATLAB')
-        % Save off h function values (logging only — not needed in compiled mode)
-        obj.h(:, obj.timestepIndex) = [h(triu(true(nAgents), 1)); reshape(hObs, [], 1); h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax;];
-    end
-
     % Add communication network constraints
     hComms = NaN(nAgents, nAgents);
     hComms(logical(eye(nAgents))) = 0;

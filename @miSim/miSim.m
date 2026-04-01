@@ -54,7 +54,6 @@ classdef miSim
         partitionGraphIndex = 1;
 
         % CBF plotting
-        h; % h function values
         hf; % h function plotting figure
         caPlot; % objects for collision avoidance h function plot
         obsPlot; % objects for obstacle h function plot
