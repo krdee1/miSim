@@ -71,6 +71,7 @@ classdef miSim
         end
         [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo);
         [obj] = initializeFromCsv(obj, csvPath);
+        [obj] = initializeFromInits(obj, initsPath);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);
         [obj] = constrainMotion(obj);

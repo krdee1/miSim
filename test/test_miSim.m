@@ -728,6 +728,128 @@ classdef test_miSim < matlab.unittest.TestCase
                   0, 0, 0, 1, 1, 1, 1;
                   0, 0, 0, 0, 0, 1, 1; ]));
         end
+        function miSim_initializeFromInits(tc)
+            % Build a minimal valid simulation, write it to a matfile, reload
+            % via initializeFromInits, assert round-trip consistency, then
+            % delete the file.  No plotting or video at any stage.
+
+            % Obstacles
+            nGeom = tc.minNumObstacles + randi(tc.maxNumObstacles - tc.minNumObstacles);
+            tc.obstacles = cell(nGeom, 1);
+            for ii = 1:nGeom
+                badCandidate = true;
+                while badCandidate
+                    tc.obstacles{ii} = rectangularPrism;
+                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, ...
+                        sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, ...
+                        tc.domain, tc.minAlt);
+                    if ~tc.obstacleCollisionCheck(tc.obstacles(1:(ii - 1)), tc.obstacles{ii})
+                        badCandidate = false;
+                    end
+                end
+            end
+
+            % Agents
+            nAgents = tc.minAgents;
+            tc.agents = cell(nAgents, 1);
+            tc.collisionRanges = tc.minCollisionRange + rand(nAgents, 1) * (tc.maxCollisionRange - tc.minCollisionRange);
+            tc.commsRanges = tc.minCommsRange + rand(nAgents, 1) * (tc.maxCommsRange - tc.minCommsRange);
+
+            for ii = 1:nAgents
+                initInvalid = true;
+                while initInvalid
+                    if ii == 1
+                        candidatePos = tc.domain.random();
+                        candidatePos(3) = tc.minAlt + rand * 3;
+                        while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
+                            candidatePos = tc.domain.random();
+                            candidatePos(3) = tc.minAlt + rand * 3;
+                        end
+                    else
+                        candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.commsRanges(ii) / sqrt(2));
+                        candidatePos(3) = tc.minAlt + rand * 3;
+                    end
+
+                    if ~tc.domain.contains(candidatePos), continue; end
+                    if agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2), continue; end
+
+                    % Connectivity check
+                    connections = false(1, ii - 1);
+                    for jj = 1:(ii - 1)
+                        if norm(tc.agents{jj}.pos - candidatePos) <= min(tc.commsRanges([ii, jj]))
+                            connections(jj) = true;
+                            for kk = 1:size(tc.obstacles, 1)
+                                if tc.obstacles{kk}.containsLine(tc.agents{jj}.pos, candidatePos)
+                                    connections(jj) = false;
+                                end
+                            end
+                        end
+                    end
+                    if ii ~= 1 && ~any(connections), continue; end
+
+                    geom = spherical;
+                    geom = geom.initialize(candidatePos, tc.collisionRanges(ii), REGION_TYPE.COLLISION);
+                    tc.sensor = sigmoidSensor;
+                    tc.sensor = tc.sensor.initialize( ...
+                        tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), ...
+                        tc.betaDistMin  + rand * (tc.betaDistMax  - tc.betaDistMin), ...
+                        tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), ...
+                        tc.betaTiltMin  + rand * (tc.betaTiltMax  - tc.betaTiltMin));
+                    newAgent = agent;
+                    newAgent = newAgent.initialize(candidatePos, geom, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize);
+
+                    % Domain / obstacle / agent collision checks
+                    violation = false;
+                    for jj = 1:size(newAgent.collisionGeometry.vertices, 1)
+                        if ~tc.domain.contains(newAgent.collisionGeometry.vertices(jj, 1:3))
+                            violation = true; break;
+                        end
+                    end
+                    if violation, continue; end
+                    for kk = 1:size(tc.obstacles, 1)
+                        if geometryIntersects(tc.obstacles{kk}, newAgent.collisionGeometry)
+                            violation = true; break;
+                        end
+                    end
+                    if violation, continue; end
+                    for kk = 1:(ii - 1)
+                        if geometryIntersects(tc.agents{kk}.collisionGeometry, newAgent.collisionGeometry)
+                            violation = true; break;
+                        end
+                    end
+                    if newAgent.pos(3) - newAgent.collisionGeometry.radius <= tc.minAlt
+                        violation = true;
+                    end
+                    if violation, continue; end
+
+                    initInvalid = false;
+                    tc.agents{ii} = newAgent;
+                end
+            end
+
+            % Initialize first sim (no plots / video)
+            sim1 = miSim;
+            sim1 = sim1.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, ...
+                tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, false, false, ...
+                tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+
+            % Write inits and build file path
+            sim1.writeInits();
+            initsFile = fullfile(matlab.project.rootProject().RootFolder, "sandbox", ...
+                strcat(sim1.artifactName, "_miSimInits.mat"));
+
+            % Load via initializeFromInits
+            sim2 = miSim;
+            sim2 = sim2.initializeFromInits(initsFile);
+
+            % Assertions
+            tc.assertEqual(size(sim2.agents, 1), size(sim1.agents, 1));
+            tc.assertEqual(sim2.maxIter, sim1.maxIter);
+            tc.assertEqual(sim2.barrierGain, sim1.barrierGain);
+
+            % Cleanup
+            delete(initsFile);
+        end
     end
 
     methods
