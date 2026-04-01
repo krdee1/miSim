@@ -14,6 +14,8 @@ function writeInits(obj)
     comRanges = cellfun(@(x) x.commsGeometry.radius, obj.agents);
     initialStepSize = cellfun(@(x) x.initialStepSize, obj.agents);
     pos = cell2mat(cellfun(@(x) x.pos, obj.agents, 'UniformOutput', false));
+    obsMinCorners = cell2mat(cellfun(@(x) x.minCorner, obj.obstacles, 'UniformOutput', false));
+    obsMaxCorners = cell2mat(cellfun(@(x) x.maxCorner, obj.obstacles, 'UniformOutput', false));
 
     % Combine with simulation parameters
     inits = struct("timestep", obj.timestep, "maxIter", obj.maxIter, "minAlt", obj.obstacles{end}.maxCorner(3), ...
@@ -24,7 +26,9 @@ function writeInits(obj)
                     "useDoubleIntegrator", obj.useDoubleIntegrator, "dampingCoeff", obj.dampingCoeff, ...
                     "alphaDist", alphaDist, "betaDist", betaDist, "alphaTilt", alphaTilt, "betaTilt", betaTilt, ...
                     ... % ^^^ PARAMETERS ^^^ | vvv STATES vvv
-                    "pos", pos); % still needs obstacle states and objective state
+                    "pos", pos, "objectivePos", obj.domain.objective.groundPos, "objectiveSigma", obj.domain.objective.objectiveSigma, ...
+                    "obsMinCorners", obsMinCorners, "obsMaxCorners", obsMaxCorners, ...
+                    "objectiveIntegral", sum(obj.domain.objective.values(:)));
 
     % Save all parameters to output file
     initsFile = strcat(obj.artifactName, "_miSimInits");

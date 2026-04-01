@@ -39,10 +39,10 @@ function [obj] = constrainMotion(obj)
     h(logical(eye(nAgents))) = 0; % self value is 0
     for ii = 1:(nAgents - 1)
         for jj = (ii + 1):nAgents
-            h(ii, jj) = norm(obj.agents{ii}.pos - obj.agents{jj}.pos)^2 - (obj.agents{ii}.collisionGeometry.radius + obj.agents{jj}.collisionGeometry.radius)^2;
+            h(ii, jj) = norm(obj.agents{ii}.lastPos - obj.agents{jj}.lastPos)^2 - (obj.agents{ii}.collisionGeometry.radius + obj.agents{jj}.collisionGeometry.radius)^2;
             h(jj, ii) = h(ii, jj);
 
-            A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (obj.agents{ii}.pos - obj.agents{jj}.pos);
+            A(kk, (3 * ii - 2):(3 * ii)) =  -2 * (obj.agents{ii}.lastPos - obj.agents{jj}.lastPos);
             A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
             % Slack derived from existing params: recovery velocity = max gradient approach velocity.
             % Correction splits between 2 agents, so |A| = 2*r_sum
@@ -69,11 +69,11 @@ function [obj] = constrainMotion(obj)
     for ii = 1:nAgents
         for jj = 1:size(obj.obstacles, 1)
             % find closest position to agent on/in obstacle
-            cPos = obj.obstacles{jj}.closestToPoint(obj.agents{ii}.pos);
+            cPos = obj.obstacles{jj}.closestToPoint(obj.agents{ii}.lastPos);
 
-            hObs(ii, jj) = dot(obj.agents{ii}.pos - cPos, obj.agents{ii}.pos - cPos) - obj.agents{ii}.collisionGeometry.radius^2;
+            hObs(ii, jj) = dot(obj.agents{ii}.lastPos - cPos, obj.agents{ii}.lastPos - cPos) - obj.agents{ii}.collisionGeometry.radius^2;
 
-            A(kk, (3 * ii - 2):(3 * ii)) = -2 * (obj.agents{ii}.pos - cPos);
+            A(kk, (3 * ii - 2):(3 * ii)) = -2 * (obj.agents{ii}.lastPos - cPos);
             % Floor for single-agent constraint: full correction on one agent, |A| = 2*r_i
             r_i = obj.agents{ii}.collisionGeometry.radius;
             v_max_i = obj.agents{ii}.initialStepSize / obj.timestep;
@@ -93,37 +93,37 @@ function [obj] = constrainMotion(obj)
     h_xMin = 0.0; h_xMax = 0.0; h_yMin = 0.0; h_yMax = 0.0; h_zMin = 0.0; h_zMax = 0.0;
     for ii = 1:nAgents
         % X minimum
-        h_xMin = (obj.agents{ii}.pos(1) - obj.domain.minCorner(1)) - obj.agents{ii}.collisionGeometry.radius;
+        h_xMin = (obj.agents{ii}.lastPos(1) - obj.domain.minCorner(1)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [-1, 0, 0];
         b(kk) = obj.barrierGain * max(0, h_xMin)^obj.barrierExponent;
         kk = kk + 1;
 
         % X maximum
-        h_xMax = (obj.domain.maxCorner(1) - obj.agents{ii}.pos(1)) - obj.agents{ii}.collisionGeometry.radius;
+        h_xMax = (obj.domain.maxCorner(1) - obj.agents{ii}.lastPos(1)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [1, 0, 0];
         b(kk) = obj.barrierGain * max(0, h_xMax)^obj.barrierExponent;
         kk = kk + 1;
 
         % Y minimum
-        h_yMin = (obj.agents{ii}.pos(2) - obj.domain.minCorner(2)) - obj.agents{ii}.collisionGeometry.radius;
+        h_yMin = (obj.agents{ii}.lastPos(2) - obj.domain.minCorner(2)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, -1, 0];
         b(kk) = obj.barrierGain * max(0, h_yMin)^obj.barrierExponent;
         kk = kk + 1;
 
         % Y maximum
-        h_yMax = (obj.domain.maxCorner(2) - obj.agents{ii}.pos(2)) - obj.agents{ii}.collisionGeometry.radius;
+        h_yMax = (obj.domain.maxCorner(2) - obj.agents{ii}.lastPos(2)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 1, 0];
         b(kk) = obj.barrierGain * max(0, h_yMax)^obj.barrierExponent;
         kk = kk + 1;
 
         % Z minimum — enforce z >= minAlt + radius (not just z >= domain floor + radius)
-        h_zMin = (obj.agents{ii}.pos(3) - obj.minAlt) - obj.agents{ii}.collisionGeometry.radius;
+        h_zMin = (obj.agents{ii}.lastPos(3) - obj.minAlt) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, -1];
         b(kk) = obj.barrierGain * max(0, h_zMin)^obj.barrierExponent;
         kk = kk + 1;
 
         % Z maximum
-        h_zMax = (obj.domain.maxCorner(3) - obj.agents{ii}.pos(3)) - obj.agents{ii}.collisionGeometry.radius;
+        h_zMax = (obj.domain.maxCorner(3) - obj.agents{ii}.lastPos(3)) - obj.agents{ii}.collisionGeometry.radius;
         A(kk, (3 * ii - 2):(3 * ii)) = [0, 0, 1];
         b(kk) = obj.barrierGain * max(0, h_zMax)^obj.barrierExponent;
         kk = kk + 1;
@@ -145,9 +145,9 @@ function [obj] = constrainMotion(obj)
             if obj.constraintAdjacencyMatrix(ii, jj)
                 paddingFactor = 0.9; % Barrier at 90% of actual range; real comms still work beyond this
                 r_comms = paddingFactor * min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius]);
-                hComms(ii, jj) = r_comms^2 - norm(obj.agents{ii}.pos - obj.agents{jj}.pos)^2;
+                hComms(ii, jj) = r_comms^2 - norm(obj.agents{ii}.lastPos - obj.agents{jj}.lastPos)^2;
 
-                A(kk, (3 * ii - 2):(3 * ii)) =  2 * (obj.agents{ii}.pos - obj.agents{jj}.pos);
+                A(kk, (3 * ii - 2):(3 * ii)) =  2 * (obj.agents{ii}.lastPos - obj.agents{jj}.lastPos);
                 A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
 
                 % One-step forward invariance: b = h/dt ensures h cannot

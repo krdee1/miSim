@@ -14,6 +14,13 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents, useD
         obj (1, 1) {mustBeA(obj, "agent")};
     end
 
+    % Always update lastPos/lastVel so constrainMotion evaluates barriers at
+    % the correct (most recent) position, even when this agent has no partition.
+    obj.lastPos = obj.pos;
+    if useDoubleIntegrator
+        obj.lastVel = obj.vel;
+    end
+
     % Collect objective function values across partition
     partitionMask = partitioning == index;
     if ~any(partitionMask(:))
@@ -79,10 +86,8 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, agents, useD
     gradNorm = norm(gradC);
 
     % Compute unconstrained next state
-    obj.lastPos = obj.pos;
     if useDoubleIntegrator
         % Double-integrator: gradient produces desired acceleration with damping
-        obj.lastVel = obj.vel;
         if gradNorm < 1e-100
             a_gradient = zeros(1, 3);
         else

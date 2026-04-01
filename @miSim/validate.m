@@ -7,11 +7,11 @@ function validate(obj)
 
     %% Communications Network Validators
     if max(conncomp(graph(obj.adjacency))) ~= 1
-        warning("Network is not connected");
+        error("Network is not connected");
     end
 
     if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, "all")
-        warning("Eliminated network connections that were necessary");
+        error("Eliminated network connections that were necessary");
     end
 
     %% Obstacle Validators
@@ -21,9 +21,8 @@ function validate(obj)
             P = min(max(obj.agents{kk}.pos, obj.obstacles{jj}.minCorner), obj.obstacles{jj}.maxCorner);
             d = obj.agents{kk}.pos - P;
             if dot(d, d) < obj.agents{kk}.collisionGeometry.radius^2
-                warning("%s colliding with %s by %d", obj.agents{kk}.label, obj.obstacles{jj}.label, dot(d, d) - obj.agents{kk}.collisionGeometry.radius^2); % this will cause quadprog to fail
+                error("%s colliding with %s by %d", obj.agents{kk}.label, obj.obstacles{jj}.label, dot(d, d) - obj.agents{kk}.collisionGeometry.radius^2); % this will cause quadprog to fail
             end
         end
     end
-
 end
