@@ -34,7 +34,8 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
             % Define scenario according to CSV specification
             tc.domain = tc.domain.initialize([params.domainMin; params.domainMax], REGION_TYPE.DOMAIN, "Domain");
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos, reshape(params.objectiveVar, [2 2])), tc.domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
+            objectiveSigma = reshape(params.objectiveVar, [1 2 2]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos, objectiveSigma), tc.domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum, params.objectivePos, objectiveSigma);
 
             agents = cell(size(params.initialPositions, 2) / 3, 1);
             for ii = 1:size(agents, 1)
@@ -81,7 +82,8 @@ classdef parametricTestSuite < matlab.unittest.TestCase
             for ii = 1:size(params.timestep, 1)
                 % Set up square domain
                 tc.domain = tc.domain.initialize([zeros(1, 3); l * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
-                tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([.75 * l, 0.75 * l]), tc.domain, params.discretizationStep(ii), params.protectedRange(ii), params.sensorPerformanceMinimum(ii));
+                objectiveCenter = [.75 * l, 0.75 * l];
+                tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper(objectiveCenter), tc.domain, params.discretizationStep(ii), params.protectedRange(ii), params.sensorPerformanceMinimum(ii), objectiveCenter);
                 
                 % Initialize agents
                 agents = cell(params.numAgents(ii), 1);

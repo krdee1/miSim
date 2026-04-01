@@ -437,7 +437,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [7, 6]);
         
             % Initialize agent collision geometry
             tc.agents = {agent};
@@ -466,7 +466,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([3, 7]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([3, 7]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [3, 7]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent};
@@ -504,7 +504,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5.2195]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5.2195]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5.2195]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent;};
@@ -588,7 +588,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent;};
@@ -633,7 +633,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent; agent; agent; agent;};
@@ -683,7 +683,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent; agent; agent; agent; agent; agent;};
