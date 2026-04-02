@@ -31,14 +31,26 @@ function R = readRadioLogs(logPath)
         end
 
         fid = fopen(filepath, 'r');
-        % Skip 3 lines: 2 junk (tail errors) + 1 header (tx_uav_id,value)
-        for k = 1:3
-            fgetl(fid);
+        % Skip header lines: some files have 2 tail-error lines + 1 column
+        % header ("tx_uav_id,value"), others start with data immediately.
+        % Read until a line that looks like a data record, then rewind to it.
+        dataPattern = '^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\] [-\d]';
+        linePos = ftell(fid);
+        while true
+            line = fgetl(fid);
+            if ~ischar(line)
+                break;  % EOF
+            end
+            if ~isempty(regexp(line, dataPattern, 'once'))
+                fseek(fid, linePos, 'bof');  % rewind to start of this line
+                break;
+            end
+            linePos = ftell(fid);
         end
         data = textscan(fid, '[%26c] %d,%f');
         fclose(fid);
 
-        ts = datetime(data{1}, 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSSSSS');
+        ts = datetime(cellstr(data{1}), 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSSSSS');
         txId = int32(data{2});
         val = data{3};
 

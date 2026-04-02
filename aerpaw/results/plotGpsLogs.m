@@ -1,7 +1,8 @@
-function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel)
+function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     arguments (Input)
         logDirs (1, 1) string;
         seaToGroundLevel (1, 1) double = 110; % measured approximately from USGS national map viewer for the AERPAW test field
+        plotWholeFlight (1, 1) logical = false;
     end
     arguments (Output)
         f (1, 1) matlab.ui.Figure;
@@ -48,8 +49,10 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel)
         stopIdx = find(verticalSpeed <= prctile(verticalSpeed, pctThreshold), 1, "last");
     
         % % Plot whole flight, including setup/cleanup
-        % startIdx = 1;
-        % stopIdx = length(verticalSpeed);
+        if plotWholeFlight
+            startIdx = 1;
+            stopIdx = length(verticalSpeed);
+        end
 
         % Convert LLA trajectory data to ENU for external analysis
         % NaN out entries outside the algorithm flight range so they don't plot

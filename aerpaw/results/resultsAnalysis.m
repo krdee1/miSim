@@ -3,7 +3,8 @@ resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "two_
 
 % Plot GPS logged data and scenario information (domain, objective, obstacles)
 seaToGroundLevel = 110; % measured approximately from USGS national map viewer
-[fGlobe, G] = plotGpsLogs(resultsPath, seaToGroundLevel);
+plotWholeFlight = true; % do not attempt to automatically trim initial and final positioning and landing from flight plot (buggy)
+[fGlobe, G] = plotGpsLogs(resultsPath, seaToGroundLevel, true);
 
 % Plot radio statistics
 [fRadio, R] = plotRadioLogs(resultsPath);
@@ -21,7 +22,7 @@ makeVideo = true;
 % Define scenario according to CSV specification
 domain = rectangularPrism;
 domain = domain.initialize([params.domainMin; params.domainMax], REGION_TYPE.DOMAIN, "Domain");
-domain.objective = domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos, reshape(params.objectiveVar, [2 2])), domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
+domain.objective = domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos, reshape(params.objectiveVar, [1, 2 2])), domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
 
 agents = cell(size(params.initialPositions, 2) / 3, 1);
 for ii = 1:size(agents, 1)
