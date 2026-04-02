@@ -28,11 +28,11 @@ environments:
       port: 5000
 
   testbed:
-    # AERPAW testbed: E-VM listens, MAVLink Filter connects TO us (UDP)
+    # AERPAW testbed: E-VM listens, MAVLink Filter connects to us (UDP)
     mavlink:
       ip: "192.168.32.26"
       port: 14550
-    # Controller runs on host machine (192.168.109.1 from E-VM perspective)
+    # Controller runs on host machine (192.168.X.1, generally)
     controller:
-      ip: "192.168.109.1"
+      ip: "192.168.112.1"
       port: 5000

@@ -13,3 +13,4 @@ cp ../scripts/startVehicle.sh /root/Profiles/ProfileScripts/Vehicle/.
 
 echo "REMEMBER! Manually edit startexperiment.sh to point to the correct client.yaml"
 echo "REMEMBER! Manually copy startexperiment_controller.sh to startexperiment.sh on the fixed node"
+echo "REMEMBER! Manually copy startVehicle_controller.sh to ~/Profiles/ProfileScripts/Vehicle/startVehicle.sh on the fixed node"
