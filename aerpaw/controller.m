@@ -7,7 +7,8 @@ coder.extrinsic('disp', 'readScenarioCsv');
 
 % Maximum clients supported (one initial position per UAV)
 MAX_CLIENTS = 4;
-MAX_TARGETS = MAX_CLIENTS;
+% Two waypoints per UAV: altitude-staggered transit + final position
+MAX_TARGETS = MAX_CLIENTS * 2;
 
 % Allocate targets array (MAX_TARGETS x 3)
 targets = zeros(MAX_TARGETS, 3);
@@ -31,6 +32,28 @@ else
     totalLoaded = coder.ceval('loadInitialPositions', coder.ref(filename), ...
                 coder.ref(targets), int32(MAX_TARGETS));
     numWaypoints = totalLoaded / int32(numClients);
+end
+
+% In the compiled path, inject altitude-staggered transit waypoints so UAVs
+% are vertically separated while flying horizontally to their start positions.
+% ArduPilot reaches target altitude before horizontal movement, so UAV i is at
+% altitude (TRANSIT_ALT_BASE + (i-1)*TRANSIT_ALT_STEP) throughout its transit,
+% preventing collisions regardless of horizontal path geometry.
+% TRANSIT_ALT_STEP must exceed 2 * max(collisionRadius).
+% Waypoint 1: each UAV flies to (finalX, finalY) at its unique transit altitude.
+% Waypoint 2: each UAV adjusts to its actual target altitude.
+if ~coder.target('MATLAB')
+    TRANSIT_ALT_BASE = 25.0;  % must match drone.takeoff() altitude in uav_runner.py
+    TRANSIT_ALT_STEP = 12.1;  % vertical separation per UAV (m); must exceed 2*collisionRadius
+    for ii = double(totalLoaded):-1:1
+        transitRow = (ii - 1) * 2 + 1;
+        finalRow   = (ii - 1) * 2 + 2;
+        finalPos   = targets(ii, :);
+        transitAlt = TRANSIT_ALT_BASE + (ii - 1) * TRANSIT_ALT_STEP;
+        targets(finalRow, :)   = finalPos;
+        targets(transitRow, :) = [finalPos(1), finalPos(2), transitAlt];
+    end
+    numWaypoints = int32(2);
 end
 
 % Load guidance scenario from CSV (parameters for guidance_step)
