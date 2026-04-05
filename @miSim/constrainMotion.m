@@ -60,8 +60,10 @@ function [obj] = constrainMotion(obj)
         end
     end
 
-    idx = length(h(triu(true(size(h)), 1)));
-    obj.barriers(1:idx, obj.timestepIndex) = h(triu(true(size(h)), 1));
+    idx = length(h(triu(true(size(h)), 1)));    
+    if coder.target('MATLAB')
+	obj.barriers(1:idx, obj.timestepIndex) = h(triu(true(size(h)), 1));
+    end
     idx = idx + 1;
 
     hObs = NaN(nAgents, size(obj.obstacles, 1));
@@ -84,7 +86,9 @@ function [obj] = constrainMotion(obj)
         end
     end
 
-    obj.barriers(idx:(idx + numel(hObs) - 1), obj.timestepIndex) = reshape(hObs, [], 1);
+    if coder.target('MATLAB')
+	obj.barriers(idx:(idx + numel(hObs) - 1), obj.timestepIndex) = reshape(hObs, [], 1);
+    end
     idx = idx + numel(hObs);
 
     % Set up domain constraints (walls and ceiling only)
@@ -128,8 +132,10 @@ function [obj] = constrainMotion(obj)
         b(kk) = obj.barrierGain * max(0, h_zMax)^obj.barrierExponent;
         kk = kk + 1;
 
-        obj.barriers(idx:(idx + 5), obj.timestepIndex) = [h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax];
-        idx = idx + 6;
+        if coder.target('MATLAB')
+	    obj.barriers(idx:(idx + 5), obj.timestepIndex) = [h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax];
+        end
+	idx = idx + 6;
     end
 
     % Add communication network constraints
@@ -159,7 +165,10 @@ function [obj] = constrainMotion(obj)
             end
         end
     end
-    obj.barriers(idx:(idx + length(hComms(triu(true(size(hComms)), 1))) - 1), obj.timestepIndex) = hComms(triu(true(size(hComms)), 1));
+    
+    if coder.target('MATLAB')
+	obj.barriers(idx:(idx + length(hComms(triu(true(size(hComms)), 1))) - 1), obj.timestepIndex) = hComms(triu(true(size(hComms)), 1));
+    end
 
     % Double-integrator: transform QP from velocity to acceleration space.
     % Single-integrator constraint: A * v <= b
