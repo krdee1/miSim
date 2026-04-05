@@ -31,6 +31,7 @@ function [obj] = constrainMotion(obj)
 
     % Initialize QP based on number of agents and obstacles
     kk = 1;
+    idx = 0; % barriers log cursor (only used in the MATLAB path; unused in compiled path)
     A = zeros(obj.numBarriers, 3 * nAgents);
     b = zeros(obj.numBarriers, 1);
 
@@ -60,9 +61,11 @@ function [obj] = constrainMotion(obj)
         end
     end
 
-    idx = length(h(triu(true(size(h)), 1)));
-    obj.barriers(1:idx, obj.timestepIndex) = h(triu(true(size(h)), 1));
-    idx = idx + 1;
+    if coder.target('MATLAB')
+        idx = length(h(triu(true(size(h)), 1)));
+        obj.barriers(1:idx, obj.timestepIndex) = h(triu(true(size(h)), 1));
+        idx = idx + 1;
+    end
 
     hObs = NaN(nAgents, size(obj.obstacles, 1));
     % Set up obstacle avoidance constraints
@@ -84,8 +87,10 @@ function [obj] = constrainMotion(obj)
         end
     end
 
-    obj.barriers(idx:(idx + numel(hObs) - 1), obj.timestepIndex) = reshape(hObs, [], 1);
-    idx = idx + numel(hObs);
+    if coder.target('MATLAB')
+        obj.barriers(idx:(idx + numel(hObs) - 1), obj.timestepIndex) = reshape(hObs, [], 1);
+        idx = idx + numel(hObs);
+    end
 
     % Set up domain constraints (walls and ceiling only)
     % Floor constraint is implicit with an obstacle corresponding to the
@@ -128,8 +133,10 @@ function [obj] = constrainMotion(obj)
         b(kk) = obj.barrierGain * max(0, h_zMax)^obj.barrierExponent;
         kk = kk + 1;
 
-        obj.barriers(idx:(idx + 5), obj.timestepIndex) = [h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax];
-        idx = idx + 6;
+        if coder.target('MATLAB')
+            obj.barriers(idx:(idx + 5), obj.timestepIndex) = [h_xMin; h_xMax; h_yMin; h_yMax; h_zMin; h_zMax];
+            idx = idx + 6;
+        end
     end
 
     % Add communication network constraints
@@ -159,7 +166,10 @@ function [obj] = constrainMotion(obj)
             end
         end
     end
-    obj.barriers(idx:(idx + length(hComms(triu(true(size(hComms)), 1))) - 1), obj.timestepIndex) = hComms(triu(true(size(hComms)), 1));
+    if coder.target('MATLAB')
+        hComms_upper = hComms(triu(true(size(hComms)), 1));
+        obj.barriers(idx:(idx + length(hComms_upper) - 1), obj.timestepIndex) = hComms_upper;
+    end
 
     % Double-integrator: transform QP from velocity to acceleration space.
     % Single-integrator constraint: A * v <= b
