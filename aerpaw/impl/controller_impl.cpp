@@ -187,6 +187,9 @@ static int readScenarioDataRow(const char* filename, char* line, int lineSize) {
 //   38-39: objectivePos (east, north)
 //   40-43: objectiveVar (2x2 col-major: v11, v12, v21, v22)
 //   44   : sensorPerformanceMinimum
+//   45   : useDoubleIntegrator  (CSV column 23; 0=single-integrator, 1=double-integrator)
+//   46   : dampingCoeff         (CSV column 24)
+//   47   : useFixedTopology     (CSV column 25; 0=dynamic lesser-neighbor, 1=fixed)
 // Returns 1 on success, 0 on failure.
 int loadScenario(const char* filename, double* params) {
     char line[4096];
@@ -288,6 +291,25 @@ int loadScenario(const char* filename, double* params) {
     {
         char tmp[64]; strncpy(tmp, fields[18], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         params[44] = atof(trimField(tmp));
+    }
+
+    // useDoubleIntegrator (column 23), dampingCoeff (column 24), useFixedTopology (column 25).
+    // These columns are optional (introduced later); default to SI dynamics and dynamic topology
+    // if not present in the CSV.
+    if (nf >= 26) {
+        char tmp[64];
+        strncpy(tmp, fields[23], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[45] = atof(trimField(tmp));  // useDoubleIntegrator
+
+        strncpy(tmp, fields[24], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[46] = atof(trimField(tmp));  // dampingCoeff
+
+        strncpy(tmp, fields[25], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[47] = atof(trimField(tmp));  // useFixedTopology
+    } else {
+        params[45] = 0.0;  // useDoubleIntegrator = false (single-integrator)
+        params[46] = 2.0;  // dampingCoeff default
+        params[47] = 0.0;  // useFixedTopology = false (dynamic lesser-neighbor)
     }
 
     printf("Loaded scenario: domain [%g,%g,%g] to [%g,%g,%g]\n",
