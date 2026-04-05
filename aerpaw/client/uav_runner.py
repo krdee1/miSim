@@ -164,7 +164,7 @@ class UAVRunner(BasicRunner):
 
         # Retry connection up to 10 times (~30 seconds total)
         reader, writer = None, None
-        for attempt in range(10):
+        for attempt in range(100):
             try:
                 reader, writer = await asyncio.wait_for(
                     asyncio.open_connection(self.server_ip, self.server_port),

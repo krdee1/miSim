@@ -4,7 +4,7 @@ resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "two_
 % Plot GPS logged data and scenario information (domain, objective, obstacles)
 seaToGroundLevel = 110; % measured approximately from USGS national map viewer
 plotWholeFlight = true; % do not attempt to automatically trim initial and final positioning and landing from flight plot (buggy)
-[fGlobe, G] = plotGpsLogs(resultsPath, seaToGroundLevel, true);
+% [fGlobe, G] = plotGpsLogs(resultsPath, seaToGroundLevel, true);
 
 % Plot radio statistics
 [fRadio, R] = plotRadioLogs(resultsPath);
