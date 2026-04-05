@@ -57,7 +57,7 @@ if ~coder.target('MATLAB')
 end
 
 % Load guidance scenario from CSV (parameters for guidance_step)
-NUM_SCENARIO_PARAMS = 45;
+NUM_SCENARIO_PARAMS = 48;
 MAX_OBSTACLES_CTRL  = int32(8);
 scenarioParams = zeros(1, NUM_SCENARIO_PARAMS);
 obstacleMin    = zeros(MAX_OBSTACLES_CTRL, 3);

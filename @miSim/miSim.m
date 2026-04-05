@@ -69,7 +69,7 @@ classdef miSim
             obj.obstacles = {rectangularPrism};
             obj.agents = {agent};
         end
-        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo);
+        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology);
         [obj] = initializeFromCsv(obj, csvPath);
         [obj] = initializeFromInits(obj, initsPath);
         [obj] = plotFromSimHist(obj, initsPath, histPath);

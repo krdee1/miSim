@@ -29,6 +29,9 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %                                               39-40  objectivePos
 %                                               41-44  objectiveVar (2x2, col-major)
 %                                               45     sensorPerformanceMinimum
+%                                               46     useDoubleIntegrator
+%                                               47     dampingCoeff
+%                                               48     useFixedTopology
 %   obstacleMin       (MAX_OBSTACLES × 3) double  column-major obstacle corners (compiled path)
 %   obstacleMax       (MAX_OBSTACLES × 3) double
 %   numObstacles      (1,1) int32                 actual obstacle count
@@ -94,6 +97,9 @@ if isInit
         OBJECTIVE_GROUND_POS        = scenarioParams(39:40);
         OBJECTIVE_VAR               = reshape(scenarioParams(41:44), 2, 2);
         SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(45);
+        USE_DOUBLE_INTEGRATOR       = logical(scenarioParams(46));
+        DAMPING_COEFF               = scenarioParams(47);
+        USE_FIXED_TOPOLOGY          = logical(scenarioParams(48));
 
         % --- Build domain geometry ---
         dom = rectangularPrism;
@@ -146,7 +152,8 @@ if isInit
         % --- Initialise simulation (plots and video disabled) ---
         sim = miSim;
         sim = sim.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
-                             MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false);
+                             MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
+                             USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY);
     end
 
     % On the init call return current positions unchanged
@@ -176,7 +183,9 @@ else
     sim.timestepIndex = sim.timestepIndex + 1;
 
     % 3. Update communications topology (Lesser Neighbour Assignment)
-    sim = sim.lesserNeighbor();
+    if ~sim.useFixedTopology
+        sim = sim.lesserNeighbor();
+    end
 
     % 4. Compute Voronoi partitioning
     sim.partitioning = sim.agents{1}.partition(sim.agents, sim.domain.objective);
@@ -184,7 +193,8 @@ else
     % 5. Unconstrained gradient-ascent step for each agent
     for ii = 1:size(sim.agents, 1)
         sim.agents{ii} = sim.agents{ii}.run(sim.domain, sim.partitioning, ...
-                                             sim.timestepIndex, ii, sim.agents);
+                                             sim.timestepIndex, ii, sim.agents, ...
+                                             sim.useDoubleIntegrator, sim.dampingCoeff, sim.timestep);
     end
 
     % 6. Apply CBF safety filter (collision / comms / domain constraints via QP)

@@ -30,7 +30,10 @@ int loadTargets(const char* filename, double* targets, int maxClients);
 //   38-39 objectivePos
 //   40-43 objectiveVar (2x2 col-major)
 //   44    sensorPerformanceMinimum
-#define NUM_SCENARIO_PARAMS 45
+//   45    useDoubleIntegrator  (0=single-integrator, 1=double-integrator)
+//   46    dampingCoeff
+//   47    useFixedTopology     (0=dynamic lesser-neighbor, 1=fixed)
+#define NUM_SCENARIO_PARAMS 48
 #define MAX_CLIENTS_PER_PARAM 4
 // Maximum number of obstacles (upper bound for pre-allocated arrays).
 #define MAX_OBSTACLES 8
