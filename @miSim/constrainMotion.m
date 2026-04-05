@@ -196,13 +196,25 @@ function [obj] = constrainMotion(obj)
     uNew = reshape(uNew, 3, nAgents)';
 
     if exitflag < 0
-        % Infeasible or other hard failure: hold all agents at current positions
+        % Infeasible or other hard failure: hold all agents at current positions.
+        % Zero uNew so that:
+        %   SI path: pos = lastPos + 0*dt  (position held)
+        %   DI path: vel = lastVel + 0*dt = lastVel, so we must also zero lastVel
+        %            to prevent coasting through obstacles when QP is infeasible.
         if coder.target('MATLAB')
             warning("QP infeasible (exitflag=%d), holding positions.", int16(exitflag));
         else
             fprintf("[constrainMotion] QP infeasible (exitflag=%d), holding positions\n", int16(exitflag));
         end
         uNew = zeros(nAgents, 3);
+        if obj.useDoubleIntegrator
+            % In DI mode zero acceleration alone still coasts at lastVel.
+            % Explicitly zero each agent's velocity so the position update
+            % below results in pos = lastPos (true hold).
+            for ii = 1:nAgents
+                obj.agents{ii}.lastVel = zeros(1, 3);
+            end
+        end
     elseif exitflag == 0
         % Max iterations exceeded: use suboptimal solution already in uNew
         if coder.target('MATLAB')
