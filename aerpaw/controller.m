@@ -44,7 +44,7 @@ end
 % Waypoint 2: each UAV adjusts to its actual target altitude.
 if ~coder.target('MATLAB')
     TRANSIT_ALT_BASE = 25.0;  % must match drone.takeoff() altitude in uav_runner.py
-    TRANSIT_ALT_STEP = 12.1;  % vertical separation per UAV (m); must exceed 2*collisionRadius
+    TRANSIT_ALT_STEP = 25;  % vertical separation per UAV (m); must exceed 2*collisionRadius
     for ii = double(totalLoaded):-1:1
         transitRow = (ii - 1) * 2 + 1;
         finalRow   = (ii - 1) * 2 + 2;
