@@ -2,7 +2,6 @@ function R = readRadioLogs(logPath)
     arguments (Input)
         logPath (1, 1) string {isfolder(logPath)};
     end
-
     arguments (Output)
         R (:, 8) table;
     end

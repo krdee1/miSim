@@ -1,6 +1,23 @@
 %% Plot AERPAW logs (trajectory, radio)
 resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "two_around_wall"); % Define path to results copied from AERPAW platform
 
+% Measure intervals between issuing commands from the controller 
+% (make sure this is ~4-5 seconds at minimum to avoid overwhelming the UAV autopilot)
+r = dir(resultsPath);
+controllerPath = fullfile(r(startsWith({r.name}, 'controller_')).folder, r(startsWith({r.name}, 'controller_')).name);
+controllerPath = dir(controllerPath);
+controllerPath = fullfile(controllerPath(endsWith({controllerPath.name}, '_controller_log.txt')).folder, controllerPath(endsWith({controllerPath.name}, '_controller_log.txt')).name);
+controller = readControllerLogs(controllerPath);
+rpIdx = startsWith(controller.message, "Sent REQUEST_POSITION to client 1");
+rpTimes = controller.timestamp(rpIdx);
+dt = diff(rpTimes);
+dt.Format = "mm:ss.SSS";
+fprintf("Minimum command spacing: %2.3f seconds\n", seconds(min(dt)));
+fprintf("Maximum command spacing: %2.3f seconds\n", seconds(max(dt)));
+fprintf("Mean command spacing: %2.3f seconds\n", seconds(mean(dt)));
+fprintf("Median command spacing: %2.3f seconds\n", seconds(median(dt)));
+assert(seconds(min(dt)) > 4, "Minimum command spacing questionably short");
+
 % Plot GPS logged data and scenario information (domain, objective, obstacles)
 seaToGroundLevel = 110; % measured approximately from USGS national map viewer
 plotWholeFlight = true; % do not attempt to automatically trim initial and final positioning and landing from flight plot (buggy)
