@@ -42,9 +42,10 @@ end
 % TRANSIT_ALT_STEP must exceed 2 * max(collisionRadius).
 % Waypoint 1: each UAV flies to (finalX, finalY) at its unique transit altitude.
 % Waypoint 2: each UAV adjusts to its actual target altitude.
+% These constants are also used for the altitude-staggered return before RTL.
+TRANSIT_ALT_BASE = 25.0;  % must match drone.takeoff() altitude in uav_runner.py
+TRANSIT_ALT_STEP = 25;    % vertical separation per UAV (m); must exceed 2*collisionRadius
 if ~coder.target('MATLAB')
-    TRANSIT_ALT_BASE = 25.0;  % must match drone.takeoff() altitude in uav_runner.py
-    TRANSIT_ALT_STEP = 25;  % vertical separation per UAV (m); must exceed 2*collisionRadius
     for ii = double(totalLoaded):-1:1
         transitRow = (ii - 1) * 2 + 1;
         finalRow   = (ii - 1) * 2 + 2;
@@ -189,6 +190,21 @@ if ~coder.target('MATLAB')
                 int32(MESSAGE_TYPE.ACK));
 end
 % --------------------------------------------------------------------------
+
+% Altitude-staggered return: separate UAVs vertically before issuing RTL,
+% mirroring the initial positioning stagger so UAVs transit laterally at
+% unique altitudes and cannot collide during the return flight.
+if ~coder.target('MATLAB')
+    for i = 1:numClients
+        transitAlt = TRANSIT_ALT_BASE + (double(i) - 1) * TRANSIT_ALT_STEP;
+        target = [positions(i, 1), positions(i, 2), transitAlt];
+        coder.ceval('sendTarget', int32(i), coder.ref(target));
+    end
+    coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.ACK));
+    coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.READY));
+else
+    disp('Altitude-staggered return (simulation): UAVs commanded to transit altitudes.');
+end
 
 % Send RTL command to all clients
 for i = 1:numClients

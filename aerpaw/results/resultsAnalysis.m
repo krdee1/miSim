@@ -1,5 +1,5 @@
 %% Plot AERPAW logs (trajectory, radio)
-resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "two_around_wall"); % Define path to results copied from AERPAW platform
+resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "test2"); % Define path to results copied from AERPAW platform
 
 % Measure intervals between issuing commands from the controller 
 % (make sure this is ~4-5 seconds at minimum to avoid overwhelming the UAV autopilot)
@@ -16,8 +16,8 @@ fprintf("Minimum command spacing: %2.3f seconds\n", seconds(min(dt)));
 fprintf("Maximum command spacing: %2.3f seconds\n", seconds(max(dt)));
 fprintf("Mean command spacing: %2.3f seconds\n", seconds(mean(dt)));
 fprintf("Median command spacing: %2.3f seconds\n", seconds(median(dt)));
-if seconds(min(dt)) > 4 
-    warning("Minimum command spacing %2.3f questionably short for AERPAW", min(dt));
+if seconds(min(dt)) < 4 
+    warning("Minimum command spacing %2.3f questionably short for AERPAW", seconds(min(dt)));
 end
 
 % Plot GPS logged data and scenario information (domain, objective, obstacles)

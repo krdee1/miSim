@@ -79,7 +79,7 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
 
             fprintf("Minimum distance between agents %d and %d is %2.3f\n", ii, jj, min(d));
             if min(d) < 6
-                warning("Minimum distance between agents %d and %d of %2.3f is questionable for AERPAW", ii, jj, min(d);
+                warning("Minimum distance between agents %d and %d of %2.3f is questionable for AERPAW", ii, jj, min(d));
             end
         end
     
