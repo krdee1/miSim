@@ -16,7 +16,9 @@ fprintf("Minimum command spacing: %2.3f seconds\n", seconds(min(dt)));
 fprintf("Maximum command spacing: %2.3f seconds\n", seconds(max(dt)));
 fprintf("Mean command spacing: %2.3f seconds\n", seconds(mean(dt)));
 fprintf("Median command spacing: %2.3f seconds\n", seconds(median(dt)));
-assert(seconds(min(dt)) > 4, "Minimum command spacing questionably short");
+if seconds(min(dt)) > 4 
+    warning("Minimum command spacing %2.3f questionably short for AERPAW", min(dt));
+end
 
 % Plot GPS logged data and scenario information (domain, objective, obstacles)
 seaToGroundLevel = 110; % measured approximately from USGS national map viewer

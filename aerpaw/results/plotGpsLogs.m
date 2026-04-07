@@ -29,6 +29,7 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     logDirs = dir(logDirs);
     logDirs = logDirs(3:end);
     logDirs = logDirs([logDirs.isdir] == 1);
+    logDirs = logDirs(~startsWith({logDirs.name}, "controller_"));
 
     G = cell(size(logDirs));
     for ii = 1:size(logDirs, 1)
@@ -60,6 +61,27 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
         enu(startIdx:stopIdx, :) = lla2enu([G{ii}.Latitude(startIdx:stopIdx), G{ii}.Longitude(startIdx:stopIdx), G{ii}.Altitude(startIdx:stopIdx)], lla0, "flat");
         enu = array2table(enu, 'VariableNames', ["East", "North", "Up"]);
         G{ii} = [G{ii}, enu];
+
+        % Do crude comparison of pairwise distances between this UAV and
+        % all previous UAVs
+        for jj = 1:(ii - 1)
+            Ai = G{ii}(:, [1, end-2:end]);
+            Aj = G{jj}(:, [1, end-2:end]);
+
+            % Trim data to match sizes
+            idx = min([size(Ai, 1), size(Aj, 1)]);
+            Ai = Ai(1:idx, :); Aj = Aj(1:idx, :);
+
+            pos_i = [Ai.East, Ai.North, Ai.Up];
+            pos_j = [Aj.East, Aj.North, Aj.Up];
+            d = vecnorm(pos_i - pos_j, 2, 2);
+            d = d(~isnan(d));
+
+            fprintf("Minimum distance between agents %d and %d is %2.3f\n", ii, jj, min(d));
+            if min(d) < 6
+                warning("Minimum distance between agents %d and %d of %2.3f is questionable for AERPAW", ii, jj, min(d);
+            end
+        end
     
         % Plot recorded trajectory over specified range of indices
         geoplot3(gf, G{ii}.Latitude(startIdx:stopIdx), G{ii}.Longitude(startIdx:stopIdx), G{ii}.Altitude(startIdx:stopIdx) + seaToGroundLevel, c(mod(ii, length(c))), 'LineWidth', 2, "MarkerSize", 5);
