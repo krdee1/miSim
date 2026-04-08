@@ -16,6 +16,44 @@
 
 static int serverSocket = -1;
 static std::vector<int> clientSockets;
+static int guidanceStep = 0;
+static int guidanceTotalSteps = 0;
+static struct timespec lastStepTime = {0, 0};
+
+// During guidance returns "(%d/%d) "; outside guidance returns "HH:MM:SS ".
+static std::string logPrefix() {
+    if (guidanceStep > 0) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "(%d/%d) ", guidanceStep, guidanceTotalSteps);
+        return std::string(buf);
+    }
+    time_t now = time(nullptr);
+    struct tm* lt = localtime(&now);
+    char ts[16];
+    strftime(ts, sizeof(ts), "%H:%M:%S", lt);
+    return std::string(ts) + " ";
+}
+
+void setGuidanceStep(int step, int totalSteps) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    // From step 2 onward, elapsed = setGuidanceStep(N-1) → setGuidanceStep(N),
+    // which spans the full prior iteration: guidance computation + target send
+    // + flight + position request/receive.
+    if (step > 1 && lastStepTime.tv_sec != 0) {
+        double elapsed = (now.tv_sec - lastStepTime.tv_sec)
+                       + (now.tv_nsec - lastStepTime.tv_nsec) * 1e-9;
+        guidanceStep = step;
+        guidanceTotalSteps = totalSteps;
+        std::cout << logPrefix() << "Iteration duration: " << elapsed << " s\n";
+    } else {
+        guidanceStep = step;
+        guidanceTotalSteps = totalSteps;
+    }
+
+    lastStepTime = now;
+}
 
 void initSockets() {}
 void cleanupSockets() {}
@@ -451,18 +489,22 @@ static const char* messageTypeName(uint8_t msgType) {
     }
 }
 
-// Send a single-byte message type to a client
-int sendMessageType(int clientId, int msgType) {
+// Send a single-byte message type to a client (no logging)
+static int sendMessageTypeRaw(int clientId, int msgType) {
     if (clientId <= 0 || clientId > (int)clientSockets.size()) return 0;
-
     uint8_t msg = (uint8_t)msgType;
     ssize_t sent = send(clientSockets[clientId - 1], &msg, 1, 0);
     if (sent != 1) {
         std::cerr << "Send failed for client " << clientId << "\n";
         return 0;
     }
+    return 1;
+}
 
-    std::cout << "Sent " << messageTypeName(msg) << " to client " << clientId << "\n";
+// Send a single-byte message type to a client
+int sendMessageType(int clientId, int msgType) {
+    if (!sendMessageTypeRaw(clientId, msgType)) return 0;
+    std::cout << logPrefix() << "Sent " << messageTypeName((uint8_t)msgType) << " to client " << clientId << "\n";
     return 1;
 }
 
@@ -481,13 +523,7 @@ int sendTarget(int clientId, const double* coords) {
         return 0;
     }
 
-    // Timestamp
-    time_t now = time(nullptr);
-    struct tm* lt = localtime(&now);
-    char ts[16];
-    strftime(ts, sizeof(ts), "%H:%M:%S", lt);
-
-    std::cout << ts << " Sent TARGET to client " << clientId << ": "
+    std::cout << logPrefix() << "Sent TARGET to client " << clientId << ": "
               << coords[0] << "," << coords[1] << "," << coords[2] << "\n";
     return 1;
 }
@@ -535,31 +571,36 @@ int waitForAllMessageType(int numClients, int expectedType) {
                     return 0;
                 }
 
-                std::cout << "Received " << messageTypeName(msgType) << " from client " << (i + 1) << "\n";
-
                 if (msgType == expected) {
                     completed[i] = true;
                     completedCount++;
+                } else {
+                    std::cerr << logPrefix() << "Unexpected " << messageTypeName(msgType)
+                              << " from client " << (i + 1)
+                              << " (expected " << messageTypeName(expected) << ")\n";
                 }
             }
         }
     }
 
+    std::cout << logPrefix() << "Received " << messageTypeName(expected) << " from all clients\n";
     return 1;
 }
 
 // Broadcast GUIDANCE_TOGGLE to all clients
 void sendGuidanceToggle(int numClients) {
     for (int i = 1; i <= numClients; i++) {
-        sendMessageType(i, 6);  // GUIDANCE_TOGGLE = 6
+        sendMessageTypeRaw(i, 6);  // GUIDANCE_TOGGLE = 6
     }
+    std::cout << logPrefix() << "Sent GUIDANCE_TOGGLE to clients\n";
 }
 
 // Send REQUEST_POSITION to all clients
 int sendRequestPositions(int numClients) {
     for (int i = 1; i <= numClients; i++) {
-        if (!sendMessageType(i, 7)) return 0;  // REQUEST_POSITION = 7
+        if (!sendMessageTypeRaw(i, 7)) return 0;  // REQUEST_POSITION = 7
     }
+    std::cout << logPrefix() << "Sent REQUEST_POSITION to clients\n";
     return 1;
 }
 
@@ -594,7 +635,7 @@ int recvPositions(int numClients, double* positions, int maxClients) {
         positions[i + 1 * maxClients] = coords[1];  // north (y)
         positions[i + 2 * maxClients] = coords[2];  // up    (z)
 
-        std::cout << "Position from client " << (i + 1) << ": "
+        std::cout << logPrefix() << "Position from client " << (i + 1) << ": "
                   << coords[0] << "," << coords[1] << "," << coords[2] << "\n";
     }
     return 1;

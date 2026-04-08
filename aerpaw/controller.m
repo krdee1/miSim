@@ -102,7 +102,7 @@ for w = 1:numWaypoints
         target = targets(targetIdx, :);
 
         if coder.target('MATLAB')
-            disp([datestr(now, 'HH:MM:SS'), ' Sending TARGET to client ', num2str(i), ' (waypoint ', num2str(w), '): ', ...
+            disp(['Sending TARGET to client ', num2str(i), ' (waypoint ', num2str(w), '): ', ...
                   num2str(target(1)), ',', num2str(target(2)), ',', num2str(target(3))]);
         else
             coder.ceval('sendTarget', int32(i), coder.ref(target));
@@ -149,6 +149,10 @@ guidance_step(positions(1:numClients, :), true, ...
 
 % Main guidance loop (event-triggered)
 for step = 1:MAX_GUIDANCE_STEPS
+    if ~coder.target('MATLAB')
+        coder.ceval('setGuidanceStep', int32(step), int32(MAX_GUIDANCE_STEPS));
+    end
+
     % Run one guidance step: feed current GPS positions in, get targets out
     nextPositions = guidance_step(positions(1:numClients, :), false, ...
                                   scenarioParams, obstacleMin, obstacleMax, numObstacles);
@@ -159,7 +163,7 @@ for step = 1:MAX_GUIDANCE_STEPS
         if ~coder.target('MATLAB')
             coder.ceval('sendTarget', int32(i), coder.ref(target));
         else
-            disp([datestr(now, 'HH:MM:SS'), ' [guidance] target UAV ', num2str(i), ': ', num2str(target)]);
+            disp(['[step ', num2str(step), '] target UAV ', num2str(i), ': ', num2str(target)]);
         end
     end
 
@@ -188,6 +192,8 @@ if ~coder.target('MATLAB')
     % last guidance navigation and is back in sequential (ACK/READY) mode.
     coder.ceval('waitForAllMessageType', int32(numClients), ...
                 int32(MESSAGE_TYPE.ACK));
+    % Reset step counter so post-guidance logging carries no step prefix.
+    coder.ceval('setGuidanceStep', int32(0), int32(MAX_GUIDANCE_STEPS));
 end
 % --------------------------------------------------------------------------
 

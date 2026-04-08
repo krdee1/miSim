@@ -62,6 +62,7 @@ int sendTarget(int clientId, const double* coords);
 int waitForAllMessageType(int numClients, int expectedType);
 
 // Guidance loop operations
+void setGuidanceStep(int step, int totalSteps);  // call at the top of each guidance iteration
 void sendGuidanceToggle(int numClients);
 int  sendRequestPositions(int numClients);
 int  recvPositions(int numClients, double* positions, int maxClients); // column-major maxClients x 3
