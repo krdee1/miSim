@@ -22,9 +22,9 @@ function f = plotParameters(obj)
     % Plot resultant sigmoid curves
     f = figure;
     grid("on");
-    title("SNR vs Distance");
+    surf(d_mg, t_mg, reshape(s_x, size(d_mg)));
+    title("SNR vs Distance and Tilt");
     xlabel("Distance (m)");
     ylabel("Tilt (deg)");
     zlabel("SNR (dB)");
-    surf(d_mg, t_mg, reshape(s_x, size(d_mg)));
 end
