@@ -29,7 +29,6 @@ classdef test_rfSensor < matlab.unittest.TestCase
             f_c = 2e9; % Center frequency (Hz)
 
             tc.testClass = tc.testClass.initialize(P_TX, BW, f_c);
-
-            
+        end
     end
 end

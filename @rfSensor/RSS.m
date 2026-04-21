@@ -7,10 +7,8 @@ function value = RSS(obj, d, t)
     arguments (Output)
         value (:, 1) double
     end
-    
-    rho_dBm = 10*log10(obj.P_TX/1e-3);
+    assert(size(d, 1) == size(t, 1), "Mismatch in number of distances (%d) and tilts (%d) provided", size(d, 1), size(t, 1));
 
-    % RSS = TX Power + Antenna Gain - Path Loss
-    value = rho_dBm + obj.antennaGain(t) - obj.pathLoss(d);
-
+    % RSS (dBm) = TX Power (dBm) + Antenna Gain (dB) - Path Loss (dB)
+    value = obj.P_TX_dBm + obj.antennaGain(t) - obj.pathLoss(d);
 end

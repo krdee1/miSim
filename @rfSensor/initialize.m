@@ -9,8 +9,12 @@ function obj = initialize(obj, txPower, bandwidth, centerFreq)
         obj (1, 1) {mustBeA(obj, "rfSensor")}
     end
 
-    obj.P_TX = txPower;
-    obj.BW = bandwidth;
-    obj.f_c = centerFreq;
-    
+    % Provided values
+    obj.P_TX = txPower; % Transmit power (W)
+    obj.BW = bandwidth; % Bandwidth (Hz)
+    obj.f_c = centerFreq; % Center frequency (Hz)
+
+    % Computed values
+    obj.P_TX_dBm = 10*log10(obj.P_TX/1e-3); % Transmit power in dBm
+    obj.N = obj.k_B * obj.T_0 * obj.BW; % Thermal noise
 end

@@ -9,17 +9,13 @@ function f = plotParameters(obj)
     % Distance and tilt sample points
     d = [0.01, 0.1, 0.25, 0.5, 0.75, 1:1:100];
     t  = zeros(size(d));
-    t = -90:1:90;
 
     % Sample RSS function by distances, tilts
     r_x = obj.RSS(d', t');
 
     % Sample SINR (SNR) function by distances, tilts
     % using SINR method with no other transmitters defined is equivalent to SNR
-    s_x = NaN(size(r_x));
-    for ii = 1:size(s_x, 1)
-        s_x(ii) = obj.sensorPerformance([0, 0, d(ii)], zeros(1, 3)); % don't define other sensors
-    end
+    s_x = obj.sensorPerformance(d, t); % don't define other sensors
 
     % Plot resultant sigmoid curves
     f = figure;

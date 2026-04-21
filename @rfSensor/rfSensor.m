@@ -8,12 +8,16 @@ classdef rfSensor
         P_TX = NaN; % Transmit power (Watts)
         BW = NaN; % Bandwidth (Hz)
         f_c = NaN; % Center frequency (Hz)
+        % Values computed at initialization
+        P_TX_dBm = NaN; % Transmit power (dBm)
+        N = NaN; % Thermal noise
     end
 
     methods (Access = public)
         [obj] = initialize(obj, txPower, bandwidth, centerFreq); % TODO initialize sensor, define parameters
         [SINR] = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos); % determine sensor performance for a given single sensor and target geometry
         [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
+        [d, t] = computePointToPoints(obj, agentPos, targetPos);
     end
     methods (Access = private)
         x = RSS(obj, d, t); % Received signal strength (function of distance and tilt angle)
