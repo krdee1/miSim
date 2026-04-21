@@ -5,13 +5,13 @@ classdef rfSensor
         k_B = 1.38e-23 % Boltzmann constant (W/Hz/K) for thermal noise model
         T_0 = 300; % Ambient temperature (Kelvin) for thermal noise model
         % Sensor parameters
-        P_TX = 10e-3; % Transmit power (Watts)
-        BW = 1e6; % Bandwidth (Hz)
-        f_c = 2e9; % Center frequency (Hz)
+        P_TX = NaN; % Transmit power (Watts)
+        BW = NaN; % Bandwidth (Hz)
+        f_c = NaN; % Center frequency (Hz)
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, alphaDist, betaDist, alphaTilt, betaTilt); % TODO initialize sensor, define parameters
+        [obj] = initialize(obj, txPower, bandwidth, centerFreq); % TODO initialize sensor, define parameters
         [SINR] = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos); % determine sensor performance for a given single sensor and target geometry
         [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
     end

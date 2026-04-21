@@ -9,6 +9,7 @@ function f = plotParameters(obj)
     % Distance and tilt sample points
     d = [0.01, 0.1, 0.25, 0.5, 0.75, 1:1:100];
     t  = zeros(size(d));
+    t = -90:1:90;
 
     % Sample RSS function by distances, tilts
     r_x = obj.RSS(d', t');

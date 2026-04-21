@@ -8,18 +8,28 @@ classdef test_rfSensor < matlab.unittest.TestCase
         function tc = setup(tc)
             % Reinitialize sensor with random parameters
             tc.testClass = rfSensor;
-            % TODO
-            tc.testClass = tc.testClass.initialize();
         end
     end
 
     methods (Test)
-        % Test methods
+        function plot_SNR(tc)
+            % Plot sensor performance with no sources of interference
+            P_TX = 1e-3; % Transmit power (Watts)
+            BW = 20e6; % Bandwidth (Hz)
+            f_c = 2e9; % Center frequency (Hz)
 
-        function test_SINR(tc)
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c);
+
             tc.testClass.plotParameters();
-            % [SINR] = tc.testClass.sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos);
         end
-    end
+        function plot_SINR(tc)
+            % Plot sensor performance with a single source of interference
+            P_TX = 1e-3; % Transmit power (Watts)
+            BW = 20e6; % Bandwidth (Hz)
+            f_c = 2e9; % Center frequency (Hz)
 
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c);
+
+            
+    end
 end
