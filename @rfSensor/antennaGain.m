@@ -7,7 +7,11 @@ function value = antennaGain(obj, t)
         value (:, 1) double
     end
 
-    % TODO
+    %% TODO
+
     % Temporary logic to make nadir-pointing most effective
-    value = 10*log10(cosd(t));
+    value = 10*log10(cosd(t) .^ 8);
+
+    % % Temporary logic for 0 dB at all tilt angles
+    % value = zeros(size(t));
 end

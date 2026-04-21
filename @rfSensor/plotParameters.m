@@ -7,8 +7,13 @@ function f = plotParameters(obj)
     end
 
     % Distance and tilt sample points
-    d = [0.01, 0.1, 0.25, 0.5, 0.75, 1:1:100];
-    t  = zeros(size(d));
+    d_values = [0.01, 0.1, 0.25, 0.5, 0.75, 1, 2, 3, 4, 5:5:100];
+    % t = zeros(size(d));
+    t_values = -90:15:90;
+
+    % Make grid of values of distances and tilts
+    [d_mg, t_mg] = meshgrid(d_values, t_values);
+    d = d_mg(:); t = t_mg(:); % flatten
 
     % Sample RSS function by distances, tilts
     r_x = obj.RSS(d', t');
@@ -26,9 +31,10 @@ function f = plotParameters(obj)
     grid("on");
     title("RSS vs Distance");
     xlabel("Distance (m)");
-    ylabel("RSS (dBm)");
+    ylabel("Tilt (deg)");
+    zlabel("RSS (dBm)");
     hold("on");
-    plot(d, r_x, "LineWidth", 2);
+    surf(d_mg, t_mg, reshape(r_x, size(d_mg)));
     hold("off");
     % ylim([0, 1]);
 
@@ -37,8 +43,9 @@ function f = plotParameters(obj)
     grid("on");
     title("SNR vs Distance");
     xlabel("Distance (m)");
-    ylabel("SNR (dB)");
+    ylabel("Tilt (deg)");
+    zlabel("SNR (dB)");
     hold("on");
-    plot(d, s_x, "LineWidth", 2);
+    surf(d_mg, t_mg, reshape(s_x, size(d_mg)));
     hold("off");
 end
