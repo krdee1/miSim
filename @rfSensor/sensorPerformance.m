@@ -15,6 +15,8 @@ function [SINR, SNR] = sensorPerformance(obj, agentPos, targetPos, otherSensorsP
     [d, t, a] = obj.computePointToPoints(agentPos, targetPos);
 
     % Performance is measured as SINR for this sensor
+    %% TODO: how should interference calculation be modified for
+    % interference sources with different center frequencies and bandwidths?
     S = 10 .^ (0.1 .* obj.RSS(d, t, a)); % Signal
     I = zeros(size(d)); % Interference from other agents
     for ii = 1:size(otherSensors, 1)
