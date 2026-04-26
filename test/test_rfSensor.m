@@ -46,7 +46,7 @@ classdef test_rfSensor < matlab.unittest.TestCase
             tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi);
 
             altitude = 30;
-            otherSensorsPos = [5, 0, 400]; % relative to main sensor
+            otherSensorsPos = [6, -4, -1]; % relative to main sensor
             otherSensors = cell(1, 1);
             otherSensors{1} = tc.testClass; % 2 identical sensors
 

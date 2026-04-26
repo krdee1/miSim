@@ -9,6 +9,8 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
         f (1, 1) {mustBeA(f, "matlab.ui.Figure")};
     end
 
+    otherSensorsPos = otherSensorsPos + [0, 0, altitude];
+
     % Create grid on which to evalute SINR, SNR
     agentPos = [0, 0, altitude];
     d = max(10, max(vecnorm(otherSensorsPos(1:2), 2, 2)) * 1.25);
@@ -22,20 +24,25 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
     SINR = reshape(SINR, size(targetPosX));
     SNR = reshape(SNR, size(targetPosX));
 
-    % normalize
-    SINR = SINR ./ max(SINR);
-    SNR = SNR ./ max(SNR);
+    % normalize in linear scale
+    SINR = 10.^(SINR/10); SINR = SINR ./ max(SINR(:)); SINR = 10 * log10(SINR);
+    SNR  = 10.^(SNR/10);  SNR  = SNR  ./ max(SNR(:)); SNR = 10 * log10(SNR);
     
     f = figure;
-    imagesc(SNR);
-    axis("image");
-    colorbar;
-    title("Normalized SNR");
+    tiledlayout(1, 2, TileSpacing="compact", Padding="compact");
 
-    f = figure;
-    imagesc(SINR);
-    axis("image");
+    nexttile;
+    imagesc(distances, distances, SNR);
+    axis("image"); set(gca, 'YDir', 'normal');
     colorbar;
-    title("Normalized SINR");
+    xlabel("X (m)"); ylabel("Y (m)");
+    title("Linearly Normalized SNR (dB)");
+
+    nexttile;
+    imagesc(distances, distances, SINR);
+    axis("image"); set(gca, 'YDir', 'normal');
+    colorbar;
+    xlabel("X (m)"); ylabel("Y (m)");
+    title("Linearly Normalized SINR (dB)");
     
 end
