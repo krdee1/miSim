@@ -17,8 +17,9 @@ classdef test_rfSensor < matlab.unittest.TestCase
             P_TX = 1e-3; % Transmit power (Watts)
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
+            G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c);
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi);
 
             tc.testClass.plotParameters();
         end

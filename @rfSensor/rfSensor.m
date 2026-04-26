@@ -8,20 +8,21 @@ classdef rfSensor
         P_TX = NaN; % Transmit power (Watts)
         BW = NaN; % Bandwidth (Hz)
         f_c = NaN; % Center frequency (Hz)
+        G_RX_dBi = NaN; % Receiver antenna gain
         % Values computed at initialization
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, txPower, bandwidth, centerFreq); % TODO initialize sensor, define parameters
-        [SINR] = sensorPerformance(obj, agentPos, agentPan, agentTilt, targetPos); % determine sensor performance for a given single sensor and target geometry
+        [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain); % initialize sensor, define parameters
+        [SINR] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
-        [d, t] = computePointToPoints(obj, agentPos, targetPos);
+        [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
     end
     methods (Access = private)
-        x = RSS(obj, d, t); % Received signal strength (function of distance and tilt angle)
-        G_TX_dB = antennaGain(obj, agentPos, targetPos); % TODO Antenna gain for a given TX/RX pair 
-        L_FSPL_dB = pathLoss(obj, agentPos, targetPos); % Free space path loss for a given TX/RX pair
+        x = RSS(obj, d, t, a); % Received signal strength (function of distance and tilt angle)
+        G_TX_dB = transmitterGain(obj, t, a); % TODO Antenna gain for a given TX/RX pair 
+        L_FSPL_dB = pathLoss(obj, d); % Free space path loss for a given TX/RX pair
     end
 end
