@@ -16,9 +16,10 @@ classdef rfSensor
 
     methods (Access = public)
         [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain); % initialize sensor, define parameters
-        [SINR] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
-        [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
+        [SINR, SNR] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
+        [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
+        [f] = plotPerformance(obj, altitude, otherSensorsPos, otherSensors); % debug, plot SNR or SINR ground heatmap for a given geometry
     end
     methods (Access = private)
         x = RSS(obj, d, t, a); % Received signal strength (function of distance and tilt angle)
