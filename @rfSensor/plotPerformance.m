@@ -13,7 +13,10 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
 
     % Create grid on which to evalute SINR, SNR
     agentPos = [0, 0, altitude];
-    d = max(10, max(vecnorm(otherSensorsPos(1:2), 2, 2)) * 1.25);
+    d = 10;
+    if ~isempty(otherSensorsPos)
+        d = max(d, max(vecnorm(otherSensorsPos(:, 1:2), 2, 2)) * 1.25);
+    end
     c = 0.1;
     d = ceil(d / c) * c;
     distances = -d:c:d;
@@ -37,6 +40,7 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
     colorbar;
     xlabel("X (m)"); ylabel("Y (m)");
     title("Linearly Normalized SNR (dB)");
+    subtitle("No interfering sources");
 
     nexttile;
     imagesc(distances, distances, SINR);
@@ -44,5 +48,5 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
     colorbar;
     xlabel("X (m)"); ylabel("Y (m)");
     title("Linearly Normalized SINR (dB)");
-    
+    subtitle(sprintf("%d interfering source(s)", size(otherSensorsPos, 1)));
 end

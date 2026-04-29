@@ -16,7 +16,7 @@ function [d, t, a] = computePointToPoints(obj, agentPos, targetPos)
     % distance from sensor nadir to target nadir (i.e. distance ignoring altitude)
     x = vecnorm(agentPos(1:2) - targetPos(:, 1:2), 2, 2);
     
-    % tilt angle (degrees) (-90, 0 (down), 90)
+    % tilt angle (degrees) (0 (nadir), 180 (zenith))
     t = (180 - atan2d(x, targetPos(:, 3) - agentPos(3)));
 
     % azimuth angle (degrees) (0 (+y) clockwise to 360)

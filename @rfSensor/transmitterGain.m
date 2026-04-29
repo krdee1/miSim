@@ -11,6 +11,11 @@ function value = transmitterGain(obj, t, a)
         error("t and a must be the same size");
     end
 
-    % Temporary logic to make nadir-pointing most effective
-    value = 10 .* log10(cosd(t) .^ 2) + 10 .* log10((0.5 + 0.5 .* cosd(a)) .^ 4);
+    n_t = 4;   % tilt beamwidth (higher = narrower beam)
+    n_a = 4;   % azimuth rolloff sharpness (higher = more directional)
+
+    % Elevation: cardioid family, null at zenith (t=180°), peak at nadir (t=0°)
+    % Azimuth: cardioid family, peak at a=0° (+y), null at a=180° (-y)
+    value = 10 .* n_t .* log10((1 + cosd(t)) ./ 2) + ...
+            10 .* n_a .* log10((0.5 + 0.5 .* cosd(a)));
 end

@@ -51,7 +51,6 @@ classdef test_rfSensor < matlab.unittest.TestCase
             otherSensors{1} = tc.testClass; % One interfering sensor, identical to the main sensor
 
             tc.testClass.plotPerformance(altitude, otherSensorsPos, otherSensors);
-            
         end
 
         function plot_SINR_heterogenous_interferers(tc)
@@ -74,7 +73,6 @@ classdef test_rfSensor < matlab.unittest.TestCase
             otherSensors{2} = otherSensors{2}.initialize(100 * P_TX, BW, f_c, G_RX_dBi);
 
             tc.testClass.plotPerformance(altitude, otherSensorsPos, otherSensors);
-            
         end
     end
 end

@@ -7,9 +7,9 @@ function f = plotParameters(obj)
     end
     
     % Distance and tilt sample points
-    d_values = [0.1, 0.5, 1:1:9, 10:2:19, 20:5:49, 50:10:100];
-    t_values = -90:0.5:90;
-    a_values = 0:0.5:360;
+    d_values = 10.^[1, 2, 3, 4, 5, 6];
+    t_values = 0:2.5:180;   % 0=nadir (center), 180=zenith (edge)
+    a_values = 0:2.5:360;
 
     % Make grid of values of distances and tilts
     [d_mg, t_mg, a_mg] = meshgrid(d_values, t_values, a_values);
@@ -20,17 +20,18 @@ function f = plotParameters(obj)
     s_x = reshape(s_x, size(d_mg));
 
     [T, A] = meshgrid(t_values, a_values);   % Naz x Nel
-    Tr = deg2rad(T);
     Ar = deg2rad(A);
-    
-    figure;
+
+    f = figure;
     hold("on");
 
     for ii = 1:numel(d_values)
-        % geometry (your "tilt from nadir, stack by distance")
-        X = d_values(ii) * cos(Ar) .* sin(Tr);
-        Y = d_values(ii) * sin(Ar) .* sin(Tr);
-        Z = d_values(ii) * ones(size(X));
+        % Linear radial mapping: t=0 (nadir) -> center, t=180 (zenith) -> edge
+        % Radius in log10 units to match Z axis scale
+        r = log10(d_values(ii)) .* T ./ 180;
+        X = r .* cos(Ar);
+        Y = r .* sin(Ar);
+        Z = log10(d_values(ii)) * ones(size(X));
     
         % evaluate or extract this slice
         Fslice = squeeze(s_x(:, ii, :))';
@@ -45,7 +46,7 @@ function f = plotParameters(obj)
     colormap(turbo);
     colorbar;
     daspect([1 1 0.2])   % Separate Z further for more distinct layers
-    xlabel('X'); ylabel('Y'); zlabel('Distance (m)');
+    xlabel('X (log_{10} units)'); ylabel('Y (log_{10} units)'); zlabel('log_{10} Distance (m)');
     set(gca,'ZDir','reverse');
     view(3); 
     axis("vis3d");
