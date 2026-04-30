@@ -14,11 +14,13 @@ classdef rfSensor
         % Values computed at initialization
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise
+        % Cached state (per timestep)
+        rssCache (:,1) double = double.empty(0,1); % linear-scale RSS to last target grid
     end
 
     methods (Access = public)
         [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain); % initialize sensor, define parameters
-        [SINR, SNR] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
+        [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
         [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
         [f] = plotPerformance(obj, altitude, otherSensorsPos, otherSensors); % debug, plot SNR or SINR ground heatmap for a given geometry

@@ -1,4 +1,4 @@
-function [SINR, SNR] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors)
+function [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "rfSensor")};
         agentPos (1, 3) double;
@@ -9,19 +9,25 @@ function [SINR, SNR] = sensorPerformance(obj, agentPos, targetPos, otherSensorsP
     arguments (Output)
         SINR (:, 1) double;
         SNR (:, 1) double;
+        obj (1, 1) {mustBeA(obj, "rfSensor")};
+        otherSensors (:, 1) cell;
     end
     assert(size(otherSensorsPos, 1) == size(otherSensors, 1), "Mismatch in number of other sensor positions (%d) and number of other sensors (%d) provided", size(otherSensorsPos, 1), size(otherSensors, 1));
 
     [d, t, a] = obj.computePointToPoints(agentPos, targetPos);
 
-    % Performance is measured as SINR for this sensor
-    %% TODO: how should interference calculation be modified for
-    % interference sources with different center frequencies and bandwidths?
-    S = 10 .^ (0.1 .* obj.RSS(d, t, a)); % Signal
-    I = zeros(size(d)); % Interference from other agents
+    if isempty(obj.rssCache)
+        obj.rssCache = 10 .^ (0.1 .* obj.RSS(d, t, a));
+    end
+    S = obj.rssCache;
+
+    I = zeros(size(d));
     for ii = 1:size(otherSensors, 1)
-        [d_other, t_other, a_other] = otherSensors{ii}.computePointToPoints(otherSensorsPos(ii, 1:3), targetPos);
-        I = I + 10 .^ (0.1 .* otherSensors{ii}.RSS(d_other, t_other, a_other));
+        if isempty(otherSensors{ii}.rssCache)
+            [d_other, t_other, a_other] = otherSensors{ii}.computePointToPoints(otherSensorsPos(ii, 1:3), targetPos);
+            otherSensors{ii}.rssCache = 10 .^ (0.1 .* otherSensors{ii}.RSS(d_other, t_other, a_other));
+        end
+        I = I + otherSensors{ii}.rssCache;
     end
 
     SINR = 10*log10(S ./ (I + obj.N));
