@@ -9,6 +9,8 @@ classdef rfSensor
         BW = NaN; % Bandwidth (Hz)
         f_c = NaN; % Center frequency (Hz)
         G_RX_dBi = NaN; % Receiver antenna gain
+        boresightTilt = 0;     % Antenna boresight tilt (deg): 0=nadir, 90=horizon
+        boresightAzimuth = 0;  % Antenna boresight azimuth (deg): 0=+y, 90=+x
         % Values computed at initialization
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise

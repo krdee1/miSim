@@ -1,10 +1,12 @@
-function obj = initialize(obj, txPower, bandwidth, centerFreq, rxGain_dBi)
+function obj = initialize(obj, txPower, bandwidth, centerFreq, rxGain_dBi, boresightTilt, boresightAzimuth)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "rfSensor")}
         txPower (1, 1) double;
         bandwidth (1, 1) double;
         centerFreq (1, 1) double;
         rxGain_dBi (1, 1) double;
+        boresightTilt (1, 1) double = 0;
+        boresightAzimuth (1, 1) double = 0;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "rfSensor")}
@@ -15,6 +17,8 @@ function obj = initialize(obj, txPower, bandwidth, centerFreq, rxGain_dBi)
     obj.BW = bandwidth; % Bandwidth (Hz)
     obj.f_c = centerFreq; % Center frequency (Hz)
     obj.G_RX_dBi = rxGain_dBi; % Receiving Antenna Gain (dBi)
+    obj.boresightTilt = boresightTilt;
+    obj.boresightAzimuth = boresightAzimuth;
 
     % Computed values
     obj.P_TX_dBm = 10*log10(obj.P_TX/1e-3); % Transmit power in dBm
