@@ -30,9 +30,17 @@ classdef test_rfSensor < matlab.unittest.TestCase
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, 0, 0);
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, 30, 135);
 
             altitude = 30;
+
+            % Boresight azimuth=135° (between +X at 90° and -Y at 180°) → hotspot at +X,-Y.
+            % SNR at (5,-5) should be higher than at (5,+5).
+            agentPos = [0, 0, altitude];
+            [~, snrA] = tc.testClass.sensorPerformance(agentPos, [5, -5, 0]);
+            % tc.testClass = tc.testClass.clearRssCache();
+            [~, snrB] = tc.testClass.sensorPerformance(agentPos, [5,  5, 0]);
+            tc.assertGreaterThan(snrA, snrB, "SNR should be higher toward boresight (+X,-Y) than away from it (+X,+Y)");
 
             tc.testClass.plotPerformance(altitude);
         end

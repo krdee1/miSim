@@ -24,6 +24,7 @@ classdef rfSensor
         [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
         [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
         [f] = plotPerformance(obj, altitude, otherSensorsPos, otherSensors); % debug, plot SNR or SINR ground heatmap for a given geometry
+        obj = clearRssCache(obj);
     end
     methods (Access = private)
         x = RSS(obj, d, t, a); % Received signal strength (function of distance and tilt angle)
