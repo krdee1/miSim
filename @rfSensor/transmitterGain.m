@@ -15,8 +15,8 @@ function value = transmitterGain(obj, t, a)
 
     % Angular offset from boresight via spherical law of cosines
     % Convention: t=0° nadir, t=90° horizon; a=0° +y, a=90° +x
-    cos_theta = sind(obj.boresightTilt) .* sind(t) .* cosd(a - obj.boresightAzimuth) + ...
-                cosd(obj.boresightTilt) .* cosd(t);
+    cos_theta = sind(obj.tilt) .* sind(t) .* cosd(a - obj.tilt) + ...
+                cosd(obj.tilt) .* cosd(t);
     cos_theta = max(-1, min(1, cos_theta));  % clamp for numerical safety
     theta = acosd(cos_theta);
 
