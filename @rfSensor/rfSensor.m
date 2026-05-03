@@ -19,7 +19,7 @@ classdef rfSensor
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain); % initialize sensor, define parameters
+        [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain, tilt, azimuth); % initialize sensor, define parameters
         [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
         [value] = halfAngle(obj); % tilt angle (deg) at which sensor performance is halved
