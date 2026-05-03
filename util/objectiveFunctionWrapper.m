@@ -4,7 +4,7 @@ function f = objectiveFunctionWrapper(center, sigma)
     % composite objectives in particular
     arguments (Input)
         center (:, 2) double;
-        sigma (:, 2, 2) double = eye(2);
+        sigma (:, 2, 2) double = reshape(eye(2), 1, 2, 2);
     end
     arguments (Output)
         f (1, 1) {mustBeA(f, "function_handle")};
