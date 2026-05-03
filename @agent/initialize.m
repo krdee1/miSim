@@ -35,5 +35,5 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
 
     % Initialize FOV cone
     obj.fovGeometry = cone;
-    obj.fovGeometry = obj.fovGeometry.initialize([obj.pos(1:3)], tand(obj.sensorModel.alphaTilt) * obj.pos(3), obj.pos(3), REGION_TYPE.FOV, sprintf("%s FOV", obj.label));
+    obj.fovGeometry = obj.fovGeometry.initialize([obj.pos(1:3)], tand(obj.sensorModel.halfAngle()) * obj.pos(3), obj.pos(3), REGION_TYPE.FOV, sprintf("%s FOV", obj.label), obj.sensorModel.tilt, obj.sensorModel.azimuth);
 end

@@ -6,9 +6,11 @@ classdef cone
         label = "";
 
         % Spatial
-        center = NaN;
-        radius = NaN;
-        height = NaN;
+        center  = NaN;
+        radius  = NaN;
+        height  = NaN;
+        tilt    = 0;   % degrees, 0=nadir 90=horizon
+        azimuth = 0;   % degrees, 0=+Y 90=+X clockwise
 
         % Plotting
         surface;

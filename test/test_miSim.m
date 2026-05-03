@@ -456,7 +456,70 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
             
             % Run the simulation
-            tc.testClass = tc.testClass.run();end
+            tc.testClass = tc.testClass.run();
+        end
+        function test_single_agent_gradient_ascent_tilted(tc)
+            % make basic domain
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [7, 6]);
+        
+            % Initialize agent collision geometry
+            tc.agents = {agent};
+            geometry1 = spherical;
+            geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
+            
+            % Initialize agent sensor model with fixed parameters
+            tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 20, 3, 25, 155);
+
+            % Initialize agents
+            tc.maxIter = 75;
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
+
+            % Initialize the simulation
+            tc.obstacles = cell(0, 1);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+        end
+        function test_single_agent_gradient_ascent_tilted_RF_sensor(tc)
+            % make basic domain
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            minimumSINR = 50; % (dB)
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, minimumSINR, [7, 6]);
+        
+            % Initialize agent collision geometry
+            tc.agents = {agent};
+            geometry1 = spherical;
+            geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
+            
+            % Initialize agent sensor model with fixed parameters
+            P_TX = 1e-3; % Transmit power (Watts)
+            BW = 20e6; % Bandwidth (Hz)
+            f_c = 2e9; % Center frequency (Hz)
+            G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+
+            tc.sensor = rfSensor;
+            tc.sensor = tc.sensor.initialize(P_TX, BW, f_c, G_RX_dBi, 45, 45);
+
+            % Initialize agents
+            tc.maxIter = 75;
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
+
+            % Initialize the simulation
+            tc.obstacles = cell(0, 1);
+            tc.minAlt = 0.5;
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+        end
         function test_collision_avoidance(tc)
             % No obstacles
             % Fixed agent initial conditions

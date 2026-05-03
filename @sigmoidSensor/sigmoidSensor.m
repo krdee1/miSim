@@ -12,8 +12,9 @@ classdef sigmoidSensor
     end
 
     methods (Access = public)
-        [obj]   = initialize(obj, alphaDist, betaDist, alphaTilt, betaTilt); % initialize sensor, define parameters
+        [obj]   = initialize(obj, alphaDist, betaDist, alphaTilt, betaTilt, tilt, azimuth); % initialize sensor, define parameters
         [value] = sensorPerformance(obj, agentPos, targetPos); % determine sensor performance for a given single sensor and target geometry
+        [value] = halfAngle(obj); % tilt angle (deg) at which sensor performance is halved
         [f]     = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
     end
     methods (Access = private)

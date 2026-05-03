@@ -22,6 +22,7 @@ classdef rfSensor
         [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain); % initialize sensor, define parameters
         [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
+        [value] = halfAngle(obj); % tilt angle (deg) at which sensor performance is halved
         [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
         [f] = plotPerformance(obj, altitude, otherSensorsPos, otherSensors); % debug, plot SNR or SINR ground heatmap for a given geometry
         obj = clearRssCache(obj);

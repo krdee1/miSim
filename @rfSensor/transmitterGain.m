@@ -11,7 +11,7 @@ function value = transmitterGain(obj, t, a)
         error("t and a must be the same size");
     end
 
-    n = 4;   % beamwidth exponent (higher = narrower beam)
+    n = 6;   % beamwidth exponent (higher = narrower beam)
 
     % Angular offset from boresight via spherical law of cosines
     % Convention: t=0° nadir, t=90° horizon; a=0° +y, a=90° +x
