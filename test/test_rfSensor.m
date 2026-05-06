@@ -82,7 +82,6 @@ classdef test_rfSensor < matlab.unittest.TestCase
 
             tc.testClass.plotPerformance(altitude, otherSensorsPos, otherSensors);
         end
-
         function plot_SINR_heterogenous_interferers_efficiently(tc)
             P_TX = 1e-3;
             BW = 20e6;
