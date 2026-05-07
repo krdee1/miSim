@@ -42,7 +42,7 @@ function [obj] = run(obj)
         % Moving
         % Iterate over agents to simulate their unconstrained motion
         for jj = 1:size(obj.agents, 1)
-            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.timestepIndex, jj, obj.agents, obj.useDoubleIntegrator, obj.dampingCoeff, obj.timestep);
+            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.timestepIndex, jj, obj.useDoubleIntegrator, obj.dampingCoeff, obj.timestep, obj.optimizeSensorPointing);
         end
 
         % Adjust motion determined by unconstrained gradient ascent using

@@ -193,8 +193,8 @@ else
     % 5. Unconstrained gradient-ascent step for each agent
     for ii = 1:size(sim.agents, 1)
         sim.agents{ii} = sim.agents{ii}.run(sim.domain, sim.partitioning, ...
-                                             sim.timestepIndex, ii, sim.agents, ...
-                                             sim.useDoubleIntegrator, sim.dampingCoeff, sim.timestep);
+                                             sim.timestepIndex, ii, ...
+                                             sim.useDoubleIntegrator, sim.dampingCoeff, sim.timestep, sim.optimizeSensorPointing);
     end
 
     % 6. Apply CBF safety filter (collision / comms / domain constraints via QP)

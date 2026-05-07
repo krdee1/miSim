@@ -1,4 +1,4 @@
-function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, initialStepSize, label, plotCommsGeometry)
+function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, initialStepSize, initialMaxAngleStepSize, label, plotCommsGeometry)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "agent")};
         pos (1, 3) double;
@@ -7,6 +7,7 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
         comRange (1, 1) double;
         maxIter (1, 1) double;
         initialStepSize (1, 1) double = 0.2;
+        initialMaxAngleStepSize (1, 1) double = 5.0;
         label (1, 1) string = "";
         plotCommsGeometry (1, 1) logical = false;
     end
@@ -23,7 +24,9 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
     obj.label = label;
     obj.plotCommsGeometry = plotCommsGeometry;
     obj.initialStepSize = initialStepSize;
+    obj.initialMaxAngleStepSize = initialMaxAngleStepSize;
     obj.stepDecayRate = obj.initialStepSize / maxIter;
+    obj.angleStepDecayRate = obj.initialMaxAngleStepSize / maxIter;
 
     % Initialize performance vector
     if coder.target('MATLAB')

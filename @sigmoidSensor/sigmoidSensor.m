@@ -5,8 +5,9 @@ classdef sigmoidSensor
         betaDist = NaN;
         alphaTilt = NaN; % degrees
         betaTilt = NaN;
-
-        % pointing parameters
+    end
+    properties (Access = public)
+        % pointing states
         tilt = 0;
         azimuth = 0;
     end

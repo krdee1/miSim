@@ -32,7 +32,9 @@ classdef agent
 
     properties (SetAccess = private, GetAccess = public)
         initialStepSize = NaN;
+        initialMaxAngleStepSize = NaN;
         stepDecayRate = NaN;
+        angleStepDecayRate = NaN;
     end
 
     methods (Access = public)

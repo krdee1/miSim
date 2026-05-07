@@ -11,19 +11,26 @@ function f = plot(obj, ind, f)
     % Create axes if they don't already exist
     f = firstPlotSetup(f);
 
+    normalized = obj.values ./ sum(obj.values, "all");
+    cRange = [min(normalized, [], "all"), max(normalized, [], "all")];
+
     % Plot gradient on the "floor" of the domain
     if isnan(ind)
-        hold(f.CurrentAxes, "on");
-        o = surf(f.CurrentAxes, obj.X, obj.Y, zeros(size(obj.X)), obj.values ./ max(obj.values, [], "all"), "EdgeColor", "none");
+        ax = f.CurrentAxes;
+        hold(ax, "on");
+        o = surf(ax, obj.X, obj.Y, zeros(size(obj.X)), normalized, "EdgeColor", "none");
         o.HitTest = "off";
         o.PickableParts = "none";
-        hold(f.CurrentAxes, "off");
+        clim(ax, cRange);
+        hold(ax, "off");
     else
-        hold(f.Children(1).Children(ind(1)), "on");
-        o = surf(f.Children(1).Children(ind(1)), obj.X, obj.Y, zeros(size(obj.X)), obj.values ./ sum(obj.values, "all"), "EdgeColor", "none");
+        ax = f.Children(1).Children(ind(1));
+        hold(ax, "on");
+        o = surf(ax, obj.X, obj.Y, zeros(size(obj.X)), normalized, "EdgeColor", "none");
         o.HitTest = "off";
         o.PickableParts = "none";
-        hold(f.Children(1).Children(ind(1)), "off");
+        clim(ax, cRange);
+        hold(ax, "off");
     end
 
     % Add to other perspectives

@@ -47,7 +47,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 collisionGeometry = spherical;
                 collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius(ii), REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
 
-                agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange(ii), params.maxIter, params.initialStepSize, sprintf("Agent %d", ii), tc.plotCommsGeometry);
+                agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange(ii), params.maxIter, params.initialStepSize, 5.0, sprintf("Agent %d", ii), tc.plotCommsGeometry);
             end
 
             % Create obstacles
@@ -106,7 +106,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 
                 % Initialize agent
                 collisionGeometry = collisionGeometry.initialize(agentPos, params.collisionRadius(ii, 1), REGION_TYPE.COLLISION, "Agent 1 Collision Region");
-                agents{1} = agents{1}.initialize(agentPos, collisionGeometry, sensorModel, params.comRange(ii, 1), params.maxIter(ii), params.initialStepSize(ii), "Agent 1", tc.plotCommsGeometry);
+                agents{1} = agents{1}.initialize(agentPos, collisionGeometry, sensorModel, params.comRange(ii, 1), params.maxIter(ii), params.initialStepSize(ii), 5.0, "Agent 1", tc.plotCommsGeometry);
 
                 % Set up remaining agents in random (valid) locations
                 for jj = 2:size(agents, 1)
@@ -148,7 +148,7 @@ classdef parametricTestSuite < matlab.unittest.TestCase
 
                     % Initialize agent
                     collisionGeometry = collisionGeometry.initialize(agentPos, params.collisionRadius(ii, jj), REGION_TYPE.COLLISION, sprintf("Agent %d Collision Region", jj));
-                    agents{jj} = agents{jj}.initialize(agentPos, collisionGeometry, sensorModel, params.comRange(ii, jj), params.maxIter(ii), params.initialStepSize(ii), sprintf("Agent %d", jj), tc.plotCommsGeometry);
+                    agents{jj} = agents{jj}.initialize(agentPos, collisionGeometry, sensorModel, params.comRange(ii, jj), params.maxIter(ii), params.initialStepSize(ii), 5.0, sprintf("Agent %d", jj), tc.plotCommsGeometry);
                 end
 
                 % randomly shuffle agents to make the network more interesting (probably)

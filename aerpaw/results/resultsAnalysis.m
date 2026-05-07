@@ -1,25 +1,8 @@
 %% Plot AERPAW logs (trajectory, radio)
 resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "two_around_wall"); % Define path to results copied from AERPAW platform
 
-% Measure intervals between issuing commands from the controller 
-% (make sure this is ~4-5 seconds at minimum to avoid overwhelming the UAV autopilot)
-r = dir(resultsPath);
-controllerPath = fullfile(r(startsWith({r.name}, 'controller_')).folder, r(startsWith({r.name}, 'controller_')).name);
-controllerPath = dir(controllerPath);
-controllerPath = fullfile(controllerPath(endsWith({controllerPath.name}, '_controller_log.txt')).folder, controllerPath(endsWith({controllerPath.name}, '_controller_log.txt')).name);
-controller = readControllerLogs(controllerPath);
-rpIdx = startsWith(controller.message, "Iteration duration: ");
-s = split(controller.message(rpIdx), "Iteration duration: ");
-s = split(s(:, 2), ' s');
-s = duration(strcat("00:", s(:, 1)), "InputFormat", "mm:ss.SSS");
-s.Format = "mm:ss.SSS";
-fprintf("Minimum command spacing: %2.3f seconds\n", seconds(min(s)));
-fprintf("Maximum command spacing: %2.3f seconds\n", seconds(max(s)));
-fprintf("Mean command spacing: %2.3f seconds\n", seconds(mean(s)));
-fprintf("Median command spacing: %2.3f seconds\n", seconds(median(s)));
-if seconds(min(s)) < 4 
-    warning("Minimum command spacing %2.3f questionably short for AERPAW", seconds(min(s)));
-end
+% Check timeline in controller logs
+controller = controllerAnalysis(resultsPath);
 
 % Plot GPS logged data and scenario information (domain, objective, obstacles)
 seaToGroundLevel = 110; % measured approximately from USGS national map viewer
@@ -54,7 +37,7 @@ for ii = 1:size(agents, 1)
     collisionGeometry = spherical;
     collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius(ii), REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
 
-    agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange(ii), params.maxIter, params.initialStepSize, sprintf("Agent %d", ii), plotCommsGeometry);
+    agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange(ii), params.maxIter, params.initialStepSize, 5.0, sprintf("Agent %d", ii), plotCommsGeometry);
 end
 
 % Create obstacles
@@ -81,9 +64,12 @@ copyobj(sim.f.Children, comparison);
 
 % Plot trajectories on top
 for ii = 1:size(G, 1)
+    gpsTimes = G{ii}.Timestamp;
+    gpsTimes.TimeZone = '';
+    inRange = gpsTimes >= controller.timestamp(1) & gpsTimes <= controller.timestamp(end);
     for jj = 1:size(sim.spatialPlotIndices, 2)
         hold(comparison.Children.Children(sim.spatialPlotIndices(jj)), "on");
-        plot3(comparison.Children(1).Children(sim.spatialPlotIndices(jj)), G{ii}.East, G{ii}.North, G{ii}.Up + seaToGroundLevel, 'Color', 'r', 'LineWidth', 1);
+        plot3(comparison.Children(1).Children(sim.spatialPlotIndices(jj)), G{ii}.East(inRange), G{ii}.North(inRange), G{ii}.Up(inRange) + seaToGroundLevel, 'Color', 'r', 'LineWidth', 1);
         hold(comparison.Children.Children(sim.spatialPlotIndices(jj)), "off");
     end
 end

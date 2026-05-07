@@ -31,6 +31,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Agents
         initialStepSize = 0.2; % gradient ascent step size at the first iteration. Decreases linearly to 0 based on maxIter.
+        initialMaxAngleStepSize = 5; % angular step size (degrees) for tilt/azimuth gradient ascent per timestep.
         minAgents = 3; % Minimum number of agents to be randomly generated
         maxAgents = 4; % Maximum number of agents to be randomly generated
         useDoubleIntegrator = false;
@@ -55,6 +56,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Communications
         useFixedTopology = false;
+        optimizeSensorPointing = false;
         minCommsRange = 3; % Minimum randomly generated collision geometry size
         maxCommsRange = 5; % Maximum randomly generated collision geometry size
         commsRanges = NaN;
@@ -173,7 +175,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     tc.sensor = tc.sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize); 
+                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize); 
 
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -227,7 +229,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
         end
         function miSim_run(tc)
             % randomly create obstacles
@@ -312,7 +314,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     tc.sensor = tc.sensor.initialize(tc.alphaDistMin + rand * (tc.alphaDistMax - tc.alphaDistMin), tc.betaDistMin + rand * (tc.betaDistMax - tc.betaDistMin), tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), tc.betaTiltMin + rand * (tc.betaTiltMax - tc.betaTiltMin));
 
                     % Initialize candidate agent
-                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize);
+                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
                     
                     % Make sure candidate agent doesn't collide with
                     % domain
@@ -366,7 +368,7 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
 
             % Write out initialization state
             tc.testClass.writeInits();
@@ -392,15 +394,15 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.commsRanges = 3 * d * ones(size(tc.agents));
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [d, 0, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center - [0, d, 0], geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [d, 0, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center - [0, d, 0], geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
         
             centerIdx = floor(size(tc.testClass.partitioning, 1) / 2);
             tc.verifyEqual(tc.testClass.partitioning(centerIdx, centerIdx:(centerIdx + 2)), [2, 3, 1]); % all three near center
@@ -419,13 +421,13 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 20, 3);
 
             % Initialize agents
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2), 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
             close(tc.testClass.fPerf);
 
             tc.verifyEqual(unique(tc.testClass.partitioning), [0; 1]);
@@ -449,11 +451,11 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.maxIter = 75;
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
@@ -476,11 +478,11 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.maxIter = 75;
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
@@ -504,18 +506,86 @@ classdef test_miSim < matlab.unittest.TestCase
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+            beamwidthExponent = 6;
+            lossExponent = 2;
 
             tc.sensor = rfSensor;
-            tc.sensor = tc.sensor.initialize(P_TX, BW, f_c, G_RX_dBi, 45, 45);
+            tc.sensor = tc.sensor.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 45, 45, lossExponent);
 
             % Initialize agents
             tc.maxIter = 75;
-            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
             tc.minAlt = 0.5;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+            
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+        end
+        function test_single_agent_gradient_ascent_sensor_pointing(tc)
+            % make basic domain
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [7, 6]);
+        
+            % Initialize agent collision geometry
+            tc.agents = {agent};
+            geometry1 = spherical;
+            geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
+            
+            % Initialize agent sensor model with fixed parameters
+            tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 20, 3);
+
+            % Initialize agents
+            tc.maxIter = 75;
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+
+            % Initialize the simulation
+            tc.optimizeSensorPointing = true;
+            tc.obstacles = cell(0, 1);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+        end
+        function test_single_agent_gradient_ascent_rf_sensor_pointing(tc)
+            % make basic domain
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            minimumSINR = 50; % (dB)
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, minimumSINR, [7, 6]);
+        
+            % Initialize agent collision geometry
+            tc.agents = {agent};
+            geometry1 = spherical;
+            geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
+            
+            % Initialize agent sensor model with fixed parameters
+            P_TX = 1e-3; % Transmit power (Watts)
+            BW = 20e6; % Bandwidth (Hz)
+            f_c = 2e9; % Center frequency (Hz)
+            G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+            beamwidthExponent = 6;
+            lossExponent = 2;
+
+            tc.sensor = rfSensor;
+            tc.sensor = tc.sensor.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+
+            % Initialize agents
+            tc.maxIter = 75;
+            tc.agents{1} = tc.agents{1}.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+
+            % Initialize the simulation
+            tc.optimizeSensorPointing = true;
+            tc.obstacles = cell(0, 1);
+            tc.minAlt = 0.5;
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
@@ -546,12 +616,12 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             tc.maxIter = 25;
             tc.commsRanges = 5 * ones(size(tc.agents));
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.obstacles = cell(0, 1);
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
             
             % Run the simulation
             tc.testClass.run();
@@ -593,11 +663,11 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize agents
             tc.commsRanges = (2 * tc.collisionRanges(1) + obstacleLength) * 0.9 * ones(size(tc.agents)); % defined such that they cannot go around the obstacle on both sides
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, tc.collisionRanges(1) * 1.1 - yOffset, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, tc.collisionRanges(2)  *1.1 + yOffset, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d + [0, tc.collisionRanges(1) * 1.1 - yOffset, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d - [0, tc.collisionRanges(2)  *1.1 + yOffset, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
             
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
             
             % Run the simulation
             tc.testClass.run();
@@ -633,11 +703,11 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             tc.maxIter = 50;
             tc.commsRanges = 4 * ones(size(tc.agents)); % defined such that they cannot reach their objective without breaking connectivity
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
             
             % Run the simulation
             tc.testClass = tc.testClass.run();
@@ -668,8 +738,8 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             tc.maxIter = 125;
             tc.commsRanges = 5 * ones(size(tc.agents));
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - [d, 0, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [0, d, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - [d, 0, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - [0, d, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
             
             % Initialize obstacles
             obstacleLength = 1.5;
@@ -680,7 +750,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.minAlt = 0;
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
 
             % Communications link should be established
             tc.assertEqual(tc.testClass.adjacency, logical(true(2)));
@@ -715,17 +785,17 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             tc.maxIter = 125;
             tc.commsRanges = ones(size(tc.agents));
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [-d, d, 0], geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize);
-            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], geometry4, tc.sensor, tc.commsRanges(4), tc.maxIter, tc.initialStepSize);
-            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], geometry5, tc.sensor, tc.commsRanges(5), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [d, 0, 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [-d, d, 0], geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [-2*d, d, 0], geometry4, tc.sensor, tc.commsRanges(4), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, d, 0], geometry5, tc.sensor, tc.commsRanges(5), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.minAlt = 0;
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
 
             % Constraint adjacency matrix defined by LNA should be as follows
             tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
@@ -767,19 +837,19 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agents
             tc.maxIter = 125;
             tc.commsRanges = d * ones(size(tc.agents));
-            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [-0.9 * d/sqrt(2), 0.9 * d/sqrt(2), 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize);
-            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + [-0.5 * d, 0.25 * d, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize);
-            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [0.9 * d, 0, 0], geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize);
-            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [0.9 * d/sqrt(2), -0.9 * d/sqrt(2), 0], geometry4, tc.sensor, tc.commsRanges(4), tc.maxIter, tc.initialStepSize);
-            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, 0.9 * d, 0], geometry5, tc.sensor, tc.commsRanges(5), tc.maxIter, tc.initialStepSize);
-            tc.agents{6} = tc.agents{6}.initialize(tc.domain.center, geometry6, tc.sensor, tc.commsRanges(6), tc.maxIter, tc.initialStepSize);
-            tc.agents{7} = tc.agents{7}.initialize(tc.domain.center + [d/2, d/2, 0], geometry7, tc.sensor, tc.commsRanges(7), tc.maxIter, tc.initialStepSize);
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + [-0.9 * d/sqrt(2), 0.9 * d/sqrt(2), 0], geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center + [-0.5 * d, 0.25 * d, 0], geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + [0.9 * d, 0, 0], geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{4} = tc.agents{4}.initialize(tc.domain.center + [0.9 * d/sqrt(2), -0.9 * d/sqrt(2), 0], geometry4, tc.sensor, tc.commsRanges(4), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{5} = tc.agents{5}.initialize(tc.domain.center + [0, 0.9 * d, 0], geometry5, tc.sensor, tc.commsRanges(5), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{6} = tc.agents{6}.initialize(tc.domain.center, geometry6, tc.sensor, tc.commsRanges(6), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{7} = tc.agents{7}.initialize(tc.domain.center + [d/2, d/2, 0], geometry7, tc.sensor, tc.commsRanges(7), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.minAlt = 0;
             tc.makePlots = false;
             tc.makeVideo = false;
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
 
             % Constraint adjacency matrix defined by LNA should be as follows
             tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
@@ -859,7 +929,7 @@ classdef test_miSim < matlab.unittest.TestCase
                         tc.alphaTiltMin + rand * (tc.alphaTiltMax - tc.alphaTiltMin), ...
                         tc.betaTiltMin  + rand * (tc.betaTiltMax  - tc.betaTiltMin));
                     newAgent = agent;
-                    newAgent = newAgent.initialize(candidatePos, geom, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize);
+                    newAgent = newAgent.initialize(candidatePos, geom, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
                     % Domain / obstacle / agent collision checks
                     violation = false;
@@ -894,7 +964,7 @@ classdef test_miSim < matlab.unittest.TestCase
             sim1 = miSim;
             sim1 = sim1.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, ...
                 tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, false, false, ...
-                tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology);
+                tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
 
             % Write inits and build file path
             sim1.writeInits();

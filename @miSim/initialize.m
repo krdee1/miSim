@@ -1,4 +1,4 @@
-function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology)
+function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "miSim")};
         domain (1, 1) {mustBeGeometry};
@@ -14,6 +14,7 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         useDoubleIntegrator (1, 1) logical = false;
         dampingCoeff (1, 1) double = 2.0;
         useFixedTopology (1, 1) logical = false;
+        optimizeSensorPointing (1, 1) logical = false;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "miSim")};
@@ -93,6 +94,7 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.useDoubleIntegrator = useDoubleIntegrator;
     obj.dampingCoeff = dampingCoeff;
     obj.useFixedTopology = useFixedTopology;
+    obj.optimizeSensorPointing = optimizeSensorPointing;
 
     % Compute adjacency matrix and network topology
     obj = obj.updateAdjacency();

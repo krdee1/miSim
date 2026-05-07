@@ -10,14 +10,16 @@ classdef rfSensor
         BW = NaN; % Bandwidth (Hz)
         f_c = NaN; % Center frequency (Hz)
         G_RX_dBi = NaN; % Receiver antenna gain
-        tilt = NaN;     % Antenna boresight tilt (deg): 0=nadir, 90=horizon
-        azimuth = NaN;  % Antenna boresight azimuth (deg): 0=+y, 90=+x, 180=-y, 270=-x
         beamwidthExponent = NaN; % Antenna beamwidth exponent for cosine radiation pattern, larger exponent -> narrower beam
         % Values computed at initialization
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise
         % Cached state (per timestep)
         rssCache (:,1) double = double.empty(0,1); % linear-scale RSS to last ground targets grid
+    end
+    properties (Access = public)
+        tilt = NaN;     % Antenna boresight tilt (deg): 0=nadir, 90=horizon
+        azimuth = NaN;  % Antenna boresight azimuth (deg): 0=+y, 90=+x, 180=-y, 270=-x
     end
 
     methods (Access = public)
