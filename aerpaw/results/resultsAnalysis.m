@@ -26,9 +26,8 @@ seaToGroundLevel = 110; % measured approximately from USGS national map viewer
 plotWholeFlight = true; % do not attempt to automatically trim initial and final positioning and landing from flight plot (buggy)
 [fGlobe, G] = plotGpsLogs(resultsPath, seaToGroundLevel, true);
 
-% Plot radio statistics
-[fRadio, R] = plotRadioLogs(resultsPath);
-set(findobj(fRadio, 'Type', 'axes'), 'XLim', controller.timestamp([1, end]));
+% Plot radio statistics (time-based and distance-based)
+[fRadio, fRadioDist, R] = plotRadioLogs(resultsPath, G, controller.timestamp([1, end]));
 
 %% Run simulation
 % Run miSim using same AERPAW scenario definition CSV
