@@ -28,6 +28,7 @@ plotWholeFlight = true; % do not attempt to automatically trim initial and final
 
 % Plot radio statistics
 [fRadio, R] = plotRadioLogs(resultsPath);
+set(findobj(fRadio, 'Type', 'axes'), 'XLim', controller.timestamp([1, end]));
 
 %% Run simulation
 % Run miSim using same AERPAW scenario definition CSV

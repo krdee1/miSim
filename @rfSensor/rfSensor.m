@@ -17,7 +17,7 @@ classdef rfSensor
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise
         % Cached state (per timestep)
-        rssCache (:,1) double = double.empty(0,1); % linear-scale RSS to last target grid
+        rssCache (:,1) double = double.empty(0,1); % linear-scale RSS to last ground targets grid
     end
 
     methods (Access = public)
@@ -31,7 +31,7 @@ classdef rfSensor
     end
     methods (Access = private)
         x = RSS(obj, d, t, a); % Received signal strength (function of distance and tilt angle)
-        G_TX_dB = transmitterGain(obj, t, a); % TODO Antenna gain for a given TX/RX pair 
+        G_TX_dB = transmitterGain(obj, t, a); % Antenna gain for a given TX/RX pair 
         L_FSPL_dB = pathLoss(obj, d); % Free space path loss for a given TX/RX pair
     end
 end
