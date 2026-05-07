@@ -40,7 +40,7 @@ function f = plotParameters(obj)
     end
 
     colormap(turbo);
-    colorbar;
+    c = colorbar; c.Label.String = "Received Signal Strength (dB)";
     daspect([1 1 0.2]);
     xlabel('X (log_{10} units)'); ylabel('Y (log_{10} units)'); zlabel('log_{10} Altitude (m)');
     set(gca, 'ZDir', 'reverse');

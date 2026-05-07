@@ -52,7 +52,7 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
     colorbar; xlabel("X (m)"); ylabel("Y (m)");
     title("Linearly Normalized SNR (dB)");
     subtitle("No interfering sources");
-    addSensorOverlay(gca, sensorXY, sensorTilts, sensorAzimuths, tailScale);
+    addSensorOverlay(gca, sensorXY(1, 1:2), sensorTilts(1, 1), sensorAzimuths(1, 1), tailScale);
 
     nexttile;
     imagesc(distances, distances, SINR);

@@ -8,6 +8,6 @@ function L_FSPL_dB = pathLoss(obj, d)
     end
 
     % Free Space Path Loss (dB); d clamped away from zero (log undefined at d=0)
-    L_FSPL_dB = 20*log10(max(d, eps)) + 20*log10(obj.f_c) + 20*log10((4*pi)/obj.c);
+    L_FSPL_dB = obj.lossExponent * 10 * log10(max(d, eps)) + 20 * log10(obj.f_c) + 20 * log10((4*pi)/obj.c);
 
 end

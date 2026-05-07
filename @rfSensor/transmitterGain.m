@@ -11,8 +11,6 @@ function value = transmitterGain(obj, t, a)
         error("t and a must be the same size");
     end
 
-    n = 6;   % beamwidth exponent (higher = narrower beam)
-
     % Angular offset from boresight via spherical law of cosines
     % Convention: t=0° nadir, t=90° horizon; a=0° +y, a=90° +x
     cos_theta = sind(obj.tilt) .* sind(t) .* cosd(a - obj.azimuth) + ...
@@ -21,5 +19,5 @@ function value = transmitterGain(obj, t, a)
     theta = acosd(cos_theta);
 
     % Cardioid family: peak at boresight (theta=0), null opposite (theta=180°)
-    value = 10 .* n .* log10((1 + cosd(theta)) ./ 2);
+    value = 10 .* obj.beamwidthExponent .* log10((1 + cosd(theta)) ./ 2);
 end

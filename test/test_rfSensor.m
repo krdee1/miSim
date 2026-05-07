@@ -18,8 +18,10 @@ classdef test_rfSensor < matlab.unittest.TestCase
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+            beamwidthExponent = 6;
+            lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, 0, 0);
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             tc.testClass.plotParameters();
         end
@@ -29,8 +31,10 @@ classdef test_rfSensor < matlab.unittest.TestCase
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+            beamwidthExponent = 6;
+            lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, 30, 135);
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 30, 135, lossExponent);
 
             altitude = 30;
 
@@ -50,8 +54,10 @@ classdef test_rfSensor < matlab.unittest.TestCase
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+            beamwidthExponent = 6;
+            lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, 0, 0);
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             altitude = 30;
             otherSensorsPos = [6, -4, -1]; % relative to main sensor
@@ -67,8 +73,10 @@ classdef test_rfSensor < matlab.unittest.TestCase
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+            beamwidthExponent = 6;
+            lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, 0, 0);
+            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             altitude = 30;
             otherSensorsPos = [6, -4, -1; -2, 6, 0]; % relative to main sensor
@@ -77,8 +85,8 @@ classdef test_rfSensor < matlab.unittest.TestCase
             otherSensors{2} = rfSensor;
 
             % Must use same center frequency and bandwidth for interference sources
-            otherSensors{1} = otherSensors{1}.initialize(10 * P_TX, BW, f_c, G_RX_dBi, 0, 0);
-            otherSensors{2} = otherSensors{2}.initialize(10 * P_TX, BW, f_c, G_RX_dBi, 0, 0);
+            otherSensors{1} = otherSensors{1}.initialize(10 * P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+            otherSensors{2} = otherSensors{2}.initialize(10 * P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             tc.testClass.plotPerformance(altitude, otherSensorsPos, otherSensors);
         end
@@ -88,13 +96,15 @@ classdef test_rfSensor < matlab.unittest.TestCase
             f_c = 2e9;
             G_RX_dBi = 3;
             altitude = 30;
+            beamwidthExponent = [6, 4, 10];
+            lossExponent = 2;
 
             sensor1 = rfSensor;
-            sensor1 = sensor1.initialize(P_TX, BW, f_c, G_RX_dBi, 15, 45);
+            sensor1 = sensor1.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(1), 15, 45, lossExponent);
             sensor2 = rfSensor;
-            sensor2 = sensor2.initialize(P_TX, BW, f_c, G_RX_dBi, 10, 150);
+            sensor2 = sensor2.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(2), 10, 150, lossExponent);
             sensor3 = rfSensor;
-            sensor3 = sensor3.initialize(P_TX, BW, f_c, G_RX_dBi, 20, 200);
+            sensor3 = sensor3.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(3), 20, 200, lossExponent);
 
             pos1 = [0,  0,  altitude];
             pos2 = [6, -4,  altitude - 1];

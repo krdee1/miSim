@@ -4,6 +4,7 @@ classdef rfSensor
         c = 3e8; % Speed of light (m/s)
         k_B = 1.38e-23 % Boltzmann constant (W/Hz/K) for thermal noise model
         T_0 = 300; % Ambient temperature (Kelvin) for thermal noise model
+        lossExponent = NaN; % Path loss exponent (2 for free space, up to 6 for the lossiest environments)
         % Sensor parameters
         P_TX = NaN; % Transmit power (Watts)
         BW = NaN; % Bandwidth (Hz)
@@ -11,6 +12,7 @@ classdef rfSensor
         G_RX_dBi = NaN; % Receiver antenna gain
         tilt = NaN;     % Antenna boresight tilt (deg): 0=nadir, 90=horizon
         azimuth = NaN;  % Antenna boresight azimuth (deg): 0=+y, 90=+x, 180=-y, 270=-x
+        beamwidthExponent = NaN; % Antenna beamwidth exponent for cosine radiation pattern, larger exponent -> narrower beam
         % Values computed at initialization
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise
@@ -19,7 +21,7 @@ classdef rfSensor
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain, tilt, azimuth); % initialize sensor, define parameters
+        [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain, beamwidthExponent, tilt, azimuth); % initialize sensor, define parameters
         [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
         [value] = halfAngle(obj); % tilt angle (deg) at which sensor performance is halved
