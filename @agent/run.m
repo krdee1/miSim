@@ -1,4 +1,4 @@
-function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleIntegrator, dampingCoeff, dt, optimizeSensorPointing)
+function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleIntegrator, dampingCoeff, dt, optimizeSensorPointing, otherAgents)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "agent")};
         domain (1, 1) {mustBeGeometry};
@@ -9,6 +9,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
         dampingCoeff (1, 1) double = 2.0;
         dt (1, 1) double = 1.0;
         optimizeSensorPointing (1, 1) logical = false;
+        otherAgents (:, 1) cell = cell();
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "agent")};
@@ -32,6 +33,26 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
     % Compute sensor performance on partition
     maskedX = domain.objective.X(partitionMask);
     maskedY = domain.objective.Y(partitionMask);
+
+    if isa(obj.sensorModel, "rfSensor")
+        % Extract other agents' sensor models and positions once, outside the delta loop.
+        % Mask the full-grid RSS caches (filled by partition()) down to this agent's
+        % partition subset so sensorPerformance can reuse them for all perturbations.
+        otherSensorsPos = cell2mat(cellfun(@(x) x.pos, otherAgents, "UniformOutput", false));
+        otherSensors    = cellfun(@(x) x.sensorModel, otherAgents, "UniformOutput", false);
+        partitionIndices = find(partitionMask);
+        for kk = 1:numel(otherSensors)
+            if ~isempty(otherSensors{kk}.rssCache)
+                otherSensors{kk}.rssCache = otherSensors{kk}.rssCache(partitionIndices);
+            end
+        end
+        % Pre-mask this agent's own full-grid cache to the partition subset.
+        % Used for ii==1 (current position, no perturbation) to avoid recomputing.
+        baseSensorModel = obj.sensorModel;
+        if ~isempty(obj.sensorModel.rssCache)
+            baseSensorModel.rssCache = obj.sensorModel.rssCache(partitionIndices);
+        end
+    end
 
     if optimizeSensorPointing
         % Stash actual current sensor model tilt/azimuth before messing with it
@@ -58,7 +79,18 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
         end
         
         % Compute performance values on partition
-        sensorValues = obj.sensorModel.sensorPerformance(pos, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
+        if isa(obj.sensorModel, "sigmoidSensor")
+            sensorValues = obj.sensorModel.sensorPerformance(pos, [maskedX, maskedY, zeros(size(maskedX))]); % S_n(omega, P_n) on W_n
+        elseif isa(obj.sensorModel, "rfSensor")
+            if ii == 1
+                sensorModelForDelta = baseSensorModel; % reuse partition-step cache; no recompute needed
+            else
+                sensorModelForDelta = obj.sensorModel.clearRssCache;
+            end
+            [sensorValues, ~, ~, ~] = sensorModelForDelta.sensorPerformance(pos, [maskedX, maskedY, zeros(size(maskedX))], otherSensorsPos, otherSensors);
+        else
+            error("?");
+        end
 
         % Rearrange data into image arrays
         F = NaN(size(partitionMask));

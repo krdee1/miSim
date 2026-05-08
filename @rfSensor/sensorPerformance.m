@@ -14,22 +14,21 @@ function [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targe
     end
     assert(size(otherSensorsPos, 1) == size(otherSensors, 1), "Mismatch in number of other sensor positions (%d) and number of other sensors (%d) provided", size(otherSensorsPos, 1), size(otherSensors, 1));
 
-    [d, t, a] = obj.computePointToPoints(agentPos, targetPos);
-
     if isempty(obj.rssCache)
-        obj.rssCache = 1e-3 .* 10 .^ (0.1 .* obj.RSS(d, t, a));  % dBm → W
+        [d, dx, dy, dz] = obj.computePointToPoints(agentPos, targetPos);
+        obj.rssCache = 1e-3 .* 10 .^ (0.1 .* obj.RSS(d, dx, dy, dz));  % dBm → W
     end
     S = obj.rssCache;
 
-    I = zeros(size(d));
+    I = zeros(size(S));
     for ii = 1:size(otherSensors, 1)
         if isempty(otherSensors{ii}.rssCache)
-            [d_other, t_other, a_other] = otherSensors{ii}.computePointToPoints(otherSensorsPos(ii, 1:3), targetPos);
-            otherSensors{ii}.rssCache = 1e-3 .* 10 .^ (0.1 .* otherSensors{ii}.RSS(d_other, t_other, a_other));  % dBm → W
+            [d_o, dx_o, dy_o, dz_o] = otherSensors{ii}.computePointToPoints(otherSensorsPos(ii, 1:3), targetPos);
+            otherSensors{ii}.rssCache = 1e-3 .* 10 .^ (0.1 .* otherSensors{ii}.RSS(d_o, dx_o, dy_o, dz_o));  % dBm → W
         end
         I = I + otherSensors{ii}.rssCache;
     end
 
     SINR = 10*log10(S ./ (I + obj.N));
-    SNR = 10*log10(S ./ obj.N);
+    SNR  = 10*log10(S ./ obj.N);
 end

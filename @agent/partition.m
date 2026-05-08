@@ -1,4 +1,4 @@
-function [partitioning] = partition(obj, agents, objective)
+function [partitioning, agents] = partition(obj, agents, objective)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "agent")};
         agents (:, 1) {mustBeA(agents, "cell")};
@@ -6,6 +6,7 @@ function [partitioning] = partition(obj, agents, objective)
     end
     arguments (Output)
         partitioning (:, :) double;
+        agents (:, 1) cell;
     end
 
     nAgents = size(agents, 1);
@@ -18,8 +19,22 @@ function [partitioning] = partition(obj, agents, objective)
     % minimum threshold that must be exceeded for any assignment.
     agentPerf = zeros(nPoints, nAgents + 1);
     for aa = 1:nAgents
-        p = agents{aa}.sensorModel.sensorPerformance(agents{aa}.pos, ...
-            [objective.X(:), objective.Y(:), zeros(nPoints, 1)]);
+        if isa(agents{aa}.sensorModel, "sigmoidSensor")
+            p = agents{aa}.sensorModel.sensorPerformance(agents{aa}.pos, ...
+                [objective.X(:), objective.Y(:), zeros(nPoints, 1)]);
+        elseif isa(agents{aa}.sensorModel, "rfSensor")
+            otherSensorsIdx = [1:(aa - 1), (aa + 1):size(agents, 1)];
+            otherSensors = agents(otherSensorsIdx);
+            otherSensorsPos = cell2mat(cellfun(@(x) x.pos, otherSensors, "UniformOutput", false));
+            otherSensors = cellfun(@(x) x.sensorModel, otherSensors, "UniformOutput", false);
+            [p, ~, agents{aa}.sensorModel, otherSensors] = agents{aa}.sensorModel.sensorPerformance(agents{aa}.pos, ...
+                [objective.X(:), objective.Y(:), zeros(nPoints, 1)], otherSensorsPos, otherSensors);
+            for k = 1:numel(otherSensorsIdx)
+                agents{otherSensorsIdx(k)}.sensorModel = otherSensors{k};
+            end
+        else
+            error("?");
+        end
         agentPerf(:, aa) = p(:);
     end
     agentPerf(:, nAgents + 1) = objective.sensorPerformanceMinimum;

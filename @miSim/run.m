@@ -25,9 +25,16 @@ function [obj] = run(obj)
             obj.validate();
         end
 
+        % Clear RF sensor caches
+        if isa(obj.agents{1}.sensorModel, "rfSensor")
+            for ss = 1:size(obj.agents, 1)
+                obj.agents{ss}.sensorModel = obj.agents{ss}.sensorModel.clearRssCache;
+            end
+        end
+
         % Update partitioning before moving (this one is strictly for
         % plotting purposes, the real partitioning is done by the agents)
-        obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);
+        [obj.partitioning, obj.agents] = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
         % Determine desired communications links
         if ~obj.useFixedTopology
@@ -42,7 +49,7 @@ function [obj] = run(obj)
         % Moving
         % Iterate over agents to simulate their unconstrained motion
         for jj = 1:size(obj.agents, 1)
-            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.timestepIndex, jj, obj.useDoubleIntegrator, obj.dampingCoeff, obj.timestep, obj.optimizeSensorPointing);
+            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.timestepIndex, jj, obj.useDoubleIntegrator, obj.dampingCoeff, obj.timestep, obj.optimizeSensorPointing, obj.agents([1:(jj - 1), (jj + 1):size(obj.agents, 1)]));
         end
 
         % Adjust motion determined by unconstrained gradient ascent using

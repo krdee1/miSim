@@ -44,6 +44,8 @@ classdef test_miSim < matlab.unittest.TestCase
         collisionRanges = NaN;
 
         % Sensing
+        sensor = sigmoidSensor;
+        % sigmoidSensor
         betaDistMin = 3;
         betaDistMax = 15;
         betaTiltMin = 3;
@@ -52,7 +54,15 @@ classdef test_miSim < matlab.unittest.TestCase
         alphaDistMax = 3;
         alphaTiltMin = 15; % degrees
         alphaTiltMax = 30; % degrees
-        sensor = sigmoidSensor;
+        opticalPartitioningMin = 1e-6;
+        % rfSensor
+        P_TX = 1e-3; % Transmit power (Watts)
+        BW = 20e6; % Bandwidth (Hz)
+        f_c = 3e9; % Center frequency (Hz)
+        G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
+        beamwidthExponent = 16;
+        lossExponent = 2;
+        sinrPartitioningMin = 50;
 
         % Communications
         useFixedTopology = false;
@@ -230,6 +240,154 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+        end
+        function miSim_run_rf_sensor(tc)
+            % randomly create obstacles
+            nGeom = tc.minNumObstacles + randi(tc.maxNumObstacles - tc.minNumObstacles);
+            tc.obstacles = cell(nGeom, 1);
+
+            % Iterate over obstacles to initialize
+            for ii = 1:size(tc.obstacles, 1)
+                badCandidate = true;
+                while badCandidate
+                    % Instantiate a rectangular prism obstacle inside the domain
+                    tc.obstacles{ii} = rectangularPrism;
+                    tc.obstacles{ii} = tc.obstacles{ii}.initializeRandom(REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii), tc.minObstacleSize, tc.maxObstacleSize, tc.domain, tc.minAlt);
+    
+                    % Check if the obstacle collides with an existing obstacle
+                    if ~tc.obstacleCollisionCheck(tc.obstacles(1:(ii - 1)), tc.obstacles{ii})
+                        badCandidate = false;
+                    end
+                end
+            end
+
+            % Add agents individually, ensuring that each addition does not
+            % invalidate the initialization setup
+            for ii = 1:size(tc.agents, 1)
+                initInvalid = true;
+                while initInvalid
+                    candidatePos = [tc.domain.objective.groundPos, 0];
+                    % Generate a random position for the agent based on
+                    % existing agent positions
+                    if ii == 1
+                        while agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
+                            candidatePos = tc.domain.random();
+                            candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, tc.minAlt + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
+                        end
+                    else
+                        candidatePos = tc.agents{randi(ii - 1)}.pos + sign(randn([1, 3])) .* (rand(1, 3) .* tc.commsRanges(ii)/sqrt(2));
+                        candidatePos(3) = min([tc.domain.maxCorner(3) * 0.95, tc.minAlt + rand * (tc.alphaDistMax * (1.1)  - 0.5)]); % place agents at decent altitudes for sensing
+                    end
+
+                    % Make sure that the candidate position is within the
+                    % domain
+                    if ~tc.domain.contains(candidatePos)
+                        continue;
+                    end
+
+                    % Make sure that the candidate position does not crowd
+                    % the sensing objective and create boring scenarios
+                    if agentsCrowdObjective(tc.domain.objective, candidatePos, mean(tc.domain.dimensions) / 2)
+                        continue;
+                    end
+
+                    % Make sure that there exist unobstructed lines of sight at
+                    % appropriate ranges to form a connected communications 
+                    % graph between the agents
+                    connections = false(1, ii - 1);
+                    for jj = 1:(ii - 1)
+                        if norm(tc.agents{jj}.pos - candidatePos) <= min(tc.commsRanges([ii, jj]))
+                            % Check new agent position against all existing
+                            % agent positions for communications range
+                            connections(jj) = true;
+                            for kk = 1:size(tc.obstacles, 1)
+                                if tc.obstacles{kk}.containsLine(tc.agents{jj}.pos, candidatePos)
+                                    connections(jj) = false;
+                                end
+                            end
+                        end
+                    end
+
+                    % New agent must be connected to an existing agent to
+                    % be valid
+                    if ii ~= 1 && ~any(connections)
+                        continue;
+                    end
+
+                    % Initialize candidate agent collision geometry
+                    % candidateGeometry = rectangularPrism;
+                    % candidateGeometry = candidateGeometry.initialize([candidatePos - tc.collisionRanges(ii) * ones(1, 3); candidatePos + tc.collisionRanges(ii) * ones(1, 3)], REGION_TYPE.COLLISION);
+                    candidateGeometry = spherical;
+                    candidateGeometry = candidateGeometry.initialize(candidatePos, tc.collisionRanges(ii), REGION_TYPE.COLLISION);
+
+                    % Initialize candidate agent sensor model
+                    tc.sensor = rfSensor;
+                    tilt = 0; azimuth = 0;
+                    tc.sensor = tc.sensor.initialize(tc.P_TX * 1 + rand * 4, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent + randi(100), tilt, azimuth, tc.lossExponent);
+
+                    % Initialize candidate agent
+                    newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+                    
+                    % Make sure candidate agent doesn't collide with
+                    % domain
+                    violation = false;
+                    for jj = 1:size(newAgent.collisionGeometry.vertices, 1)
+                        % Check if collision geometry exits domain
+                        if ~tc.domain.contains(newAgent.collisionGeometry.vertices(jj, 1:3))
+                            violation = true;
+                            break;
+                        end
+                    end
+                    if violation
+                        continue;
+                    end
+
+                    % Make sure candidate doesn't collide with obstacles
+                    violation = false;
+                    for kk = 1:size(tc.obstacles, 1)
+                        if geometryIntersects(tc.obstacles{kk}, newAgent.collisionGeometry)
+                            violation = true;
+                            break;
+                        end
+                    end
+                    if violation
+                        continue;
+                    end
+
+                    % Make sure candidate doesn't collide with existing
+                    % agents
+                    violation = false;
+                    for kk = 1:(ii - 1)
+                        if geometryIntersects(tc.agents{kk}.collisionGeometry, newAgent.collisionGeometry)
+                            violation = true;
+                            break;
+                        end
+                    end
+
+                    % Make sure candidate clears domain floor
+                    if newAgent.pos(3) - newAgent.collisionGeometry.radius <= tc.minAlt
+                        violation = true;
+                    end
+
+                    if violation
+                        continue;
+                    end
+
+                    % Candidate agent is valid, store to pass in to sim
+                    initInvalid = false;
+                    tc.agents{ii} = newAgent;
+                end
+            end
+
+            % Initialize the simulation
+            tc.optimizeSensorPointing = true;
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+
+            % Write out initialization state
+            tc.testClass.writeInits();
+
+            % Run simulation loop
+            tc.testClass = tc.testClass.run();
         end
         function miSim_run(tc)
             % randomly create obstacles
@@ -439,7 +597,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [7, 6]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [7, 6]);
         
             % Initialize agent collision geometry
             tc.agents = {agent};
@@ -466,7 +624,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [7, 6]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [7, 6]);
         
             % Initialize agent collision geometry
             tc.agents = {agent};
@@ -493,24 +651,15 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            minimumSINR = 50; % (dB)
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, minimumSINR, [7, 6]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.sinrPartitioningMin, [7, 6]);
         
             % Initialize agent collision geometry
             tc.agents = {agent};
             geometry1 = spherical;
             geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
-            
-            % Initialize agent sensor model with fixed parameters
-            P_TX = 1e-3; % Transmit power (Watts)
-            BW = 20e6; % Bandwidth (Hz)
-            f_c = 2e9; % Center frequency (Hz)
-            G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
-            beamwidthExponent = 6;
-            lossExponent = 2;
 
             tc.sensor = rfSensor;
-            tc.sensor = tc.sensor.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 45, 45, lossExponent);
+            tc.sensor = tc.sensor.initialize(tc.P_TX, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent, 45, 45, tc.lossExponent);
 
             % Initialize agents
             tc.maxIter = 75;
@@ -530,7 +679,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [7, 6]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [7, 6]);
         
             % Initialize agent collision geometry
             tc.agents = {agent};
@@ -558,24 +707,17 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            minimumSINR = 50; % (dB)
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, minimumSINR, [7, 6]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.sinrPartitioningMin, [7, 6]);
         
             % Initialize agent collision geometry
             tc.agents = {agent};
             geometry1 = spherical;
             geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
             
-            % Initialize agent sensor model with fixed parameters
-            P_TX = 1e-3; % Transmit power (Watts)
-            BW = 20e6; % Bandwidth (Hz)
-            f_c = 2e9; % Center frequency (Hz)
-            G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
-            beamwidthExponent = 6;
-            lossExponent = 2;
+            % Initialize agent sensor model
 
             tc.sensor = rfSensor;
-            tc.sensor = tc.sensor.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+            tc.sensor = tc.sensor.initialize(tc.P_TX, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent, 0, 0, tc.lossExponent);
 
             % Initialize agents
             tc.maxIter = 75;
@@ -599,7 +741,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([3, 7]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [3, 7]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([3, 7]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [3, 7]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent};
@@ -637,7 +779,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5.2195]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5.2195]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5.2195]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [8, 5.2195]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent;};
@@ -721,7 +863,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [8, 5]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent;};
@@ -766,7 +908,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [8, 5]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent; agent; agent; agent;};
@@ -816,7 +958,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3); tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, 1e-6, [8, 5]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 5]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.opticalPartitioningMin, [8, 5]);
         
             % Initialize agent collision geometry
             tc.agents = {agent; agent; agent; agent; agent; agent; agent;};

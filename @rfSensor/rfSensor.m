@@ -15,17 +15,17 @@ classdef rfSensor
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise
         % Cached state (per timestep)
-        rssCache (:,1) double = double.empty(0,1); % linear-scale RSS to last ground targets grid
     end
     properties (Access = public)
         tilt = NaN;     % Antenna boresight tilt (deg): 0=nadir, 90=horizon
         azimuth = NaN;  % Antenna boresight azimuth (deg): 0=+y, 90=+x, 180=-y, 270=-x
+        rssCache (:,1) double = double.empty(0,1); % linear-scale RSS to last ground targets grid
     end
 
     methods (Access = public)
         [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain, beamwidthExponent, tilt, azimuth); % initialize sensor, define parameters
         [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
-        [d, t, a] = computePointToPoints(obj, agentPos, targetPos);
+        [d, dx, dy, dz] = computePointToPoints(obj, agentPos, targetPos);
         [value] = halfAngle(obj); % tilt angle (deg) at which sensor performance is halved
         [f] = plotParameters(obj); % debug, plot sensor response as a function of distance and tilt angle
         [f] = plotPerformance(obj, altitude, otherSensorsPos, otherSensors); % debug, plot SNR or SINR ground heatmap for a given geometry
@@ -33,7 +33,7 @@ classdef rfSensor
         obj = clearRssCache(obj);
     end
     methods (Access = private)
-        x = RSS(obj, d, t, a); % Received signal strength (function of distance and tilt angle)
+        x = RSS(obj, d, dx, dy, dz); % Received signal strength (function of distance and tilt angle)
         G_TX_dB = transmitterGain(obj, t, a); % Antenna gain for a given TX/RX pair 
         L_FSPL_dB = pathLoss(obj, d); % Free space path loss for a given TX/RX pair
     end
