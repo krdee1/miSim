@@ -15,6 +15,7 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
         otherSensors{ii}.rssCache = [];
     end
 
+    % bias other sensors altitudes appropriately
     otherSensorsPos = otherSensorsPos + [0, 0, altitude];
 
     % Create grid on which to evalute SINR, SNR

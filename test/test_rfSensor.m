@@ -139,5 +139,32 @@ classdef test_rfSensor < matlab.unittest.TestCase
             sensor2.plotPerformance(pos2(3), [pos1 - pos2; pos3 - pos2], {sensor1; sensor3});
             sensor3.plotPerformance(pos3(3), [pos1 - pos3; pos2 - pos3], {sensor1; sensor2});
         end
+        function plot_SINR_heterogenous_interferers_3d(tc)
+            P_TX = 1e-3;
+            BW = 20e6;
+            f_c = 2e9;
+            G_RX_dBi = 3;
+            altitude = 30;
+            beamwidthExponent = [50, 20, 200];
+            lossExponent = 2;
+
+            sensor1 = rfSensor;
+            sensor1 = sensor1.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(1), 15, 45, lossExponent);
+            sensor2 = rfSensor;
+            sensor2 = sensor2.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(2), 10, 150, lossExponent);
+            sensor3 = rfSensor;
+            sensor3 = sensor3.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(3), 20, 200, lossExponent);
+
+            pos1 = [0,  0,  altitude];
+            pos2 = [6, -4,  altitude - 5];
+            pos3 = [-2, 6,  altitude + 10];
+
+            % Plot SINR from each UAV's perspective.
+            % otherSensorsPos for plotPerformance: XY = offset from calling sensor, Z = absolute_alt - calling_alt.
+            % This is exactly posOther - posSelf for each row.
+            sensor1.plot(pos1(3), [pos2 - pos1; pos3 - pos1], {sensor2; sensor3});
+            sensor2.plot(pos2(3), [pos1 - pos2; pos3 - pos2], {sensor1; sensor3});
+            sensor3.plot(pos3(3), [pos1 - pos3; pos2 - pos3], {sensor1; sensor2});
+        end
     end
 end
