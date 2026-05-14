@@ -10,7 +10,12 @@ function [obj] = run(obj)
         % Start video writer
         if obj.makeVideo
             v = obj.setupVideoWriter();
+            drawnow;
             v.open();
+            % Capture reference frame size; used to resize frames that deviate
+            % due to figure reflow during plot updates (e.g. in headless mode).
+            I_ref = getframe(obj.f);
+            videoFrameSize = [size(I_ref.cdata, 2), size(I_ref.cdata, 1)];
         end
     end
 
@@ -73,6 +78,9 @@ function [obj] = run(obj)
             % Write frame in to video
             if obj.makeVideo
                 I = getframe(obj.f);
+                if size(I.cdata, 2) ~= videoFrameSize(1) || size(I.cdata, 1) ~= videoFrameSize(2)
+                    I.cdata = imresize(I.cdata, [videoFrameSize(2), videoFrameSize(1)]);
+                end
                 v.writeVideo(I);
             end
         end
