@@ -70,6 +70,40 @@ function R = readRadioLogs(logPath)
 
     R = sortrows(R, "Timestamp");
 
+    % Reconstruct per-measurement timestamps within GNURadio processing batches.
+    % The flowgraph accumulates one full PN sequence (4095 chips at samp_rate/sps)
+    % per measurement, but outputs the whole batch simultaneously with a single
+    % wall-clock timestamp. We reassign timestamps by counting backward from the
+    % batch processing time at the known PN period interval.
+    pn_period = 4095 / (2e6 / 16);  % 32.76 ms per PN correlation period
+
+    for txId = unique(R.TxUAVID)'
+        rows = find(R.TxUAVID == txId);
+        if numel(rows) < 2, continue; end
+
+        dt = seconds(diff(R.Timestamp(rows)));
+        break_pos = [1; find(dt > 0.5) + 1];
+        end_pos   = [break_pos(2:end) - 1; numel(rows)];
+
+        for b = 1:numel(break_pos)
+            idx      = rows(break_pos(b) : end_pos(b));
+            batch_ts = posixtime(R.Timestamp(idx));
+            t_ref    = max(batch_ts);
+
+            % Multiple metric files share the same processing timestamp for
+            % each PN period, so group by unique original timestamp rather
+            % than treating every row as a separate PN period.
+            [~, ~, group_id] = unique(batch_ts);
+            n_groups = max(group_id);
+            new_ts   = t_ref - (n_groups - 1 : -1 : 0)' * pn_period;
+
+            for g = 1:n_groups
+                R.Timestamp(idx(group_id == g)) = ...
+                    datetime(new_ts(g), 'ConvertFrom', 'posixtime');
+            end
+        end
+    end
+
     % Remove rows during defined guard period between TDM shifts
     R(R.TxUAVID == -1, :) = [];
 

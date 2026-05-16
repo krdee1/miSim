@@ -9,8 +9,8 @@ classdef test_miSim < matlab.unittest.TestCase
         plotCommsGeometry = false; % disable plotting communications geometries
 
         % Sim
-        maxIter = 50;
-        timestep = 0.05;
+        maxIter = 250;
+        timestep = 0.1;
 
         % Domain
         domain = rectangularPrism; % domain geometry
@@ -31,7 +31,7 @@ classdef test_miSim < matlab.unittest.TestCase
 
         % Agents
         initialStepSize = 0.2; % gradient ascent step size at the first iteration. Decreases linearly to 0 based on maxIter.
-        initialMaxAngleStepSize = 5; % angular step size (degrees) for tilt/azimuth gradient ascent per timestep.
+        initialMaxAngleStepSize = 0.1; % angular step size (degrees) for tilt/azimuth gradient ascent per timestep.
         minAgents = 3; % Minimum number of agents to be randomly generated
         maxAgents = 4; % Maximum number of agents to be randomly generated
         useDoubleIntegrator = false;
