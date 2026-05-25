@@ -13,6 +13,7 @@ function f = objectiveFunctionWrapper(center, sigma)
     if size(sigma, 1) == 1 && size(center, 1) > 1
         sigma = repmat(sigma, size(center, 1), 1, 1);
     end
+
     assert(size(center, 1) == size(sigma, 1));
     f = @(x,y) sum(cell2mat(arrayfun(@(i) mvnpdf([x(:), y(:)], center(i,:), squeeze(sigma(i, :, :))), 1:size(center,1), "UniformOutput", false)), 2);
 end
