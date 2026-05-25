@@ -11,6 +11,10 @@ function [obj] = run(obj)
         if obj.makeVideo
             v = obj.setupVideoWriter();
             v.open();
+            
+            % Write initialization state frame in to video
+            I = getframe(obj.f);
+            v.writeVideo(I);
         end
     end
 
