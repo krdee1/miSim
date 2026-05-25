@@ -94,29 +94,34 @@ if isInit
         BETA_TILT_VEC        = scenarioParams(29:32);
         DOMAIN_MIN                  = scenarioParams(33:35);
         DOMAIN_MAX                  = scenarioParams(36:38);
-        OBJECTIVE_GROUND_POS        = scenarioParams(39:40);
-        OBJECTIVE_VAR               = reshape(scenarioParams(41:44), 2, 2);
-        SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(45);
-        USE_DOUBLE_INTEGRATOR       = logical(scenarioParams(46));
-        DAMPING_COEFF               = scenarioParams(47);
-        USE_FIXED_TOPOLOGY          = logical(scenarioParams(48));
+        NUM_OBJ_COMPONENTS          = int32(scenarioParams(39));
+        OBJECTIVE_POS_FLAT          = scenarioParams(40:43); % [x1,y1,x2,y2]; zero-padded if N=1
+        OBJECTIVE_VAR_FLAT          = scenarioParams(44:51); % [v11,v12,v21,v22 per component]
+        SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(52);
+        USE_DOUBLE_INTEGRATOR       = logical(scenarioParams(53));
+        DAMPING_COEFF               = scenarioParams(54);
+        USE_FIXED_TOPOLOGY          = logical(scenarioParams(55));
 
         % --- Build domain geometry ---
         dom = rectangularPrism;
         dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Domain");
 
-        % --- Build sensing objective (inline Gaussian; codegen-compatible) ---
+        % --- Build sensing objective: sum of N bivariate Gaussians (codegen-compatible) ---
         dom.objective = sensingObjective;
         xGrid = unique([DOMAIN_MIN(1):DISCRETIZATION_STEP:DOMAIN_MAX(1), DOMAIN_MAX(1)]);
         yGrid = unique([DOMAIN_MIN(2):DISCRETIZATION_STEP:DOMAIN_MAX(2), DOMAIN_MAX(2)]);
         [gridX, gridY] = meshgrid(xGrid, yGrid);
-        dx = gridX - OBJECTIVE_GROUND_POS(1);
-        dy = gridY - OBJECTIVE_GROUND_POS(2);
-        % Bivariate Gaussian using objectiveVar covariance matrix (avoids inv())
-        ov_a = OBJECTIVE_VAR(1,1); ov_b = OBJECTIVE_VAR(1,2);
-        ov_c = OBJECTIVE_VAR(2,1); ov_d = OBJECTIVE_VAR(2,2);
-        ov_det = ov_a * ov_d - ov_b * ov_c;
-        objValues = exp((-0.5 / ov_det) .* (ov_d .* dx.*dx - (ov_b + ov_c) .* dx.*dy + ov_a .* dy.*dy));
+        objValues = zeros(size(gridX));
+        for kk = 1:NUM_OBJ_COMPONENTS
+            pos_k = OBJECTIVE_POS_FLAT((kk-1)*2+1 : (kk-1)*2+2);
+            var_k = reshape(OBJECTIVE_VAR_FLAT((kk-1)*4+1 : (kk-1)*4+4), 2, 2);
+            dx = gridX - pos_k(1);
+            dy = gridY - pos_k(2);
+            ov_a = var_k(1,1); ov_b = var_k(1,2);
+            ov_c = var_k(2,1); ov_d = var_k(2,2);
+            ov_det = ov_a * ov_d - ov_b * ov_c;
+            objValues = objValues + exp((-0.5 / ov_det) .* (ov_d .* dx.*dx - (ov_b + ov_c) .* dx.*dy + ov_a .* dy.*dy));
+        end
         dom.objective = dom.objective.initializeWithValues(objValues, dom, ...
             DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
 

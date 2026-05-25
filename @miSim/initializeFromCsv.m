@@ -52,8 +52,19 @@ BETA_TILT_VEC        = scenario.betaTilt;           % 1×N
 
 DOMAIN_MIN                 = scenario.domainMin;                % 1×3
 DOMAIN_MAX                 = scenario.domainMax;                % 1×3
-OBJECTIVE_GROUND_POS       = scenario.objectivePos;             % 1×2
-OBJECTIVE_VAR              = reshape(scenario.objectiveVar, 2, 2); % 2×2 covariance matrix
+
+% objectivePos: 2 values per Gaussian component (1 or 2 components supported)
+nObjComponents = numel(scenario.objectivePos) / 2;
+assert(mod(numel(scenario.objectivePos), 2) == 0, ...
+    'objectivePos must have an even number of values (2 per Gaussian component)');
+assert(nObjComponents >= 1 && nObjComponents <= 2, ...
+    'At most 2 objective Gaussian components supported; got %d', nObjComponents);
+assert(numel(scenario.objectiveVar) == nObjComponents * 4, ...
+    'objectiveVar must have %d values for %d component(s); got %d', ...
+    nObjComponents * 4, nObjComponents, numel(scenario.objectiveVar));
+OBJECTIVE_GROUND_POS = reshape(scenario.objectivePos, 2, nObjComponents)';           % nObj×2
+OBJECTIVE_VAR        = permute(reshape(scenario.objectiveVar, 2, 2, nObjComponents), [3, 1, 2]); % nObj×2×2
+
 SENSOR_PERFORMANCE_MINIMUM = scenario.sensorPerformanceMinimum; % scalar
 
 % Initial UAV positions: flat vector reshaped to N×3

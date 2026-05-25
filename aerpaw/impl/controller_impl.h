@@ -27,13 +27,14 @@ int loadTargets(const char* filename, double* targets, int maxClients);
 //   28-31 betaTilt[1:4]
 //   32-34 domainMin
 //   35-37 domainMax
-//   38-39 objectivePos
-//   40-43 objectiveVar (2x2 col-major)
-//   44    sensorPerformanceMinimum
-//   45    useDoubleIntegrator  (0=single-integrator, 1=double-integrator)
-//   46    dampingCoeff
-//   47    useFixedTopology     (0=dynamic lesser-neighbor, 1=fixed)
-#define NUM_SCENARIO_PARAMS 48
+//   38    numObjectiveComponents (1 or 2; inferred from objectivePos field length)
+//   39-42 objectivePos flat [x1,y1,x2,y2] (4 slots; zero-padded if N=1)
+//   43-50 objectiveVar flat [v11,v12,v21,v22 per component] (8 slots; zero-padded if N=1)
+//   51    sensorPerformanceMinimum
+//   52    useDoubleIntegrator  (0=single-integrator, 1=double-integrator)
+//   53    dampingCoeff
+//   54    useFixedTopology     (0=dynamic lesser-neighbor, 1=fixed)
+#define NUM_SCENARIO_PARAMS 55
 #define MAX_CLIENTS_PER_PARAM 4
 // Maximum number of obstacles (upper bound for pre-allocated arrays).
 #define MAX_OBSTACLES 8

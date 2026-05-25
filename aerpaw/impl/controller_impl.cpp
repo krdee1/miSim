@@ -222,12 +222,13 @@ static int readScenarioDataRow(const char* filename, char* line, int lineSize) {
 //   28-31: betaTilt[1:4]
 //   32-34: domainMin  (east, north, up)
 //   35-37: domainMax  (east, north, up)
-//   38-39: objectivePos (east, north)
-//   40-43: objectiveVar (2x2 col-major: v11, v12, v21, v22)
-//   44   : sensorPerformanceMinimum  (CSV column 18)
-//   45   : useDoubleIntegrator       (CSV column 23; 0=single-integrator, 1=double-integrator)
-//   46   : dampingCoeff              (CSV column 24)
-//   47   : useFixedTopology          (CSV column 25; 0=dynamic lesser-neighbor, 1=fixed)
+//   38   : numObjectiveComponents (1 or 2; inferred from objectivePos field length)
+//   39-42: objectivePos flat [x1,y1,x2,y2] (4 slots; zero-padded if N=1)
+//   43-50: objectiveVar flat [v11,v12,v21,v22 per component] (8 slots; zero-padded if N=1)
+//   51   : sensorPerformanceMinimum  (CSV column 18)
+//   52   : useDoubleIntegrator       (CSV column 23)
+//   53   : dampingCoeff              (CSV column 24)
+//   54   : useFixedTopology          (CSV column 25)
 // Returns 1 on success, 0 on failure.
 int loadScenario(const char* filename, double* params) {
     char line[4096];
@@ -305,52 +306,78 @@ int loadScenario(const char* filename, double* params) {
         }
     }
 
-    // objectivePos: column 16
+    // objectivePos: column 16 — 2 values per component (up to 2 components).
+    // Infer numObjectiveComponents from the number of values parsed.
     {
         char tmp[256]; strncpy(tmp, fields[16], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
-        if (sscanf(t, "%lf , %lf", &params[38], &params[39]) != 2) {
-            fprintf(stderr, "loadScenario: failed to parse objectivePos: %s\n", t);
+        double posVals[4] = {0, 0, 0, 0};
+        int posCount = 0;
+        char* tok = strtok(t, ",");
+        while (tok && posCount < 4) {
+            posVals[posCount++] = atof(tok);
+            tok = strtok(nullptr, ",");
+        }
+        // Check for a 5th token — would mean > 2 components
+        if (tok) {
+            fprintf(stderr, "loadScenario: at most 2 objective Gaussian components supported (objectivePos has >4 values)\n");
             return 0;
         }
+        if (posCount == 0 || posCount % 2 != 0) {
+            fprintf(stderr, "loadScenario: objectivePos must have 2 or 4 values, got %d\n", posCount);
+            return 0;
+        }
+        int nObj = posCount / 2;
+        params[38] = (double)nObj;
+        for (int k = 0; k < 4; k++) params[39 + k] = posVals[k];  // zero-padded for nObj=1
     }
 
-    // objectiveVar: column 17, format "v11, v12, v21, v22"
+    // objectiveVar: column 17 — 4 values per component (v11,v12,v21,v22).
     {
-        char tmp[256]; strncpy(tmp, fields[17], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        char tmp[512]; strncpy(tmp, fields[17], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
-        if (sscanf(t, "%lf , %lf , %lf , %lf", &params[40], &params[41], &params[42], &params[43]) != 4) {
-            fprintf(stderr, "loadScenario: failed to parse objectiveVar: %s\n", t);
+        int nObj = (int)params[38];
+        double varVals[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        int varCount = 0;
+        char* tok = strtok(t, ",");
+        while (tok && varCount < 8) {
+            varVals[varCount++] = atof(tok);
+            tok = strtok(nullptr, ",");
+        }
+        if (varCount != nObj * 4) {
+            fprintf(stderr, "loadScenario: objectiveVar has %d values but expected %d (4 per component)\n",
+                    varCount, nObj * 4);
             return 0;
         }
+        for (int k = 0; k < 8; k++) params[43 + k] = varVals[k];  // zero-padded for nObj=1
     }
 
     // sensorPerformanceMinimum: column 18
     {
         char tmp[64]; strncpy(tmp, fields[18], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
-        params[44] = atof(trimField(tmp));
+        params[51] = atof(trimField(tmp));
     }
 
     // useDoubleIntegrator: column 23
     {
         char tmp[64]; strncpy(tmp, fields[23], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
-        params[45] = atof(trimField(tmp));
+        params[52] = atof(trimField(tmp));
     }
 
     // dampingCoeff: column 24
     {
         char tmp[64]; strncpy(tmp, fields[24], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
-        params[46] = atof(trimField(tmp));
+        params[53] = atof(trimField(tmp));
     }
 
     // useFixedTopology: column 25
     {
         char tmp[64]; strncpy(tmp, fields[25], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
-        params[47] = atof(trimField(tmp));
+        params[54] = atof(trimField(tmp));
     }
 
-    printf("Loaded scenario: domain [%g,%g,%g] to [%g,%g,%g]\n",
-           params[32], params[33], params[34], params[35], params[36], params[37]);
+    printf("Loaded scenario: domain [%g,%g,%g] to [%g,%g,%g], %d objective component(s)\n",
+           params[32], params[33], params[34], params[35], params[36], params[37], (int)params[38]);
     return 1;
 }
 
