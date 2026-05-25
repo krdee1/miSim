@@ -72,16 +72,18 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.constraintAdjacencyMatrix = logical(eye(size(agents, 1)));
 
     % Set labels for agents and collision geometries in cases where they
-    % were not provieded at the time of their initialization
-    for ii = 1:size(obj.agents, 1)
-        % Agent
-        if isempty(char(obj.agents{ii}.label))
-            obj.agents{ii}.label = sprintf("Agent %d", int8(ii));
-        end
-
-        % Collision geometry
-        if isempty(char(obj.agents{ii}.collisionGeometry.label))
-            obj.agents{ii}.collisionGeometry.label = sprintf("Agent %d Collision Geometry", int8(ii));
+    % were not provieded at the time of their initialization.
+    % Guarded by coder.target: label is a fixed-size "" in codegen, and
+    % sprintf returns variable-length — incompatible even in a dead branch.
+    % On the compiled path agents always receive explicit labels from the caller.
+    if coder.target('MATLAB')
+        for ii = 1:size(obj.agents, 1)
+            if isempty(char(obj.agents{ii}.label))
+                obj.agents{ii}.label = sprintf("Agent %d", int8(ii));
+            end
+            if isempty(char(obj.agents{ii}.collisionGeometry.label))
+                obj.agents{ii}.collisionGeometry.label = sprintf("Agent %d Collision Geometry", int8(ii));
+            end
         end
     end
 
