@@ -42,7 +42,6 @@ classdef parametricTestSuite < matlab.unittest.TestCase
                 objectivePos = params.objectivePos;
             end
             tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper(objectivePos, objectiveSigma), tc.domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum, objectivePos, objectiveSigma);
-
             agents = cell(size(params.initialPositions, 2) / 3, 1);
             for ii = 1:size(agents, 1)
                 agents{ii} = agent;
