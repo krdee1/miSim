@@ -13,10 +13,39 @@ function writeInits(obj)
 
     % Collect agent parameters
     collisionRadii = cellfun(@(x) x.collisionGeometry.radius, obj.agents);
-    alphaDist = cellfun(@(x) x.sensorModel.alphaDist, obj.agents);
-    betaDist = cellfun(@(x) x.sensorModel.betaDist, obj.agents);
-    alphaTilt = cellfun(@(x) x.sensorModel.alphaTilt, obj.agents);
-    betaTilt = cellfun(@(x) x.sensorModel.betaTilt, obj.agents);
+    if isprop(obj.agents{1}.sensorModel, "alphaDist")
+        % sigmoidSensor parameters
+        alphaDist = cellfun(@(x) x.sensorModel.alphaDist, obj.agents);
+        betaDist = cellfun(@(x) x.sensorModel.betaDist, obj.agents);
+        alphaTilt = cellfun(@(x) x.sensorModel.alphaTilt, obj.agents);
+        betaTilt = cellfun(@(x) x.sensorModel.betaTilt, obj.agents);
+
+        % others to zero
+        lossExponent = zeros(size(obj.agents));
+        P_TX = zeros(size(obj.agents));
+        BW = zeros(size(obj.agents));
+        f_c = zeros(size(obj.agents));
+        G_RX_dBi = zeros(size(obj.agents));
+        beamwidthExponent = zeros(size(obj.agents));
+        
+    elseif isprop(obj.agents{1}.sensorModel, "P_TX")
+        % rfSensor parameters
+        lossExponent = cellfun(@(x) x.sensorModel.lossExponent, obj.agents);
+        P_TX = cellfun(@(x) x.sensorModel.P_TX, obj.agents);
+        BW = cellfun(@(x) x.sensorModel.BW, obj.agents);
+        f_c = cellfun(@(x) x.sensorModel.f_c, obj.agents);
+        G_RX_dBi = cellfun(@(x) x.sensorModel.G_RX_dBi, obj.agents);
+        beamwidthExponent = cellfun(@(x) x.sensorModel.beamwidthExponent, obj.agents);
+
+        % others to zero
+        alphaDist = zeros(size(obj.agents));
+        betaDist = zeros(size(obj.agents));
+        alphaTilt = zeros(size(obj.agents));
+        betaTilt = zeros(size(obj.agents));
+    end
+    % joint parameters
+    tilt = cellfun(@(x) x.sensorModel.tilt, obj.agents);
+    azimuth = cellfun(@(x) x.sensorModel.azimuth, obj.agents);
     comRanges = cellfun(@(x) x.commsGeometry.radius, obj.agents);
     initialStepSize = cellfun(@(x) x.initialStepSize, obj.agents);
     pos = cell2mat(cellfun(@(x) x.pos, obj.agents, 'UniformOutput', false));
@@ -30,7 +59,9 @@ function writeInits(obj)
                     "barrierGain", obj.barrierGain, "barrierExponent", obj.barrierExponent, "numObstacles", numInputObs, ...
                     "numAgents", size(obj.agents, 1), "collisionRadius", collisionRadii, "comRange", comRanges, ...
                     "useDoubleIntegrator", obj.useDoubleIntegrator, "dampingCoeff", obj.dampingCoeff, "useFixedTopology", obj.useFixedTopology, ...
-                    "alphaDist", alphaDist, "betaDist", betaDist, "alphaTilt", alphaTilt, "betaTilt", betaTilt, ...
+                    "tilt", tilt, "azimuth", azimuth, ... % joint sensor parameters
+                    "alphaDist", alphaDist, "betaDist", betaDist, "alphaTilt", alphaTilt, "betaTilt", betaTilt, ... % sigmoid sensor parameters
+                    "lossExponent", lossExponent, "P_TX", P_TX, "BW", BW, "f_c", f_c, "G_RX_dBi", G_RX_dBi, "beamwidthExponent", beamwidthExponent, ... % RF sensor parameters
                     ... % ^^^ PARAMETERS ^^^ | vvv STATES vvv
                     "pos", pos, "objectivePos", obj.domain.objective.groundPos, "objectiveSigma", obj.domain.objective.objectiveSigma, ...
                     "domainMin", obj.domain.minCorner, "domainMax", obj.domain.maxCorner, ...

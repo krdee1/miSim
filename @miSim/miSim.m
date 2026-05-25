@@ -20,6 +20,7 @@ classdef miSim
         useDoubleIntegrator = false; % false = single-integrator, true = double-integrator dynamics
         dampingCoeff = 2.0; % velocity-proportional damping for double-integrator mode
         useFixedTopology = false; % false = lesser neighbor (dynamic), true = fixed initial topology
+        optimizeSensorPointing = false; % false = fixed sensor tilt/azimuth, true = optimize tilt/azimuth via gradient ascent
         artifactName = "";
         f; % main plotting tiled layout figure
         fPerf; % performance plot figure

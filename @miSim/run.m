@@ -10,11 +10,13 @@ function [obj] = run(obj)
         % Start video writer
         if obj.makeVideo
             v = obj.setupVideoWriter();
+            drawnow;
             v.open();
-            
-            % Write initialization state frame in to video
-            I = getframe(obj.f);
-            v.writeVideo(I);
+            % Capture reference frame size; used to resize frames that deviate
+            % due to figure reflow during plot updates (e.g. in headless mode).
+            I_ref = getframe(obj.f);
+            v.writeVideo(I_ref);
+            videoFrameSize = [size(I_ref.cdata, 2), size(I_ref.cdata, 1)];
         end
     end
 
@@ -29,9 +31,16 @@ function [obj] = run(obj)
             obj.validate();
         end
 
+        % Clear RF sensor caches
+        if isa(obj.agents{1}.sensorModel, "rfSensor")
+            for ss = 1:size(obj.agents, 1)
+                obj.agents{ss}.sensorModel = obj.agents{ss}.sensorModel.clearRssCache;
+            end
+        end
+
         % Update partitioning before moving (this one is strictly for
         % plotting purposes, the real partitioning is done by the agents)
-        obj.partitioning = obj.agents{1}.partition(obj.agents, obj.domain.objective);
+        [obj.partitioning, obj.agents] = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
         % Determine desired communications links
         if ~obj.useFixedTopology
@@ -46,7 +55,7 @@ function [obj] = run(obj)
         % Moving
         % Iterate over agents to simulate their unconstrained motion
         for jj = 1:size(obj.agents, 1)
-            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.timestepIndex, jj, obj.agents, obj.useDoubleIntegrator, obj.dampingCoeff, obj.timestep);
+            obj.agents{jj} = obj.agents{jj}.run(obj.domain, obj.partitioning, obj.timestepIndex, jj, obj.useDoubleIntegrator, obj.dampingCoeff, obj.timestep, obj.optimizeSensorPointing, obj.agents([1:(jj - 1), (jj + 1):size(obj.agents, 1)]));
         end
 
         % Adjust motion determined by unconstrained gradient ascent using
@@ -70,6 +79,9 @@ function [obj] = run(obj)
             % Write frame in to video
             if obj.makeVideo
                 I = getframe(obj.f);
+                if size(I.cdata, 2) ~= videoFrameSize(1) || size(I.cdata, 1) ~= videoFrameSize(2)
+                    I.cdata = imresize(I.cdata, [videoFrameSize(2), videoFrameSize(1)]);
+                end
                 v.writeVideo(I);
             end
         end

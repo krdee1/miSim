@@ -8,16 +8,20 @@ function value = sensorPerformance(obj, agentPos, targetPos)
         value (:, 1) double;
     end
 
-    % compute direct distance and distance projected onto the ground
-    d = vecnorm(agentPos - targetPos, 2, 2); % distance from sensor to target
-    x = vecnorm(agentPos(1:2) - targetPos(:, 1:2), 2, 2); % distance from sensor nadir to target nadir (i.e. distance ignoring height difference)
+    % Unit vectors from agent to each target
+    diffs = targetPos - agentPos;
+    d = vecnorm(diffs, 2, 2);
+    dirs = diffs ./ d;
 
-    % compute tilt angle
-    tiltAngle = (180 - atan2d(x, targetPos(:, 3) - agentPos(3))); % degrees
+    % Boresight unit vector: tilt=0 → nadir [0,0,-1]; azimuth 0=+Y, 90=+X clockwise
+    boresight = [sind(obj.tilt)*sind(obj.azimuth), sind(obj.tilt)*cosd(obj.azimuth), -cosd(obj.tilt)];
+
+    % Angular offset from boresight to each target direction
+    angularOffset = acosd(dirs * boresight');
 
     % Membership functions
     mu_d = obj.distanceMembership(d);
-    mu_t = obj.tiltMembership(tiltAngle);
+    mu_t = obj.tiltMembership(angularOffset);
 
     value = mu_d .* mu_t; % assume pan membership is always 1
 end

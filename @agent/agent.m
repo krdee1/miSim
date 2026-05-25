@@ -32,7 +32,9 @@ classdef agent
 
     properties (SetAccess = private, GetAccess = public)
         initialStepSize = NaN;
+        initialMaxAngleStepSize = NaN;
         stepDecayRate = NaN;
+        angleStepDecayRate = NaN;
     end
 
     methods (Access = public)
@@ -48,8 +50,8 @@ classdef agent
             obj.commsGeometry = spherical;
         end
         [obj] = initialize(obj, pos, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label);
-        [obj] = run(obj, domain, partitioning, t, index, agents);
-        [partitioning] = partition(obj, agents, objective)
+        [obj] = run(obj, domain, partitioning, t, index, useDoubleIntegrator, dampingCoeff, dt, optimizeSensorPointing, otherAgents);
+        [partitioning, agents] = partition(obj, agents, objective)
         [obj, f] = plot(obj, ind, f);
         updatePlots(obj);
     end

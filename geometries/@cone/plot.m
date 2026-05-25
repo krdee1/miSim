@@ -20,7 +20,18 @@ function [obj, f] = plot(obj, ind, f, maxAlt)
     
     % Scale to match height
     Z = Z * maxAlt;
-    
+
+    % Rotate mesh around apex to match boresight tilt and azimuth.
+    % Apex sits at [0, 0, maxAlt] before center translation.
+    % Convention: tilt 0=nadir, 90=horizon; azimuth 0=+Y, 90=+X, clockwise.
+    Ry = [cosd(obj.tilt), 0, -sind(obj.tilt); 0, 1, 0; sind(obj.tilt), 0, cosd(obj.tilt)];
+    Rz = [sind(obj.azimuth), -cosd(obj.azimuth), 0; cosd(obj.azimuth), sind(obj.azimuth), 0; 0, 0, 1];
+    R  = Rz * Ry;
+    pts = R * [X(:)'; Y(:)'; Z(:)' - maxAlt];
+    X = reshape(pts(1, :), size(X));
+    Y = reshape(pts(2, :), size(Y));
+    Z = reshape(pts(3, :) + maxAlt, size(Z));
+
     % Move to center location
     X = X + obj.center(1);
     Y = Y + obj.center(2);
