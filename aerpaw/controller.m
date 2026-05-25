@@ -7,43 +7,54 @@ coder.extrinsic('disp', 'readScenarioCsv');
 
 % Maximum clients supported (one initial position per UAV)
 MAX_CLIENTS = 4;
-% Three waypoints per UAV: one axis-aligned move per dimension (taxicab flyout/flyback)
-MAX_TARGETS = MAX_CLIENTS * 3;
-
-% Taxicab flyout/flyback only supports exactly 2 UAVs
-if numClients ~= int32(2)
-    error('Taxicab flyout/flyback requires exactly 2 UAVs');
-end
+% Two waypoints per UAV: altitude-staggered transit + final position
+MAX_TARGETS = MAX_CLIENTS * 2;
 
 % Allocate targets array (MAX_TARGETS x 3)
 targets = zeros(MAX_TARGETS, 3);
 numWaypoints = int32(0);
 totalLoaded  = int32(0);  % pre-declare type for coder.ceval %#ok<NASGU>
 
-% Experiment start positions from scenario CSV (N x 3)
-scenarioPositions = zeros(MAX_CLIENTS, 3);
-
-% Load experiment start positions from scenario CSV
+% Load initial UAV positions from scenario CSV
 if coder.target('MATLAB')
     disp('Loading initial positions from scenario.csv (simulation)...');
     tmpSim = miSim;
     sc = tmpSim.readScenarioCsv('aerpaw/config/scenario.csv');
     flatPos = double(sc.initialPositions);  % 1×(3*N) flat vector
-    posMatrix = reshape(flatPos, 3, [])';   % N×3
+    posMatrix = reshape(flatPos, 3, [])';   % N×3, same layout as initializeFromCsv
     totalLoaded = int32(size(posMatrix, 1));
-    scenarioPositions(1:totalLoaded, :) = posMatrix;
-    % MATLAB path: send directly to scenario positions in one waypoint
     targets(1:totalLoaded, :) = posMatrix;
     numWaypoints = int32(1);
     disp(['Loaded ', num2str(double(totalLoaded)), ' initial positions']);
 else
     coder.cinclude('controller_impl.h');
     filename = ['config/scenario.csv', char(0)];
-    % Load into targets temporarily; copy to scenarioPositions below
     totalLoaded = coder.ceval('loadInitialPositions', coder.ref(filename), ...
                 coder.ref(targets), int32(MAX_TARGETS));
-    scenarioPositions(1:totalLoaded, :) = targets(1:totalLoaded, :);
-    numWaypoints = int32(3);
+    numWaypoints = totalLoaded / int32(numClients);
+end
+
+% In the compiled path, inject altitude-staggered transit waypoints so UAVs
+% are vertically separated while flying horizontally to their start positions.
+% ArduPilot reaches target altitude before horizontal movement, so UAV i is at
+% altitude (TRANSIT_ALT_BASE + (i-1)*TRANSIT_ALT_STEP) throughout its transit,
+% preventing collisions regardless of horizontal path geometry.
+% TRANSIT_ALT_STEP must exceed 2 * max(collisionRadius).
+% Waypoint 1: each UAV flies to (finalX, finalY) at its unique transit altitude.
+% Waypoint 2: each UAV adjusts to its actual target altitude.
+% These constants are also used for the altitude-staggered return before RTL.
+TRANSIT_ALT_BASE = 25.0;  % must match drone.takeoff() altitude in uav_runner.py
+TRANSIT_ALT_STEP = 25;    % vertical separation per UAV (m); must exceed 2*collisionRadius
+if ~coder.target('MATLAB')
+    for ii = double(totalLoaded):-1:1
+        transitRow = (ii - 1) * 2 + 1;
+        finalRow   = (ii - 1) * 2 + 2;
+        finalPos   = targets(ii, :);
+        transitAlt = TRANSIT_ALT_BASE + (ii - 1) * TRANSIT_ALT_STEP;
+        targets(finalRow, :)   = finalPos;
+        targets(transitRow, :) = [finalPos(1), finalPos(2), transitAlt];
+    end
+    numWaypoints = int32(2);
 end
 
 % Load guidance scenario from CSV (parameters for guidance_step)
@@ -81,46 +92,6 @@ for i = 1:numClients
     end
 end
 
-% Query takeoff-pad GPS positions before sending any waypoints.
-% These are also the flyback targets so each UAV lands where it took off.
-initialPositions = zeros(MAX_CLIENTS, 3);
-if ~coder.target('MATLAB')
-    coder.ceval('sendRequestPositions', int32(numClients));
-    coder.ceval('recvPositions', int32(numClients), coder.ref(initialPositions), int32(MAX_CLIENTS));
-else
-    % Simulation: treat scenario positions as the takeoff locations
-    initialPositions(1:totalLoaded, :) = scenarioPositions(1:totalLoaded, :);
-end
-
-% ---- Build taxicab flyout waypoints ------------------------------------------
-% Determine which UAV has the higher final altitude; it moves Z first so it
-% clears vertical separation before the lower UAV converges on the same X/Y.
-%   Higher UAV order: Z → Y → X
-%   Lower  UAV order: X → Y → Z
-if ~coder.target('MATLAB')
-    if scenarioPositions(1, 3) >= scenarioPositions(2, 3)
-        higherIdx = int32(1);
-        lowerIdx  = int32(2);
-    else
-        higherIdx = int32(2);
-        lowerIdx  = int32(1);
-    end
-
-    hBase = double(higherIdx - 1) * double(numWaypoints);
-    lBase = double(lowerIdx  - 1) * double(numWaypoints);
-
-    % Higher UAV: Z first
-    targets(hBase + 1, :) = [initialPositions(higherIdx,1), initialPositions(higherIdx,2), scenarioPositions(higherIdx,3)];
-    targets(hBase + 2, :) = [initialPositions(higherIdx,1), scenarioPositions(higherIdx,2), scenarioPositions(higherIdx,3)];
-    targets(hBase + 3, :) =  scenarioPositions(higherIdx, :);
-
-    % Lower UAV: X first
-    targets(lBase + 1, :) = [scenarioPositions(lowerIdx,1), initialPositions(lowerIdx,2), initialPositions(lowerIdx,3)];
-    targets(lBase + 2, :) = [scenarioPositions(lowerIdx,1), scenarioPositions(lowerIdx,2), initialPositions(lowerIdx,3)];
-    targets(lBase + 3, :) =  scenarioPositions(lowerIdx, :);
-end
-% ------------------------------------------------------------------------------
-
 % Waypoint loop: send each waypoint to all clients, wait for all to arrive
 for w = 1:numWaypoints
     % Send TARGET for waypoint w to each client
@@ -156,13 +127,8 @@ for w = 1:numWaypoints
 end
 
 % ---- Phase 2: miSim guidance loop ----------------------------------------
-% Number of guidance steps comes from maxIter in scenario.csv (scenarioParams(2))
-% so the controller and the agent step-decay schedule stay in sync.
-if coder.target('MATLAB')
-    MAX_GUIDANCE_STEPS = int32(sc.maxIter);
-else
-    MAX_GUIDANCE_STEPS = int32(scenarioParams(2));
-end
+% Guidance parameters (adjust here and recompile as needed)
+MAX_GUIDANCE_STEPS = int32(100); % number of guidance iterations
 
 % Enter guidance mode on all clients
 if ~coder.target('MATLAB')
@@ -175,8 +141,8 @@ if ~coder.target('MATLAB')
     coder.ceval('sendRequestPositions', int32(numClients));
     coder.ceval('recvPositions', int32(numClients), coder.ref(positions), int32(MAX_CLIENTS));
 else
-    % Simulation: seed positions from scenario positions so agents don't start at origin
-    positions(1:totalLoaded, :) = scenarioPositions(1:totalLoaded, :);
+    % Simulation: seed positions from CSV waypoints so agents don't start at origin
+    positions(1:totalLoaded, :) = targets(1:totalLoaded, :);
 end
 guidance_step(positions(1:numClients, :), true, ...
               scenarioParams, obstacleMin, obstacleMax, numObstacles);
@@ -231,48 +197,20 @@ if ~coder.target('MATLAB')
 end
 % --------------------------------------------------------------------------
 
-% ---- Taxicab flyback: return each UAV to its takeoff-pad position ---------
-% The UAV that ended guidance at the higher altitude moves Z last (X → Y → Z)
-% so it stays high while the lower UAV descends first, maintaining separation
-% as both converge back on their respective home X/Y positions.
-NUM_RETURN_WP = int32(3);
-returnTargets = zeros(MAX_TARGETS, 3);
-
+% Altitude-staggered return: separate UAVs vertically before issuing RTL,
+% mirroring the initial positioning stagger so UAVs transit laterally at
+% unique altitudes and cannot collide during the return flight.
 if ~coder.target('MATLAB')
-    if positions(1, 3) >= positions(2, 3)
-        higherRetIdx = int32(1);
-        lowerRetIdx  = int32(2);
-    else
-        higherRetIdx = int32(2);
-        lowerRetIdx  = int32(1);
+    for i = 1:numClients
+        transitAlt = TRANSIT_ALT_BASE + (double(i) - 1) * TRANSIT_ALT_STEP;
+        target = [positions(i, 1), positions(i, 2), transitAlt];
+        coder.ceval('sendTarget', int32(i), coder.ref(target));
     end
-
-    hRetBase = double(higherRetIdx - 1) * double(NUM_RETURN_WP);
-    lRetBase = double(lowerRetIdx  - 1) * double(NUM_RETURN_WP);
-
-    % Higher post-guidance UAV: X → Y → Z (descend last)
-    returnTargets(hRetBase + 1, :) = [initialPositions(higherRetIdx,1), positions(higherRetIdx,2),        positions(higherRetIdx,3)];
-    returnTargets(hRetBase + 2, :) = [initialPositions(higherRetIdx,1), initialPositions(higherRetIdx,2), positions(higherRetIdx,3)];
-    returnTargets(hRetBase + 3, :) =  initialPositions(higherRetIdx, :);
-
-    % Lower post-guidance UAV: Z → Y → X (descend first)
-    returnTargets(lRetBase + 1, :) = [positions(lowerRetIdx,1),        positions(lowerRetIdx,2),        initialPositions(lowerRetIdx,3)];
-    returnTargets(lRetBase + 2, :) = [positions(lowerRetIdx,1),        initialPositions(lowerRetIdx,2), initialPositions(lowerRetIdx,3)];
-    returnTargets(lRetBase + 3, :) =  initialPositions(lowerRetIdx, :);
-
-    for w = 1:NUM_RETURN_WP
-        for i = 1:numClients
-            retIdx = double(i - 1) * double(NUM_RETURN_WP) + w;
-            retTarget = returnTargets(retIdx, :);
-            coder.ceval('sendTarget', int32(i), coder.ref(retTarget));
-        end
-        coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.ACK));
-        coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.READY));
-    end
+    coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.ACK));
+    coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.READY));
 else
-    disp('Taxicab return (simulation): UAVs commanded back to takeoff positions.');
+    disp('Altitude-staggered return (simulation): UAVs commanded to transit altitudes.');
 end
-% --------------------------------------------------------------------------
 
 % Send RTL command to all clients
 for i = 1:numClients
