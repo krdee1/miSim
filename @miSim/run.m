@@ -15,6 +15,7 @@ function [obj] = run(obj)
             % Capture reference frame size; used to resize frames that deviate
             % due to figure reflow during plot updates (e.g. in headless mode).
             I_ref = getframe(obj.f);
+            v.writeVideo(I_ref);
             videoFrameSize = [size(I_ref.cdata, 2), size(I_ref.cdata, 1)];
         end
     end
