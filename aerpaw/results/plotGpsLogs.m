@@ -102,9 +102,14 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset + floorAlt, 1, 5), 'LineWidth', 3, 'Color', 'r');
     
     % Plot objective
-    objectivePos = [params.objectivePos, 0];
+    if length(params.objectivePos) > 2
+        objectivePos = reshape(params.objectivePos, [2, length(params.objectivePos) / 2])';
+    end
+    objectivePos = [objectivePos, zeros(size(objectivePos, 1), 1)];
     llaObj = enu2lla(objectivePos, lla0, "flat");
-    geoplot3(gf, [llaObj(1), llaObj(1)], [llaObj(2), llaObj(2)], [llaObj(3), domain(2, 3)], 'LineWidth', 3, "Color", 'y');
+    for ii = 1:size(llaObj, 1)
+        geoplot3(gf, [llaObj(ii, 1), llaObj(ii, 1)], [llaObj(ii, 2), llaObj(ii, 2)], [llaObj(ii, 3), domain(2, 3)], 'LineWidth', 3, "Color", 'y');
+    end
     
     % Plot obstacles
     for ii = 1:params.numObstacles

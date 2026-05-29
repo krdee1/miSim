@@ -1,5 +1,5 @@
 %% Plot AERPAW logs (trajectory, radio)
-resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "two_around_wall"); % Define path to results copied from AERPAW platform
+resultsPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", "columns_simulated"); % Define path to results copied from AERPAW platform
 
 % Check timeline in controller logs
 controller = controllerAnalysis(resultsPath);
@@ -25,7 +25,14 @@ makeVideo = true;
 % Define scenario according to CSV specification
 domain = rectangularPrism;
 domain = domain.initialize([params.domainMin; params.domainMax], REGION_TYPE.DOMAIN, "Domain");
-domain.objective = domain.objective.initialize(objectiveFunctionWrapper(params.objectivePos, reshape(params.objectiveVar, [1, 2 2])), domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
+if length(params.objectiveVar) > 4 && length(params.objectivePos) > 2
+    objectiveSigma = permute(reshape(params.objectiveVar, [length(params.objectiveVar)/4 2 2]), [3 1 2]);
+    objectivePos = reshape(params.objectivePos, [length(params.objectivePos)/2, 2])';
+else
+    objectiveSigma = reshape(params.objectiveVar, [1, 2, 2]);
+    objectivePos = params.objectivePos;
+end
+domain.objective = domain.objective.initialize(objectiveFunctionWrapper(objectivePos, objectiveSigma), domain, params.discretizationStep, params.protectedRange, params.sensorPerformanceMinimum);
 
 agents = cell(size(params.initialPositions, 2) / 3, 1);
 for ii = 1:size(agents, 1)
