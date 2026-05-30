@@ -57,6 +57,7 @@ classdef test_miSim < matlab.unittest.TestCase
         opticalPartitioningMin = 1e-6;
         % rfSensor
         P_TX = 1e-3; % Transmit power (Watts)
+        T_0 = 300; % Temperature (K)
         BW = 20e6; % Bandwidth (Hz)
         f_c = 3e9; % Center frequency (Hz)
         G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
@@ -323,7 +324,7 @@ classdef test_miSim < matlab.unittest.TestCase
                     % Initialize candidate agent sensor model
                     tc.sensor = rfSensor;
                     tilt = 0; azimuth = 0;
-                    tc.sensor = tc.sensor.initialize(tc.P_TX * 1 + rand * 4, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent + randi(100), tilt, azimuth, tc.lossExponent);
+                    tc.sensor = tc.sensor.initialize(tc.P_TX * 1 + rand * 4, tc.T_0, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent + randi(100), tilt, azimuth, tc.lossExponent);
 
                     % Initialize candidate agent
                     newAgent = tc.agents{ii}.initialize(candidatePos, candidateGeometry, tc.sensor, tc.commsRanges(ii), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
@@ -659,7 +660,7 @@ classdef test_miSim < matlab.unittest.TestCase
             geometry1 = geometry1.initialize([tc.domain.center(1:2)-tc.domain.dimensions(1)/4, 3], tc.collisionRanges(1), REGION_TYPE.COLLISION);
 
             tc.sensor = rfSensor;
-            tc.sensor = tc.sensor.initialize(tc.P_TX, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent, 45, 45, tc.lossExponent);
+            tc.sensor = tc.sensor.initialize(tc.P_TX, tc.T_0, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent, 45, 45, tc.lossExponent);
 
             % Initialize agents
             tc.maxIter = 75;
@@ -717,7 +718,7 @@ classdef test_miSim < matlab.unittest.TestCase
             % Initialize agent sensor model
 
             tc.sensor = rfSensor;
-            tc.sensor = tc.sensor.initialize(tc.P_TX, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent, 0, 0, tc.lossExponent);
+            tc.sensor = tc.sensor.initialize(tc.P_TX, tc.T_0, tc.BW, tc.f_c, tc.G_RX_dBi, tc.beamwidthExponent, 0, 0, tc.lossExponent);
 
             % Initialize agents
             tc.maxIter = 75;

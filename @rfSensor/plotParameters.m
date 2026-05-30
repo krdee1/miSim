@@ -23,8 +23,11 @@ function f = plotParameters(obj)
         % For agent at altitude alt, ground target at tilt T has slant distance:
         D = alt ./ cosd(T);
 
-        % Compute RSS for each (d, t, a) triple
-        rss = obj.RSS(D(:), T(:), A(:));
+        % Convert LOS (D, T, A) to displacement vectors for RSS
+        dx = D .* sind(T) .* sind(A);
+        dy = D .* sind(T) .* cosd(A);
+        dz = -D .* cosd(T);   % negative: ground targets are below agent
+        rss = obj.RSS(D(:), dx(:), dy(:), dz(:));
         Fslice = reshape(rss, size(D));
 
         % Disc geometry: t=0 (nadir) -> center, t~90 (horizon) -> edge

@@ -14,6 +14,7 @@ classdef rfSensor
         % Values computed at initialization
         P_TX_dBm = NaN; % Transmit power (dBm)
         N = NaN; % Thermal noise
+        constantGainTerm_dB = NaN; % used in RSS calculation, only need to compute once
         % Cached state (per timestep)
     end
     properties (Access = public)
@@ -23,7 +24,7 @@ classdef rfSensor
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, txPower, bandwidth, centerFreq, rxGain, beamwidthExponent, tilt, azimuth); % initialize sensor, define parameters
+        [obj] = initialize(obj, txPower, temperature, bandwidth, centerFreq, rxGain, beamwidthExponent, tilt, azimuth); % initialize sensor, define parameters
         [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [d, dx, dy, dz] = computePointToPoints(obj, agentPos, targetPos);
         [value] = halfAngle(obj); % tilt angle (deg) at which sensor performance is halved
@@ -34,7 +35,7 @@ classdef rfSensor
     end
     methods (Access = private)
         x = RSS(obj, d, dx, dy, dz); % Received signal strength (function of distance and tilt angle)
-        G_TX_dB = transmitterGain(obj, t, a); % Antenna gain for a given TX/RX pair 
+        G_TX_dB = transmitterGain(obj, theta); % Antenna gain for a given angle from boresight (degrees)
         L_FSPL_dB = pathLoss(obj, d); % Free space path loss for a given TX/RX pair
     end
 end

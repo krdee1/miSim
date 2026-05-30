@@ -15,28 +15,30 @@ classdef test_rfSensor < matlab.unittest.TestCase
         function plot_RSS(tc)
             % Plot sensor performance with no sources of interference
             P_TX = 1e-3; % Transmit power (Watts)
+            T_0 = 300; % Temperature (K)
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
             beamwidthExponent = 6;
             lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+            tc.testClass = tc.testClass.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             tc.testClass.plotParameters();
         end
         function plot_SNR(tc)
             % Plot sensor performance with no sources of interference
             P_TX = 1e-3; % Transmit power (Watts)
+            T_0 = 300; % Temperature (K)
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
             beamwidthExponent = 6;
             lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 30, 135, lossExponent);
+            tc.testClass = tc.testClass.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent, 30, 135, lossExponent);
 
-            altitude = 30;
+            altitude = 20;
 
             % Boresight azimuth=135° (between +X at 90° and -Y at 180°) → hotspot at +X,-Y.
             % SNR at (5,-5) should be higher than at (5,+5).
@@ -51,13 +53,14 @@ classdef test_rfSensor < matlab.unittest.TestCase
         function plot_SINR_one_interferer(tc)
             % Plot sensor performance with no sources of interference
             P_TX = 1e-3; % Transmit power (Watts)
+            T_0 = 300; % Temperature (K)
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
             beamwidthExponent = 6;
             lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+            tc.testClass = tc.testClass.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             altitude = 30;
             otherSensorsPos = [6, -4, -1]; % relative to main sensor
@@ -70,13 +73,14 @@ classdef test_rfSensor < matlab.unittest.TestCase
         function plot_SINR_heterogenous_interferers(tc)
             % Plot sensor performance with no sources of interference
             P_TX = 1e-3; % Transmit power (Watts)
+            T_0 = 300; % Temperature (K)
             BW = 20e6; % Bandwidth (Hz)
             f_c = 2e9; % Center frequency (Hz)
             G_RX_dBi = 3; % Receiving Antenna Gain (dBi)
             beamwidthExponent = 6;
             lossExponent = 2;
 
-            tc.testClass = tc.testClass.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+            tc.testClass = tc.testClass.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             altitude = 30;
             otherSensorsPos = [6, -4, -1; -2, 6, 0]; % relative to main sensor
@@ -85,13 +89,14 @@ classdef test_rfSensor < matlab.unittest.TestCase
             otherSensors{2} = rfSensor;
 
             % Must use same center frequency and bandwidth for interference sources
-            otherSensors{1} = otherSensors{1}.initialize(10 * P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
-            otherSensors{2} = otherSensors{2}.initialize(10 * P_TX, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+            otherSensors{1} = otherSensors{1}.initialize(10 * P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
+            otherSensors{2} = otherSensors{2}.initialize(10 * P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent, 0, 0, lossExponent);
 
             tc.testClass.plotPerformance(altitude, otherSensorsPos, otherSensors);
         end
         function plot_SINR_heterogenous_interferers_efficiently(tc)
             P_TX = 1e-3;
+            T_0 = 300;
             BW = 20e6;
             f_c = 2e9;
             G_RX_dBi = 3;
@@ -100,11 +105,11 @@ classdef test_rfSensor < matlab.unittest.TestCase
             lossExponent = 2;
 
             sensor1 = rfSensor;
-            sensor1 = sensor1.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(1), 15, 45, lossExponent);
+            sensor1 = sensor1.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent(1), 15, 45, lossExponent);
             sensor2 = rfSensor;
-            sensor2 = sensor2.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(2), 10, 150, lossExponent);
+            sensor2 = sensor2.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent(2), 10, 150, lossExponent);
             sensor3 = rfSensor;
-            sensor3 = sensor3.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(3), 20, 200, lossExponent);
+            sensor3 = sensor3.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent(3), 20, 200, lossExponent);
 
             pos1 = [0,  0,  altitude];
             pos2 = [6, -4,  altitude - 1];
@@ -141,6 +146,7 @@ classdef test_rfSensor < matlab.unittest.TestCase
         end
         function plot_SINR_heterogenous_interferers_3d(tc)
             P_TX = 1e-3;
+            T_0 = 300;
             BW = 20e6;
             f_c = 2e9;
             G_RX_dBi = 3;
@@ -149,11 +155,11 @@ classdef test_rfSensor < matlab.unittest.TestCase
             lossExponent = 2;
 
             sensor1 = rfSensor;
-            sensor1 = sensor1.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(1), 15, 45, lossExponent);
+            sensor1 = sensor1.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent(1), 15, 45, lossExponent);
             sensor2 = rfSensor;
-            sensor2 = sensor2.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(2), 10, 150, lossExponent);
+            sensor2 = sensor2.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent(2), 10, 150, lossExponent);
             sensor3 = rfSensor;
-            sensor3 = sensor3.initialize(P_TX, BW, f_c, G_RX_dBi, beamwidthExponent(3), 20, 200, lossExponent);
+            sensor3 = sensor3.initialize(P_TX, T_0, BW, f_c, G_RX_dBi, beamwidthExponent(3), 20, 200, lossExponent);
 
             pos1 = [0,  0,  altitude];
             pos2 = [6, -4,  altitude - 5];

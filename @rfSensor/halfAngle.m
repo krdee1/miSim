@@ -5,12 +5,8 @@ function value = halfAngle(obj)
     arguments (Output)
         value (1, 1) double;
     end
-    % Sweep angular offset from boresight by evaluating transmitterGain at
-    % (obj.tilt + dtheta, obj.azimuth). The cosine difference identity guarantees
-    % the resulting angular offset from boresight equals dtheta exactly,
-    % independent of the actual pointing direction.
     dtheta = (0:0.1:179.9)';
-    gain = obj.transmitterGain(obj.tilt + dtheta, obj.azimuth * ones(size(dtheta)));
+    gain = obj.transmitterGain(dtheta);
     target = gain(1) - 3;
     idx = find(gain <= target, 1);
     if isempty(idx) || idx == 1

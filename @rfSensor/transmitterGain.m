@@ -1,23 +1,12 @@
-function value = transmitterGain(obj, t, a)
+function value = transmitterGain(obj, theta)
     arguments (Input)
-        obj (1, 1) {mustBeA(obj, "rfSensor")};
-        t (:, 1) double; % LOS tilt angle
-        a (:, 1) double; % LOS azimuth angle
+        obj   (1, 1) {mustBeA(obj, "rfSensor")};
+        theta (:, 1) double; % angle from boresight (degrees)
     end
     arguments (Output)
         value (:, 1) double
     end
-    if ~isequal(size(t), size(a))
-        error("t and a must be the same size");
-    end
-
-    % Angular offset from boresight via spherical law of cosines
-    % Convention: t=0° nadir, t=90° horizon; a=0° +y, a=90° +x
-    cos_theta = sind(obj.tilt) .* sind(t) .* cosd(a - obj.azimuth) + ...
-                cosd(obj.tilt) .* cosd(t);
-    cos_theta = max(-1, min(1, cos_theta));  % clamp for numerical safety
-    theta = acosd(cos_theta);
-
-    % Cardioid family: peak at boresight (theta=0), null opposite (theta=180°)
-    value = 10 .* obj.beamwidthExponent .* log10((1 + cosd(theta)) ./ 2);
+    % Cosine pattern: peak at boresight, -inf dB at 90°.
+    % Clamped so targets behind the antenna (theta > 90°) get -inf rather than NaN.
+    value = obj.constantGainTerm_dB + 10 .* obj.beamwidthExponent .* log10(max(0, cosd(theta)));
 end

@@ -19,6 +19,5 @@ function value = RSS(obj, d, dx, dy, dz)
     cos_theta = (st .* (dx .* sa + dy .* ca) - ct .* dz) ./ max(d, eps);
     cos_theta = max(-1, min(1, cos_theta));
     theta = acosd(cos_theta);
-    gain  = 10 .* obj.beamwidthExponent .* log10((1 + cosd(theta)) ./ 2);
-    value = obj.P_TX_dBm + gain + obj.G_RX_dBi - obj.pathLoss(d);
+    value = obj.P_TX_dBm + obj.transmitterGain(theta) + obj.G_RX_dBi - obj.pathLoss(d);
 end
