@@ -652,7 +652,7 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([7, 6]), tc.domain, tc.discretizationStep, tc.protectedRange, tc.sinrPartitioningMin, [7, 6]);
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([8, 3], reshape([15, 4; 4, 15], [1 2 2])), tc.domain, tc.discretizationStep, tc.protectedRange, tc.sinrPartitioningMin, [7, 6]);
         
             % Initialize agent collision geometry
             tc.agents = {agent};
