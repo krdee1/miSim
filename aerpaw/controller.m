@@ -7,18 +7,21 @@ coder.extrinsic('disp', 'readScenarioCsv');
 
 % Maximum clients supported (one initial position per UAV)
 MAX_CLIENTS = 4;
-% Three waypoints per UAV: one axis-aligned move per dimension (taxicab flyout/flyback)
+% Three waypoints per UAV: stage (climb) → traverse (XY) → settle (descend)
 MAX_TARGETS = MAX_CLIENTS * 3;
 
-% Taxicab flyout/flyback only supports exactly 2 UAVs
+% Altitude-staggered flyout/flyback currently supports exactly 2 UAVs
 if numClients ~= int32(2)
-    error('Taxicab flyout/flyback requires exactly 2 UAVs');
+    error('Altitude-staggered flyout/flyback requires exactly 2 UAVs');
 end
+
+% Minimum vertical separation maintained between UAVs during XY transit (metres)
+TRANSIT_SEP = 30.0;
 
 % Allocate targets array (MAX_TARGETS x 3)
 targets = zeros(MAX_TARGETS, 3);
-numWaypoints = int32(0);
-totalLoaded  = int32(0);  % pre-declare type for coder.ceval %#ok<NASGU>
+numWaypoints = int32(0); %#ok<NASGU>
+totalLoaded  = int32(0);
 
 % Experiment start positions from scenario CSV (N x 3)
 scenarioPositions = zeros(MAX_CLIENTS, 3);
@@ -92,11 +95,16 @@ else
     initialPositions(1:totalLoaded, :) = scenarioPositions(1:totalLoaded, :);
 end
 
-% ---- Build taxicab flyout waypoints ------------------------------------------
-% Determine which UAV has the higher final altitude; it moves Z first so it
-% clears vertical separation before the lower UAV converges on the same X/Y.
-%   Higher UAV order: Z → Y → X
-%   Lower  UAV order: X → Y → Z
+% ---- Build altitude-staggered flyout waypoints --------------------------------
+% Each UAV follows three phases:
+%   WP1: Climb to transit altitude at pad XY
+%   WP2: Traverse to final XY at transit altitude  (>= TRANSIT_SEP vertical gap)
+%   WP3: Descend to final altitude at final XY
+%
+% Transit altitude assignment: the UAV with the highest final altitude keeps
+% that altitude as its transit altitude; the other UAV climbs TRANSIT_SEP above
+% it, guaranteeing >= 30 m vertical separation during the simultaneous XY
+% traverse (WP2).  Both transit altitudes are well above minAlt.
 if ~coder.target('MATLAB')
     if scenarioPositions(1, 3) >= scenarioPositions(2, 3)
         higherIdx = int32(1);
@@ -106,20 +114,18 @@ if ~coder.target('MATLAB')
         lowerIdx  = int32(1);
     end
 
-    hBase = double(higherIdx - 1) * double(numWaypoints);
-    lBase = double(lowerIdx  - 1) * double(numWaypoints);
+    transitAlt = zeros(1, MAX_CLIENTS);
+    transitAlt(lowerIdx)  = scenarioPositions(lowerIdx, 3);
+    transitAlt(higherIdx) = scenarioPositions(lowerIdx, 3) + TRANSIT_SEP;
 
-    % Higher UAV: Z first
-    targets(hBase + 1, :) = [initialPositions(higherIdx,1), initialPositions(higherIdx,2), scenarioPositions(higherIdx,3)];
-    targets(hBase + 2, :) = [initialPositions(higherIdx,1), scenarioPositions(higherIdx,2), scenarioPositions(higherIdx,3)];
-    targets(hBase + 3, :) =  scenarioPositions(higherIdx, :);
-
-    % Lower UAV: X first
-    targets(lBase + 1, :) = [scenarioPositions(lowerIdx,1), initialPositions(lowerIdx,2), initialPositions(lowerIdx,3)];
-    targets(lBase + 2, :) = [scenarioPositions(lowerIdx,1), scenarioPositions(lowerIdx,2), initialPositions(lowerIdx,3)];
-    targets(lBase + 3, :) =  scenarioPositions(lowerIdx, :);
+    for iUAV = 1:numClients
+        base = double(iUAV - 1) * double(numWaypoints);
+        targets(base + 1, :) = [initialPositions(iUAV,1), initialPositions(iUAV,2), transitAlt(iUAV)];
+        targets(base + 2, :) = [scenarioPositions(iUAV,1), scenarioPositions(iUAV,2), transitAlt(iUAV)];
+        targets(base + 3, :) =  scenarioPositions(iUAV, :);
+    end
 end
-% ------------------------------------------------------------------------------
+% -------------------------------------------------------------------------------
 
 % Waypoint loop: send each waypoint to all clients, wait for all to arrive
 for w = 1:numWaypoints
@@ -231,10 +237,11 @@ if ~coder.target('MATLAB')
 end
 % --------------------------------------------------------------------------
 
-% ---- Taxicab flyback: return each UAV to its takeoff-pad position ---------
-% The UAV that ended guidance at the higher altitude moves Z last (X → Y → Z)
-% so it stays high while the lower UAV descends first, maintaining separation
-% as both converge back on their respective home X/Y positions.
+% ---- Altitude-staggered flyback -------------------------------------------
+% Mirror of flyout: stage (climb) → traverse (XY) → settle (descend to pad).
+% Transit altitudes are based on post-guidance positions so the UAV that ended
+% higher stays highest, guaranteeing >= TRANSIT_SEP vertical clearance during
+% the simultaneous XY traverse.
 NUM_RETURN_WP = int32(3);
 returnTargets = zeros(MAX_TARGETS, 3);
 
@@ -247,18 +254,16 @@ if ~coder.target('MATLAB')
         lowerRetIdx  = int32(1);
     end
 
-    hRetBase = double(higherRetIdx - 1) * double(NUM_RETURN_WP);
-    lRetBase = double(lowerRetIdx  - 1) * double(NUM_RETURN_WP);
+    returnTransitAlt = zeros(1, MAX_CLIENTS);
+    returnTransitAlt(lowerRetIdx)  = positions(lowerRetIdx, 3);
+    returnTransitAlt(higherRetIdx) = positions(lowerRetIdx, 3) + TRANSIT_SEP;
 
-    % Higher post-guidance UAV: X → Y → Z (descend last)
-    returnTargets(hRetBase + 1, :) = [initialPositions(higherRetIdx,1), positions(higherRetIdx,2),        positions(higherRetIdx,3)];
-    returnTargets(hRetBase + 2, :) = [initialPositions(higherRetIdx,1), initialPositions(higherRetIdx,2), positions(higherRetIdx,3)];
-    returnTargets(hRetBase + 3, :) =  initialPositions(higherRetIdx, :);
-
-    % Lower post-guidance UAV: Z → Y → X (descend first)
-    returnTargets(lRetBase + 1, :) = [positions(lowerRetIdx,1),        positions(lowerRetIdx,2),        initialPositions(lowerRetIdx,3)];
-    returnTargets(lRetBase + 2, :) = [positions(lowerRetIdx,1),        initialPositions(lowerRetIdx,2), initialPositions(lowerRetIdx,3)];
-    returnTargets(lRetBase + 3, :) =  initialPositions(lowerRetIdx, :);
+    for iUAV = 1:numClients
+        retBase = double(iUAV - 1) * double(NUM_RETURN_WP);
+        returnTargets(retBase + 1, :) = [positions(iUAV,1),         positions(iUAV,2),         returnTransitAlt(iUAV)];
+        returnTargets(retBase + 2, :) = [initialPositions(iUAV,1),  initialPositions(iUAV,2),  returnTransitAlt(iUAV)];
+        returnTargets(retBase + 3, :) =  initialPositions(iUAV, :);
+    end
 
     for w = 1:NUM_RETURN_WP
         for i = 1:numClients
@@ -270,7 +275,7 @@ if ~coder.target('MATLAB')
         coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.READY));
     end
 else
-    disp('Taxicab return (simulation): UAVs commanded back to takeoff positions.');
+    disp('Altitude-staggered return (simulation): UAVs commanded back to takeoff positions.');
 end
 % --------------------------------------------------------------------------
 

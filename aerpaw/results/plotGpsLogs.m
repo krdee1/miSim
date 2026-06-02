@@ -78,6 +78,11 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
             d = d(~isnan(d));
 
             fprintf("Minimum distance between agents %d and %d is %2.3f\n", ii, jj, min(d));
+            figure;
+            plot(G{1}.Timestamp(2:(end - 1)), d);
+            xlabel("Time"); ylabel("Distance"); title("UAV0 and UAV1 distance"); grid("on");
+            fprintf("Average distance between agents %d and %d is %2.3f\n", ii, jj, mean(d));
+            fprintf("Median distance between agents %d and %d is %2.3f\n", ii, jj, median(d));
             if min(d) < 6
                 warning("Minimum distance between agents %d and %d of %2.3f is questionable for AERPAW", ii, jj, min(d));
             end
@@ -86,6 +91,7 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
         % Plot recorded trajectory over specified range of indices
         geoplot3(gf, G{ii}.Latitude(startIdx:stopIdx), G{ii}.Longitude(startIdx:stopIdx), G{ii}.Altitude(startIdx:stopIdx) + seaToGroundLevel, c(mod(ii, length(c))), 'LineWidth', 2, "MarkerSize", 5);
     end
+    fprintf("Flight duration is %s\n", string(G{1}.Timestamp(end) - G{1}.Timestamp(1), 'mm:ss'));
     
     % Plot domain
     altOffset = 1; % to avoid clipping into the ground when displayed
