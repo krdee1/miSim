@@ -79,7 +79,7 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
 
             fprintf("Minimum distance between agents %d and %d is %2.3f\n", ii, jj, min(d));
             figure;
-            plot(G{1}.Timestamp(2:(end - 1)), d);
+            plot(G{1}.Timestamp(1:length(d)), d);
             xlabel("Time"); ylabel("Distance"); title("UAV0 and UAV1 distance"); grid("on");
             fprintf("Average distance between agents %d and %d is %2.3f\n", ii, jj, mean(d));
             fprintf("Median distance between agents %d and %d is %2.3f\n", ii, jj, median(d));
