@@ -34,10 +34,6 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
     SINR = reshape(SINR, size(targetPosX));
     SNR = reshape(SNR, size(targetPosX));
 
-    % normalize in linear scale
-    SINR = 10.^(SINR/10); SINR = SINR ./ max(SINR(:)); SINR = 10 * log10(SINR);
-    SNR  = 10.^(SNR/10);  SNR  = SNR  ./ max(SNR(:));  SNR  = 10 * log10(SNR);
-
     % Collect sensor positions and boresight parameters for overlay
     sensorXY      = [0, 0; otherSensorsPos(:, 1:2)];
     sensorTilts   = [obj.tilt;    cellfun(@(s) s.tilt,    otherSensors)];
@@ -50,7 +46,8 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
     nexttile;
     imagesc(distances, distances, SNR);
     axis("image"); set(gca, 'YDir', 'normal');
-    colorbar; xlabel("X (m)"); ylabel("Y (m)");
+    cb = colorbar; cb.Label.String = "SNR (dB)";
+    xlabel("X (m)"); ylabel("Y (m)");
     title("Linearly Normalized SNR (dB)");
     subtitle("No interfering sources");
     addSensorOverlay(gca, sensorXY(1, 1:2), sensorTilts(1, 1), sensorAzimuths(1, 1), tailScale);
@@ -58,7 +55,8 @@ function f = plotPerformance(obj, altitude, otherSensorsPos, otherSensors)
     nexttile;
     imagesc(distances, distances, SINR);
     axis("image"); set(gca, 'YDir', 'normal');
-    colorbar; xlabel("X (m)"); ylabel("Y (m)");
+    cb = colorbar; cb.Label.String = "SNR (dB)";
+    xlabel("X (m)"); ylabel("Y (m)");
     title("Linearly Normalized SINR (dB)");
     subtitle(sprintf("%d interfering source(s)", size(otherSensorsPos, 1)));
     addSensorOverlay(gca, sensorXY, sensorTilts, sensorAzimuths, tailScale);
