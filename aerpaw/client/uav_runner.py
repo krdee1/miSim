@@ -44,6 +44,7 @@ class MessageType(IntEnum):
     GUIDANCE_TOGGLE  = 6
     REQUEST_POSITION = 7
     POSITION         = 8
+    TAKEOFF          = 9
 
 
 AERPAW_DIR = Path('/root/miSim/aerpaw')
@@ -184,13 +185,11 @@ class UAVRunner(BasicRunner):
         log_task = None
         nav_task = None
         try:
-            # Takeoff to above AERPAW minimum altitude
-            print("[UAV] Taking off...")
-            await drone.takeoff(25)
-            print("[UAV] Takeoff complete, waiting for commands...")
-
-            # Start GPS logging in background
+            # Takeoff is now driven by a TAKEOFF command from the controller
+            # (staggered in time between UAVs), not performed at startup. Start
+            # GPS logging immediately so the ground/idle period is captured too.
             log_task = asyncio.create_task(_gps_log_loop(drone))
+            print("[UAV] Connected; waiting for commands...")
 
             # Command loop - handle all messages from controller
             waypoint_num = 0
@@ -212,6 +211,27 @@ class UAVRunner(BasicRunner):
                         # Acknowledge that we are ready for sequential commands
                         await send_message_type(writer, MessageType.ACK)
                         print("[UAV] Sent ACK (guidance mode exited, ready for sequential commands)")
+
+                elif msg_type == MessageType.TAKEOFF:
+                    # aerpawlib only switches the vehicle to GUIDED inside
+                    # _initialize_postarm(), which await_ready_to_move() runs only
+                    # when the vehicle is DISARMED at the first movement command.
+                    # The safety pilot arms all UAVs at experiment start, so a UAV
+                    # whose takeoff is deliberately delayed (for time separation)
+                    # is already armed by now and would skip that path -> no GUIDED
+                    # switch -> simple_takeoff is ignored in ALT_HOLD and it never
+                    # leaves the ground. Run the post-arm init explicitly to
+                    # guarantee GUIDED mode (and home capture) before taking off;
+                    # takeoff()'s own gate then sees the vehicle armed and does not
+                    # re-initialize.
+                    await send_message_type(writer, MessageType.ACK)
+                    print("[UAV] Sent ACK (takeoff)")
+                    print("[UAV] Initializing (GUIDED) and taking off to 25 m...")
+                    await drone._initialize_postarm()
+                    await drone.takeoff(25)
+                    print("[UAV] Takeoff complete")
+                    await send_message_type(writer, MessageType.READY)
+                    print("[UAV] Sent READY")
 
                 elif msg_type == MessageType.REQUEST_POSITION:
                     # Respond immediately with current ENU position relative to origin
@@ -287,6 +307,11 @@ class UAVRunner(BasicRunner):
 
         except (ValueError, asyncio.IncompleteReadError, ConnectionError) as e:
             print(f"[UAV] Error: {e}")
+
+        except Exception as e:
+            import traceback
+            print(f"[UAV] Unhandled exception: {type(e).__name__}: {e}")
+            traceback.print_exc()
 
         finally:
             if nav_task is not None and not nav_task.done():
