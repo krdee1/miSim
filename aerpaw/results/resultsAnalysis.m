@@ -81,6 +81,9 @@ sim.writeInits();
 % Run
 sim = sim.run();
 
+% Save results
+sim = sim.teardown();
+
 %% Plot AERPAW trajectory logs onto simulated result for comparison
 % Duplicate plot to overlay with logged trajectories
 comparison = figure;
