@@ -127,37 +127,72 @@ if ~coder.target('MATLAB')
 end
 % -------------------------------------------------------------------------------
 
-% Waypoint loop: send each waypoint to all clients, wait for all to arrive
-for w = 1:numWaypoints
-    % Send TARGET for waypoint w to each client
-    for i = 1:numClients
-        % Targets are grouped by client: client i's waypoints are at rows
-        % (i-1)*numWaypoints+1 through i*numWaypoints
-        targetIdx = (i - 1) * numWaypoints + w;
-        target = targets(targetIdx, :);
-
-        if coder.target('MATLAB')
+% Waypoint loop
+if coder.target('MATLAB')
+    % Simulation: simple lockstep (collisions are not modelled here).
+    for w = 1:numWaypoints
+        for i = 1:numClients
+            targetIdx = (i - 1) * numWaypoints + w;
+            target = targets(targetIdx, :);
             disp(['Sending TARGET to client ', num2str(i), ' (waypoint ', num2str(w), '): ', ...
                   num2str(target(1)), ',', num2str(target(2)), ',', num2str(target(3))]);
-        else
-            coder.ceval('sendTarget', int32(i), coder.ref(target));
         end
-    end
-
-    % Wait for ACK from all clients
-    if coder.target('MATLAB')
         disp('Waiting for ACK from all clients...');
-    else
-        coder.ceval('waitForAllMessageType', int32(numClients), ...
-                    int32(MESSAGE_TYPE.ACK));
-    end
-
-    % Wait for READY from all clients (all arrived at waypoint w)
-    if coder.target('MATLAB')
         disp(['All UAVs arrived at waypoint ', num2str(w)]);
-    else
-        coder.ceval('waitForAllMessageType', int32(numClients), ...
-                    int32(MESSAGE_TYPE.READY));
+    end
+else
+    % ---- Staggered flyout -----------------------------------------------------
+    % Separate the two UAVs in TIME so they are never doing the same vertical
+    % climb at the same moment over their ~10 m-separated pads (which can trip
+    % the proximity guard on a spurious GPS sample). The UAV that transits
+    % highest leads by exactly one event.
+    %
+    % Events per UAV: 1 = TAKEOFF (25 m), 2 = WP1 (climb at pad), 3 = WP2
+    % (traverse), 4 = WP3 (descend). At each step the higher UAV does event
+    % `step` while the lower UAV does event `step-1`; both are dispatched, then
+    % we collect ACK and then READY (arrival) from each active UAV.
+    numEvents = double(numWaypoints) + 1;   % 3 waypoints + 1 takeoff
+    for step = 1:(numEvents + 1)
+        hEvent = step;
+        lEvent = step - 1;
+        hActive = (hEvent >= 1) && (hEvent <= numEvents);
+        lActive = (lEvent >= 1) && (lEvent <= numEvents);
+
+        % --- Dispatch this step's event to each active UAV ---
+        if hActive
+            if hEvent == 1
+                coder.ceval('sendMessageType', higherIdx, int32(MESSAGE_TYPE.TAKEOFF));
+            else
+                hRow = (double(higherIdx) - 1) * double(numWaypoints) + (hEvent - 1);
+                hTarget = targets(hRow, :);
+                coder.ceval('sendTarget', higherIdx, coder.ref(hTarget));
+            end
+        end
+        if lActive
+            if lEvent == 1
+                coder.ceval('sendMessageType', lowerIdx, int32(MESSAGE_TYPE.TAKEOFF));
+            else
+                lRow = (double(lowerIdx) - 1) * double(numWaypoints) + (lEvent - 1);
+                lTarget = targets(lRow, :);
+                coder.ceval('sendTarget', lowerIdx, coder.ref(lTarget));
+            end
+        end
+
+        % --- Collect ACK (command received) from each active UAV ---
+        if hActive
+            coder.ceval('waitForClientMessageType', higherIdx, int32(MESSAGE_TYPE.ACK));
+        end
+        if lActive
+            coder.ceval('waitForClientMessageType', lowerIdx, int32(MESSAGE_TYPE.ACK));
+        end
+
+        % --- Collect READY (arrived at event) from each active UAV ---
+        if hActive
+            coder.ceval('waitForClientMessageType', higherIdx, int32(MESSAGE_TYPE.READY));
+        end
+        if lActive
+            coder.ceval('waitForClientMessageType', lowerIdx, int32(MESSAGE_TYPE.READY));
+        end
     end
 end
 
@@ -262,17 +297,48 @@ if ~coder.target('MATLAB')
         retBase = double(iUAV - 1) * double(NUM_RETURN_WP);
         returnTargets(retBase + 1, :) = [positions(iUAV,1),         positions(iUAV,2),         returnTransitAlt(iUAV)];
         returnTargets(retBase + 2, :) = [initialPositions(iUAV,1),  initialPositions(iUAV,2),  returnTransitAlt(iUAV)];
-        returnTargets(retBase + 3, :) =  initialPositions(iUAV, :);
+        % Final return waypoint: pad XY from the pre-takeoff GPS query, but a fixed
+        % 25 m up. That query ran while the UAV was on the ground, so its ENU
+        % up-component is ~0 (often slightly negative) — using it directly commands
+        % a negative altitude. RTL/LAND perform the actual touchdown from here.
+        returnTargets(retBase + 3, :) = [initialPositions(iUAV,1), initialPositions(iUAV,2), 25.0];
     end
 
-    for w = 1:NUM_RETURN_WP
-        for i = 1:numClients
-            retIdx = double(i - 1) * double(NUM_RETURN_WP) + w;
-            retTarget = returnTargets(retIdx, :);
-            coder.ceval('sendTarget', int32(i), coder.ref(retTarget));
+    % Staggered flyback: same higher-leads-by-one pattern as the flyout, but
+    % over the 3 return waypoints only (the UAVs are already airborne, so there
+    % is no TAKEOFF event). The higher UAV climbs/traverses/descends one event
+    % ahead of the lower, so they never share the same descent over their pads.
+    numReturnEvents = double(NUM_RETURN_WP);   % 3
+    for step = 1:(numReturnEvents + 1)
+        hEvent = step;
+        lEvent = step - 1;
+        hActive = (hEvent >= 1) && (hEvent <= numReturnEvents);
+        lActive = (lEvent >= 1) && (lEvent <= numReturnEvents);
+
+        if hActive
+            hRow = (double(higherRetIdx) - 1) * double(NUM_RETURN_WP) + hEvent;
+            hTarget = returnTargets(hRow, :);
+            coder.ceval('sendTarget', higherRetIdx, coder.ref(hTarget));
         end
-        coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.ACK));
-        coder.ceval('waitForAllMessageType', int32(numClients), int32(MESSAGE_TYPE.READY));
+        if lActive
+            lRow = (double(lowerRetIdx) - 1) * double(NUM_RETURN_WP) + lEvent;
+            lTarget = returnTargets(lRow, :);
+            coder.ceval('sendTarget', lowerRetIdx, coder.ref(lTarget));
+        end
+
+        if hActive
+            coder.ceval('waitForClientMessageType', higherRetIdx, int32(MESSAGE_TYPE.ACK));
+        end
+        if lActive
+            coder.ceval('waitForClientMessageType', lowerRetIdx, int32(MESSAGE_TYPE.ACK));
+        end
+
+        if hActive
+            coder.ceval('waitForClientMessageType', higherRetIdx, int32(MESSAGE_TYPE.READY));
+        end
+        if lActive
+            coder.ceval('waitForClientMessageType', lowerRetIdx, int32(MESSAGE_TYPE.READY));
+        end
     end
 else
     disp('Altitude-staggered return (simulation): UAVs commanded back to takeoff positions.');

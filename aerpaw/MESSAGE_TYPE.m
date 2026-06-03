@@ -8,5 +8,6 @@ classdef MESSAGE_TYPE < uint8
         GUIDANCE_TOGGLE  (6)  % Server->Client: toggle guidance mode on/off
         REQUEST_POSITION (7)  % Server->Client: respond with current ENU position
         POSITION         (8)  % Client->Server: current ENU position (3 doubles)
+        TAKEOFF          (9)  % Server->Client: take off to 25 m, ACK then READY on arrival
     end
 end

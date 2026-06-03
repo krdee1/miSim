@@ -512,6 +512,7 @@ static const char* messageTypeName(uint8_t msgType) {
         case 6: return "GUIDANCE_TOGGLE";
         case 7: return "REQUEST_POSITION";
         case 8: return "POSITION";
+        case 9: return "TAKEOFF";
         default: return "UNKNOWN";
     }
 }
@@ -612,6 +613,33 @@ int waitForAllMessageType(int numClients, int expectedType) {
 
     std::cout << logPrefix() << "Received " << messageTypeName(expected) << " from all clients\n";
     return 1;
+}
+
+// Wait for a specific message type from a SINGLE client (blocking).
+// Used by the staggered flyout/flyback, where the controller waits on one UAV
+// while the other is still flying its own (offset) event. Skips past any
+// unexpected byte and returns 0 on disconnect/error, 1 on success.
+int waitForClientMessageType(int clientId, int expectedType) {
+    if (clientId <= 0 || clientId > (int)clientSockets.size()) return 0;
+    int sock = clientSockets[clientId - 1];
+    uint8_t expected = (uint8_t)expectedType;
+
+    while (true) {
+        uint8_t msg;
+        int len = recv(sock, &msg, 1, MSG_WAITALL);
+        if (len <= 0) {
+            std::cerr << logPrefix() << "waitForClientMessageType: client " << clientId
+                      << " disconnected while waiting for " << messageTypeName(expected) << "\n";
+            return 0;
+        }
+        if (msg == expected) {
+            std::cout << logPrefix() << "Received " << messageTypeName(expected)
+                      << " from client " << clientId << "\n";
+            return 1;
+        }
+        std::cerr << logPrefix() << "Unexpected " << messageTypeName(msg) << " from client "
+                  << clientId << " (expected " << messageTypeName(expected) << ")\n";
+    }
 }
 
 // Broadcast GUIDANCE_TOGGLE to all clients

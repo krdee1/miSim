@@ -61,6 +61,9 @@ int loadObstacles(const char* filename,
 int sendMessageType(int clientId, int msgType);
 int sendTarget(int clientId, const double* coords);
 int waitForAllMessageType(int numClients, int expectedType);
+// Block until a SINGLE client sends expectedType (used by the staggered
+// flyout/flyback to wait on one UAV while the other is mid-flight).
+int waitForClientMessageType(int clientId, int expectedType);
 
 // Guidance loop operations
 void setGuidanceStep(int step, int totalSteps);  // call at the top of each guidance iteration
