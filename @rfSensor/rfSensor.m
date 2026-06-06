@@ -3,7 +3,7 @@ classdef rfSensor
         % Physical parameters
         c = 3e8; % Speed of light (m/s)
         k_B = 1.38e-23 % Boltzmann constant (W/Hz/K) for thermal noise model
-        T_0 = 300; % Ambient temperature (Kelvin) for thermal noise model
+        T_0 = NaN; % Ambient temperature (Kelvin) for thermal noise model
         lossExponent = NaN; % Path loss exponent (2 for free space, up to 6 for the lossiest environments)
         % Sensor parameters
         P_TX = NaN; % Transmit power (Watts)
