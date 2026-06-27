@@ -238,8 +238,8 @@ int loadScenario(const char* filename, double* params) {
     strncpy(copy, line, sizeof(copy) - 1);
     copy[sizeof(copy) - 1] = '\0';
 
-    char* fields[32];
-    int nf = splitCSVRow(copy, fields, 32);
+    char* fields[40];
+    int nf = splitCSVRow(copy, fields, 40);
     if (nf < 26) {
         fprintf(stderr, "loadScenario: expected >=26 columns, got %d\n", nf);
         return 0;
@@ -376,8 +376,71 @@ int loadScenario(const char* filename, double* params) {
         params[54] = atof(trimField(tmp));
     }
 
+    // ---- SINR communications model (columns 26–30; optional) ----
+    // Defaults mirror @miSim/initializeFromCsv.m so a CSV predating the SINR
+    // model still loads (useSinrComms stays 0 -> fixed-radius path is used).
+    //   txPower[1:4] -> params[55:58];  useSinrComms -> 59;
+    //   sinrThreshold (dB) -> 60;  pathLossExponent -> 61;  ambientTemp (K) -> 62;
+    //   centerFreq (Hz) -> 63;  bandwidth (Hz) -> 64.
+    params[55] = 0.1; params[56] = 0.1; params[57] = 0.1; params[58] = 0.1;
+    params[59] = 0.0;     // useSinrComms
+    params[60] = 0.0;     // sinrThreshold (dB)
+    params[61] = 2.0;     // pathLossExponent
+    params[62] = 290.0;   // ambientTemp (K)
+    params[63] = 2.4e9;   // centerFreq (Hz)
+    params[64] = 20e6;    // bandwidth (Hz)
+
+    // txPower: column 26 (per-UAV, up to MAX_CLIENTS_PER_PARAM values, zero-padded)
+    if (nf > 26) {
+        char tmp[256]; strncpy(tmp, fields[26], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        char* t = trimField(tmp);
+        double vals[4] = {0, 0, 0, 0};
+        int count = 0;
+        char* tok = strtok(t, ",");
+        while (tok && count < MAX_CLIENTS_PER_PARAM) {
+            vals[count++] = atof(tok);
+            tok = strtok(nullptr, ",");
+        }
+        if (count > 0) {
+            for (int k = 0; k < MAX_CLIENTS_PER_PARAM; k++) params[55 + k] = vals[k];
+        }
+    }
+
+    // useSinrComms: column 27
+    if (nf > 27) {
+        char tmp[64]; strncpy(tmp, fields[27], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[59] = atof(trimField(tmp));
+    }
+    // sinrThreshold: column 28 (dB)
+    if (nf > 28) {
+        char tmp[64]; strncpy(tmp, fields[28], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[60] = atof(trimField(tmp));
+    }
+    // pathLossExponent: column 29
+    if (nf > 29) {
+        char tmp[64]; strncpy(tmp, fields[29], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[61] = atof(trimField(tmp));
+    }
+    // ambientTemp: column 30 (K)
+    if (nf > 30) {
+        char tmp[64]; strncpy(tmp, fields[30], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[62] = atof(trimField(tmp));
+    }
+    // centerFreq: column 31 (Hz)
+    if (nf > 31) {
+        char tmp[64]; strncpy(tmp, fields[31], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[63] = atof(trimField(tmp));
+    }
+    // bandwidth: column 32 (Hz)
+    if (nf > 32) {
+        char tmp[64]; strncpy(tmp, fields[32], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[64] = atof(trimField(tmp));
+    }
+
     printf("Loaded scenario: domain [%g,%g,%g] to [%g,%g,%g], %d objective component(s)\n",
            params[32], params[33], params[34], params[35], params[36], params[37], (int)params[38]);
+    printf("Comms model: %s (SINR threshold %g dB, path-loss exp %g, T=%g K, f_c=%g Hz, BW=%g Hz)\n",
+           params[59] != 0.0 ? "SINR" : "fixed-radius", params[60], params[61], params[62], params[63], params[64]);
     return 1;
 }
 

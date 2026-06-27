@@ -141,31 +141,72 @@ function [obj] = constrainMotion(obj)
     % Add communication network constraints
     hComms = NaN(nAgents, nAgents);
     hComms(logical(eye(nAgents))) = 0;
-    for ii = 1:(nAgents - 1)
-        for jj = (ii + 1):nAgents
-            if obj.constraintAdjacencyMatrix(ii, jj)
-                paddingFactor = 0.9; % Barrier at 90% of actual range; real comms still work beyond this
-                r_comms = paddingFactor * min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius]);
-                hComms(ii, jj) = r_comms^2 - norm(obj.agents{ii}.lastPos - obj.agents{jj}.lastPos)^2;
+    if ~obj.useSinrComms
+        % Fixed-radius comms: keep each maintained pair within the smaller of
+        % the two comms radii via the barrier h = r_comms^2 - dist^2.
+        for ii = 1:(nAgents - 1)
+            for jj = (ii + 1):nAgents
+                if obj.constraintAdjacencyMatrix(ii, jj)
+                    paddingFactor = 0.9; % Barrier at 90% of actual range; real comms still work beyond this
+                    r_comms = paddingFactor * min([obj.agents{ii}.commsGeometry.radius, obj.agents{jj}.commsGeometry.radius]);
+                    hComms(ii, jj) = r_comms^2 - norm(obj.agents{ii}.lastPos - obj.agents{jj}.lastPos)^2;
 
-                A(kk, (3 * ii - 2):(3 * ii)) =  2 * (obj.agents{ii}.lastPos - obj.agents{jj}.lastPos);
-                A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
+                    A(kk, (3 * ii - 2):(3 * ii)) =  2 * (obj.agents{ii}.lastPos - obj.agents{jj}.lastPos);
+                    A(kk, (3 * jj - 2):(3 * jj)) = -A(kk, (3 * ii - 2):(3 * ii));
 
-                % One-step forward invariance: b = h/dt ensures h cannot
-                % go negative in a single timestep (linear approximation)
-                v_max_ij = max(obj.agents{ii}.initialStepSize, obj.agents{jj}.initialStepSize) / obj.timestep;
-                hMin = -4 * r_comms * v_max_ij * obj.timestep;
-                if norm(A(kk, :)) < 1e-9
-                    b(kk) = 0;
-                else
-                    b(kk) = max(hMin, hComms(ii, jj)) / obj.timestep;
+                    % One-step forward invariance: b = h/dt ensures h cannot
+                    % go negative in a single timestep (linear approximation)
+                    v_max_ij = max(obj.agents{ii}.initialStepSize, obj.agents{jj}.initialStepSize) / obj.timestep;
+                    hMin = -4 * r_comms * v_max_ij * obj.timestep;
+                    if norm(A(kk, :)) < 1e-9
+                        b(kk) = 0;
+                    else
+                        b(kk) = max(hMin, hComms(ii, jj)) / obj.timestep;
+                    end
+
+                    kk = kk + 1;
                 end
+            end
+        end
+    else
+        % SINR comms: keep the SINR of each maintained link above threshold via
+        % the barrier h = SINR - gammaLin. Per the connectivity convention the
+        % lower-index agent (ii) receives the higher-index transmitter (jj). The
+        % gradient couples the receiver, transmitter, and every interferer, so
+        % the QP row is dense across all agent blocks.
+        % Maintain SINR a margin above the connectivity threshold so that
+        % discrete-time overshoot of the (convex) SINR does not transiently
+        % drop a maintained link below threshold. Mirrors the fixed-radius
+        % barrier's 0.9 padding: the CBF holds SINR >= gammaCbf > gammaLin,
+        % while connectivity (updateAdjacency) still uses gammaLin.
+        paddingDb = 3.0;
+        gammaCbf = 10^((obj.sinrThreshold + paddingDb) / 10);
+        lastPositions = zeros(nAgents, 3);
+        for ll = 1:nAgents
+            lastPositions(ll, :) = obj.agents{ll}.lastPos;
+        end
+        for ii = 1:(nAgents - 1)
+            for jj = (ii + 1):nAgents
+                if obj.constraintAdjacencyMatrix(ii, jj)
+                    [sinr, grad] = obj.sinrLink(lastPositions, ii, jj); % receiver ii, transmitter jj
+                    hComms(ii, jj) = sinr - gammaCbf;
 
-                kk = kk + 1;
+                    % CBF row: A = -grad(h), b = h/dt (one-step forward invariance)
+                    for aa = 1:nAgents
+                        A(kk, (3 * aa - 2):(3 * aa)) = -grad(aa, :);
+                    end
+                    if norm(A(kk, :)) < 1e-9
+                        b(kk) = 0;
+                    else
+                        b(kk) = hComms(ii, jj) / obj.timestep;
+                    end
+
+                    kk = kk + 1;
+                end
             end
         end
     end
-    
+
     if coder.target('MATLAB')
 	obj.barriers(idx:(idx + length(hComms(triu(true(size(hComms)), 1))) - 1), obj.timestepIndex) = hComms(triu(true(size(hComms)), 1));
     end

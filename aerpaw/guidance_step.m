@@ -17,7 +17,8 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %                       Flat array of guidance parameters (compiled path).
 %                       On MATLAB path this is ignored; parameters are loaded
 %                       from scenario.csv via initializeFromCsv instead.
-%                       Index mapping (1-based):
+%                       Index mapping (1-based; authoritative map in
+%                       aerpaw/impl/controller_impl.h):
 %                         1  timestep            9-12  collisionRadius[1:4]
 %                         2  maxIter            13-16  comRange[1:4]
 %                         3  minAlt             17-20  alphaDist[1:4]
@@ -26,12 +27,20 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %                         6  initialStepSize    29-32  betaTilt[1:4]
 %                         7  barrierGain        33-35  domainMin
 %                         8  barrierExponent    36-38  domainMax
-%                                               39-40  objectivePos
-%                                               41-44  objectiveVar (2x2, col-major)
-%                                               45     sensorPerformanceMinimum
-%                                               46     useDoubleIntegrator
-%                                               47     dampingCoeff
-%                                               48     useFixedTopology
+%                                               39     numObjectiveComponents
+%                                               40-43  objectivePos [x1,y1,x2,y2]
+%                                               44-51  objectiveVar [per component]
+%                                               52     sensorPerformanceMinimum
+%                                               53     useDoubleIntegrator
+%                                               54     dampingCoeff
+%                                               55     useFixedTopology
+%                                               56-59  txPower[1:4]
+%                                               60     useSinrComms
+%                                               61     sinrThreshold (dB)
+%                                               62     pathLossExponent
+%                                               63     ambientTemp (K)
+%                                               64     centerFreq (Hz)
+%                                               65     bandwidth (Hz)
 %   obstacleMin       (MAX_OBSTACLES × 3) double  column-major obstacle corners (compiled path)
 %   obstacleMax       (MAX_OBSTACLES × 3) double
 %   numObstacles      (1,1) int32                 actual obstacle count
@@ -101,6 +110,13 @@ if isInit
         USE_DOUBLE_INTEGRATOR       = logical(scenarioParams(53));
         DAMPING_COEFF               = scenarioParams(54);
         USE_FIXED_TOPOLOGY          = logical(scenarioParams(55));
+        TX_POWER_VEC                = scenarioParams(56:59); % per-UAV [1:MAX_CLIENTS] (W)
+        USE_SINR_COMMS              = logical(scenarioParams(60));
+        SINR_THRESHOLD              = scenarioParams(61);    % dB
+        PATH_LOSS_EXPONENT          = scenarioParams(62);
+        AMBIENT_TEMP                = scenarioParams(63);    % Kelvin
+        CENTER_FREQ                 = scenarioParams(64);    % Hz
+        BANDWIDTH                   = scenarioParams(65);    % Hz
 
         % --- Build domain geometry ---
         dom = rectangularPrism;
@@ -141,6 +157,7 @@ if isInit
             ag = agent;
             ag = ag.initialize(pos, geom, sensor, COMMS_RANGE_VEC(ii), MAX_ITER, ...
                                INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
+            ag.txPower = TX_POWER_VEC(ii); % SINR comms model transmit power (W)
             agentList{ii} = ag;
         end
 
@@ -158,7 +175,8 @@ if isInit
         sim = miSim;
         sim = sim.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
                              MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
-                             USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY);
+                             USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY, false, ...
+                             USE_SINR_COMMS, SINR_THRESHOLD, PATH_LOSS_EXPONENT, AMBIENT_TEMP, CENTER_FREQ, BANDWIDTH);
     end
 
     % On the init call return current positions unchanged
@@ -187,8 +205,13 @@ else
     % 2. Advance timestep counter
     sim.timestepIndex = sim.timestepIndex + 1;
 
-    % 3. Update communications topology (Lesser Neighbour Assignment)
+    % 3. Update communications topology (Lesser Neighbour Assignment).
+    % Refresh the adjacency graph from current positions first so connectivity
+    % (fixed-radius or SINR) tracks the agents as they move; otherwise the graph
+    % would be frozen at init on the compiled path (the MATLAB sim refreshes it
+    % in @miSim/run.m). Skip when topology is fixed.
     if ~sim.useFixedTopology
+        sim = sim.updateAdjacency();
         sim = sim.lesserNeighbor();
     end
 

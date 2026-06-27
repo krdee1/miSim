@@ -34,7 +34,14 @@ int loadTargets(const char* filename, double* targets, int maxClients);
 //   52    useDoubleIntegrator  (0=single-integrator, 1=double-integrator)
 //   53    dampingCoeff
 //   54    useFixedTopology     (0=dynamic lesser-neighbor, 1=fixed)
-#define NUM_SCENARIO_PARAMS 55
+//   55-58 txPower[1:4]         (per-UAV transmit power, Watts; SINR comms model)
+//   59    useSinrComms         (0=fixed-radius comms, 1=SINR/path-loss comms)
+//   60    sinrThreshold        (SINR connectivity/CBF threshold, dB)
+//   61    pathLossExponent     (path-loss exponent n)
+//   62    ambientTemp          (ambient temperature, K; thermal noise)
+//   63    centerFreq           (carrier frequency, Hz; path-loss offset)
+//   64    bandwidth            (channel bandwidth, Hz; thermal noise)
+#define NUM_SCENARIO_PARAMS 65
 #define MAX_CLIENTS_PER_PARAM 4
 // Maximum number of obstacles (upper bound for pre-allocated arrays).
 #define MAX_OBSTACLES 8

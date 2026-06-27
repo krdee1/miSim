@@ -47,6 +47,9 @@ for ii = 1:numAgents
     ag = agent;
     ag = ag.initialize(pos, geom, sensor, inits.comRange(ii), inits.maxIter, ...
                        inits.initialStepSize(ii), sprintf("UAV %d", ii));
+    if isfield(inits, 'txPower')
+        ag.txPower = inits.txPower(ii); % SINR comms model transmit power (W)
+    end
     agentList{ii} = ag;
 end
 
@@ -78,10 +81,41 @@ if isfield(inits, 'useFixedTopology')
 else
     useFixedTopology = false;
 end
+if isfield(inits, 'useSinrComms')
+    useSinrComms = logical(inits.useSinrComms);
+else
+    useSinrComms = false;
+end
+if isfield(inits, 'sinrThreshold')
+    sinrThreshold = inits.sinrThreshold;
+else
+    sinrThreshold = 0;
+end
+if isfield(inits, 'pathLossExponent')
+    pathLossExponent = inits.pathLossExponent;
+else
+    pathLossExponent = 2.0;
+end
+if isfield(inits, 'ambientTemp')
+    ambientTemp = inits.ambientTemp;
+else
+    ambientTemp = 290.0;
+end
+if isfield(inits, 'centerFreq')
+    centerFreq = inits.centerFreq;
+else
+    centerFreq = 2.4e9;
+end
+if isfield(inits, 'bandwidth')
+    bandwidth = inits.bandwidth;
+else
+    bandwidth = 20e6;
+end
 
 % ---- Initialize simulation (plots and video disabled) ------------------------
 obj = obj.initialize(dom, agentList, inits.barrierGain, inits.barrierExponent, ...
                      inits.minAlt, inits.timestep, inits.maxIter, obstacleList, ...
-                     false, false, useDoubleIntegrator, dampingCoeff, useFixedTopology);
+                     false, false, useDoubleIntegrator, dampingCoeff, useFixedTopology, false, ...
+                     useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth);
 
 end

@@ -107,6 +107,46 @@ else
     USE_FIXED_TOPOLOGY = false;
 end
 
+% SINR communications model (optional columns — backward compatible with
+% older CSVs that predate the SINR model; defaults keep the fixed-radius path)
+if isfield(scenario, 'txPower')
+    TX_POWER_VEC = scenario.txPower;                       % 1×N (Watts)
+    assert(numel(TX_POWER_VEC) == numAgents, ...
+        "txPower has %d values but expected %d (one per UAV)", numel(TX_POWER_VEC), numAgents);
+else
+    TX_POWER_VEC = 0.1 * ones(1, numAgents);
+end
+if isfield(scenario, 'useSinrComms')
+    USE_SINR_COMMS = logical(scenario.useSinrComms);
+else
+    USE_SINR_COMMS = false;
+end
+if isfield(scenario, 'sinrThreshold')
+    SINR_THRESHOLD = scenario.sinrThreshold;               % dB
+else
+    SINR_THRESHOLD = 0;
+end
+if isfield(scenario, 'pathLossExponent')
+    PATH_LOSS_EXPONENT = scenario.pathLossExponent;
+else
+    PATH_LOSS_EXPONENT = 2.0;
+end
+if isfield(scenario, 'ambientTemp')
+    AMBIENT_TEMP = scenario.ambientTemp;                   % Kelvin
+else
+    AMBIENT_TEMP = 290.0;
+end
+if isfield(scenario, 'centerFreq')
+    CENTER_FREQ = scenario.centerFreq;                     % Hz
+else
+    CENTER_FREQ = 2.4e9;
+end
+if isfield(scenario, 'bandwidth')
+    BANDWIDTH = scenario.bandwidth;                        % Hz
+else
+    BANDWIDTH = 20e6;
+end
+
 % ---- Build domain --------------------------------------------------------
 dom = rectangularPrism;
 dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Domain");
@@ -134,6 +174,7 @@ for ii = 1:numAgents
     ag = agent;
     ag = ag.initialize(pos, geom, sensor, COMMS_RANGE_VEC(ii), MAX_ITER, ...
                        INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
+    ag.txPower = TX_POWER_VEC(ii); % SINR comms model transmit power (W)
     agentList{ii} = ag;
 end
 
@@ -153,6 +194,7 @@ end
 % ---- Initialise simulation (plots and video disabled) --------------------
 obj = obj.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
                      MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
-                     USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY);
+                     USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY, false, ...
+                     USE_SINR_COMMS, SINR_THRESHOLD, PATH_LOSS_EXPONENT, AMBIENT_TEMP, CENTER_FREQ, BANDWIDTH);
 
 end

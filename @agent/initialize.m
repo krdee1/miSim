@@ -1,4 +1,4 @@
-function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, initialStepSize, initialMaxAngleStepSize, label, plotCommsGeometry)
+function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, initialStepSize, initialMaxAngleStepSize, label, plotCommsGeometry, txPower)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "agent")};
         pos (1, 3) double;
@@ -10,6 +10,7 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
         initialMaxAngleStepSize (1, 1) double = 5.0;
         label (1, 1) string = "";
         plotCommsGeometry (1, 1) logical = false;
+        txPower (1, 1) double = 0.1;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "agent")};
@@ -25,6 +26,7 @@ function obj = initialize(obj, pos, collisionGeometry, sensorModel, comRange, ma
     obj.plotCommsGeometry = plotCommsGeometry;
     obj.initialStepSize = initialStepSize;
     obj.initialMaxAngleStepSize = initialMaxAngleStepSize;
+    obj.txPower = txPower;
     obj.stepDecayRate = obj.initialStepSize / maxIter;
     obj.angleStepDecayRate = obj.initialMaxAngleStepSize / maxIter;
 

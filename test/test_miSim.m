@@ -815,7 +815,7 @@ classdef test_miSim < matlab.unittest.TestCase
             % Run the simulation
             tc.testClass.run();
         end
-        function test_communications_constraint(tc)
+        function test_communications_constraint_SINR_threshold(tc)
             % No obstacles
             % Fixed two agents initial conditions
             % Negligible collision geometries
@@ -845,13 +845,74 @@ classdef test_miSim < matlab.unittest.TestCase
             
             % Initialize agents
             tc.maxIter = 50;
+            tc.commsRanges = 4 * ones(size(tc.agents)); % unused in SINR mode; kept for parity with the fixed-radius variant
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+
+            % SINR communications model parameters. With isotropic links and only
+            % two agents (no interference) the link is noise-limited:
+            %   SINR = Ptx / ((4*pi*fc/c)^2 * d^n * kB*T*B)
+            % Pick the threshold so the SINR connectivity boundary sits at an
+            % effective range of ~4 m, mirroring the commsRange used by the
+            % fixed-radius variant of this test (so the two agents still cannot
+            % reach their objectives without breaking connectivity).
+            useSinrComms     = true;
+            txPower          = 0.1;     % transmit power per agent (W)
+            pathLossExponent = 2.0;
+            ambientTemp      = 290;     % K
+            centerFreq       = 2.4e9;   % Hz
+            bandwidth        = 20e6;    % Hz
+            effRange         = 4.0;     % desired effective comms range (m)
+            K_pl   = (4 * pi * centerFreq / 3e8)^2;            % free-space path-loss reference
+            noiseW = 1.380649e-23 * ambientTemp * bandwidth;   % thermal noise (W)
+            sinrThreshold = 10 * log10(txPower / (K_pl * effRange^pathLossExponent * noiseW)); % dB
+
+            tc.agents{1}.txPower = txPower;
+            tc.agents{2}.txPower = txPower;
+
+            % Initialize the simulation in SINR comms mode
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth);
+
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+        end
+        function test_communications_constraint_fixed_radius(tc)
+            % No obstacles
+            % Fixed two agents initial conditions
+            % Negligible collision geometries
+            % Non-standard domain with two objectives that will try to pull the
+            % agents apart
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([2, 8; 8, 8]), tc.domain, tc.discretizationStep, tc.protectedRange);
+
+            % Initialize agent collision geometry
+            tc.agents = {agent; agent;};
+            tc.collisionRanges = .25 * ones(size(tc.agents));
+            d = [1, 0, 0];
+            geometry1 = spherical;
+            geometry2 = geometry1;
+            geometry1 = geometry1.initialize(tc.domain.center + d, tc.collisionRanges(1), REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center - d, tc.collisionRanges(2), REGION_TYPE.COLLISION);
+
+            % Initialize agent sensor model
+            tc.sensor = sigmoidSensor;
+            tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 15, 3);
+
+            % Initialize obstacles
+            tc.obstacles = {};
+
+            % Initialize agents
+            tc.maxIter = 50;
             tc.commsRanges = 4 * ones(size(tc.agents)); % defined such that they cannot reach their objective without breaking connectivity
             tc.agents{1} = tc.agents{1}.initialize(tc.domain.center + d, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
             tc.agents{2} = tc.agents{2}.initialize(tc.domain.center - d, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
 
             % Initialize the simulation
             tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
-            
+
             % Run the simulation
             tc.testClass = tc.testClass.run();
         end

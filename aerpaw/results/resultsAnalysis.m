@@ -45,6 +45,9 @@ for ii = 1:size(agents, 1)
     collisionGeometry = collisionGeometry.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), params.collisionRadius(ii), REGION_TYPE.COLLISION, sprintf("Agent %d collision geometry", ii));
 
     agents{ii} = agents{ii}.initialize(params.initialPositions((((ii - 1) * 3) + 1):(ii * 3)), collisionGeometry, sensorModel, params.comRange(ii), params.maxIter, params.initialStepSize, 5.0, sprintf("Agent %d", ii), plotCommsGeometry);
+    if isfield(params, 'txPower')
+        agents{ii}.txPower = params.txPower(ii); % SINR comms model transmit power (W)
+    end
 end
 
 % Create obstacles
@@ -54,9 +57,22 @@ for ii = 1:size(obstacles, 1)
     obstacles{ii} = obstacles{ii}.initialize([params.obstacleMin((((ii - 1) * 3) + 1):(ii * 3)); params.obstacleMax((((ii - 1) * 3) + 1):(ii * 3))], "OBSTACLE", sprintf("Obstacle %d", ii));
 end
 
-% Set up simulation
+% SINR communications model parameters (optional CSV columns; default to the
+% fixed-radius path so existing scenarios are unaffected)
+if isfield(params, 'useSinrComms');     useSinrComms = logical(params.useSinrComms); else; useSinrComms = false; end
+if isfield(params, 'sinrThreshold');    sinrThreshold = params.sinrThreshold;        else; sinrThreshold = 0;        end
+if isfield(params, 'pathLossExponent'); pathLossExponent = params.pathLossExponent;  else; pathLossExponent = 2.0;    end
+if isfield(params, 'ambientTemp');      ambientTemp = params.ambientTemp;            else; ambientTemp = 290.0;      end
+if isfield(params, 'centerFreq');       centerFreq = params.centerFreq;              else; centerFreq = 2.4e9;       end
+if isfield(params, 'bandwidth');        bandwidth = params.bandwidth;                else; bandwidth = 20e6;         end
+
+% Set up simulation. The four args after makeVideo (useDoubleIntegrator,
+% dampingCoeff, useFixedTopology, optimizeSensorPointing) are kept at their
+% prior effective defaults to preserve existing analysis behavior; only the
+% SINR comms parameters are threaded through from the scenario.
 sim = miSim;
-sim = sim.initialize(domain, agents, params.barrierGain, params.barrierExponent, params.minAlt, params.timestep, params.maxIter, obstacles, makePlots, makeVideo);
+sim = sim.initialize(domain, agents, params.barrierGain, params.barrierExponent, params.minAlt, params.timestep, params.maxIter, obstacles, makePlots, makeVideo, ...
+                     false, 2.0, false, false, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth);
 
 % Save simulation parameters to output file
 sim.writeInits();

@@ -1,4 +1,4 @@
-function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing)
+function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "miSim")};
         domain (1, 1) {mustBeGeometry};
@@ -15,6 +15,12 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         dampingCoeff (1, 1) double = 2.0;
         useFixedTopology (1, 1) logical = false;
         optimizeSensorPointing (1, 1) logical = false;
+        useSinrComms (1, 1) logical = false;
+        sinrThreshold (1, 1) double = 0;
+        pathLossExponent (1, 1) double = 2.0;
+        ambientTemp (1, 1) double = 290.0;
+        centerFreq (1, 1) double = 2.4e9;
+        bandwidth (1, 1) double = 20e6;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "miSim")};
@@ -98,6 +104,14 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.useFixedTopology = useFixedTopology;
     obj.optimizeSensorPointing = optimizeSensorPointing;
 
+    % Set communications model and SINR parameters
+    obj.useSinrComms = useSinrComms;
+    obj.sinrThreshold = sinrThreshold;
+    obj.pathLossExponent = pathLossExponent;
+    obj.ambientTemp = ambientTemp;
+    obj.centerFreq = centerFreq;
+    obj.bandwidth = bandwidth;
+
     % Compute adjacency matrix and network topology
     obj = obj.updateAdjacency();
     if obj.useFixedTopology
@@ -126,7 +140,11 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     end
     nAOPairs = size(obj.agents, 1) * size(obj.obstacles, 1); % unique agent/obstacle pairs
     nADPairs = size(obj.agents, 1) * 6; % agents x (4 walls + 1 floor + 1 ceiling)
-    nLNAPairs = sum(triu(obj.constraintAdjacencyMatrix, 1), "all");
+    % Comms barriers: size to the upper bound (full mesh) rather than the initial
+    % constraint-adjacency count. Connectivity is dynamic (lesser-neighbor and,
+    % especially, SINR) and can later maintain more pairs than at init; sizing to
+    % nAAPairs prevents the QP A/b matrices from overflowing mid-run.
+    nLNAPairs = nAAPairs;
     obj.numBarriers = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
 
     if coder.target('MATLAB')

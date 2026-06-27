@@ -19,7 +19,8 @@ classdef agent
         fovGeometry;
 
         % Communication
-        commsGeometry;
+        commsGeometry;          % fixed-radius comms model (spherical, radius = comRange)
+        txPower = 0.1;          % transmit power (W) for the SINR comms model (isotropic)
         lesserNeighbors = zeros(1, 0);
 
         % Performance
@@ -49,7 +50,7 @@ classdef agent
             obj.fovGeometry = cone;
             obj.commsGeometry = spherical;
         end
-        [obj] = initialize(obj, pos, pan, tilt, collisionGeometry, sensorModel, guidanceModel, comRange, index, label);
+        [obj] = initialize(obj, pos, collisionGeometry, sensorModel, comRange, maxIter, initialStepSize, initialMaxAngleStepSize, label, plotCommsGeometry, txPower);
         [obj] = run(obj, domain, partitioning, t, index, useDoubleIntegrator, dampingCoeff, dt, optimizeSensorPointing, otherAgents);
         [partitioning, agents] = partition(obj, agents, objective)
         [obj, f] = plot(obj, ind, f);

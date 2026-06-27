@@ -21,6 +21,15 @@ classdef miSim
         dampingCoeff = 2.0; % velocity-proportional damping for double-integrator mode
         useFixedTopology = false; % false = lesser neighbor (dynamic), true = fixed initial topology
         optimizeSensorPointing = false; % false = fixed sensor tilt/azimuth, true = optimize tilt/azimuth via gradient ascent
+        % Communications model selection and SINR-model parameters.
+        % useSinrComms = false -> fixed-radius comms (comRange / commsGeometry).
+        % useSinrComms = true  -> SINR/path-loss comms (txPower + params below).
+        useSinrComms = false;
+        sinrThreshold = 0;        % SINR threshold for connectivity & CBF maintenance (dB)
+        pathLossExponent = 2.0;   % path-loss exponent n in S = P / (K * d^n)
+        ambientTemp = 290.0;      % ambient temperature (K) for thermal noise N = k_B*T*B
+        centerFreq = 2.4e9;       % carrier frequency (Hz); sets path-loss offset K = (4*pi*f_c/c)^2
+        bandwidth = 20e6;         % channel bandwidth (Hz) for thermal noise N = k_B*T*B
         artifactName = "";
         f; % main plotting tiled layout figure
         fPerf; % performance plot figure
@@ -70,13 +79,14 @@ classdef miSim
             obj.obstacles = {rectangularPrism};
             obj.agents = {agent};
         end
-        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology);
+        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth);
         [obj] = initializeFromCsv(obj, csvPath);
         [obj] = initializeFromInits(obj, initsPath);
         [obj] = plotFromSimHist(obj, initsPath, histPath);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);
         [obj] = constrainMotion(obj);
+        [sinr, grad] = sinrLink(obj, positions, rxIdx, txIdx);
         [obj] = partition(obj);
         [obj] = updateAdjacency(obj);
         [obj] = plot(obj);
