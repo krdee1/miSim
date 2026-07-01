@@ -26,9 +26,9 @@ function obj = plotGraph(obj)
         end
     end
 
-    % In SINR comms mode, label each edge with the connection's SINR (dB) and
-    % report the connectivity threshold as a subtitle on the tile. The
-    % fixed-radius model is left unchanged (no edge labels, no subtitle).
+    % In SINR comms mode, label each edge with the connection's SINR and report
+    % the connectivity threshold in the tile title. The fixed-radius model is
+    % left unchanged (no edge labels, title stays as set in firstPlotSetup).
     if obj.useSinrComms
         endNodes = G.Edges.EndNodes;   % each row [lo hi]; graph stores lo < hi
         nAgents = size(obj.agents, 1);
@@ -39,13 +39,19 @@ function obj = plotGraph(obj)
         % Directional convention (matches updateAdjacency/constrainMotion):
         % the lower-index node is the receiver, the higher-index node the
         % transmitter, with interference from all other agents at the receiver.
+        % Labels are bare numbers (no units) so they stay compact; GraphPlot
+        % renders them horizontally, left-to-right.
         edgeLabels = strings(size(endNodes, 1), 1);
         for ee = 1:size(endNodes, 1)
             sinrLin = obj.sinrLink(positions, endNodes(ee, 1), endNodes(ee, 2));
-            edgeLabels(ee) = sprintf("%.1f dB", 10 * log10(sinrLin));
+            edgeLabels(ee) = sprintf("%.1f", 10 * log10(sinrLin));
         end
         o(1).EdgeLabel = edgeLabels;
-        subtitle(ax, sprintf("SINR threshold: %.1f dB", obj.sinrThreshold));
+        % Threshold goes in the existing single-line title (not a subtitle) so
+        % the small tile is not compressed further, and the hover toolbar is
+        % disabled so the R2026 "..." menu stops covering the readout.
+        title(ax, sprintf("Network Graph (\\geq %.1f dB)", obj.sinrThreshold));
+        ax.Toolbar.Visible = "off";
     end
 
     obj.graphPlot = o;
