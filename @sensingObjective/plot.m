@@ -36,7 +36,14 @@ function f = plot(obj, ind, f)
     % Add to other perspectives
     if size(ind, 2) > 1
         for ii = 2:size(ind, 2)
-            copyobj(o, f.Children(1).Children(ind(ii)));
+            axCopy = f.Children(1).Children(ind(ii));
+            copyobj(o, axCopy);
+            % copyobj does not carry color scaling. The objective values are
+            % sum-normalized (tiny), so without matching CLim the copied surface
+            % is squished to one color once the destination axes' auto CLim is
+            % widened by later surfaces (e.g. agent geometries). Pin it to the
+            % source range so the heatmap renders as a visible gradient.
+            clim(axCopy, cRange);
         end
     end
 end

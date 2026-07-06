@@ -877,6 +877,88 @@ classdef test_miSim < matlab.unittest.TestCase
             % Run the simulation
             tc.testClass = tc.testClass.run();
         end
+        function test_communications_constraint_SINR_threshold_3_agents(tc)
+            % No obstacles
+            % Fixed three agents initial conditions
+            % Negligible collision geometries
+            % Non-standard domain with two objectives that will try to pull the
+            % agents apart
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([2, 8; 8, 8]), tc.domain, tc.discretizationStep, tc.protectedRange);
+
+            % Initialize agent collision geometry
+            tc.agents = {agent; agent; agent;};
+            tc.collisionRanges = .25 * ones(size(tc.agents));
+            d = [2.0, 0, 0];  % 2 m collinear spacing (above the 1 m path-loss floor)
+            geometry1 = spherical;
+            geometry2 = geometry1;
+            geometry3 = geometry1;
+            geometry1 = geometry1.initialize(tc.domain.center - d, tc.collisionRanges(1), REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center, tc.collisionRanges(2), REGION_TYPE.COLLISION);
+            geometry3 = geometry3.initialize(tc.domain.center + d, tc.collisionRanges(3), REGION_TYPE.COLLISION);
+
+            % Initialize agent sensor model
+            tc.sensor = sigmoidSensor;
+            tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 15, 3);
+
+            % Initialize obstacles
+            tc.obstacles = {};
+
+            % Initialize agents
+            tc.maxIter = 50;
+            tc.commsRanges = 4 * ones(size(tc.agents)); % unused in SINR mode; kept for parity with the fixed-radius variant
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - d, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + d, geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+
+            % SINR communications model parameters. Three collinear, equally
+            % spaced agents with homogeneous transmit power form an
+            % INTERFERENCE-limited network (co-agent interference swamps thermal
+            % noise), unlike the two-agent noise-limited case. Two structural
+            % facts set the connectivity boundaries:
+            %   * A chain link (1-2 or 2-3) is limited by the MIDDLE agent, which
+            %     receives one end while the other end interferes at the SAME
+            %     range: signal = interference  ->  0 dB.
+            %   * The end-to-end (1,3) link has its transmitter at 2x the range
+            %     while the middle agent interferes at 1x:  (1/2)^n  ->  -6.02 dB.
+            % Homogeneous power is required for the symmetry: unequal power would
+            % push one chain link's middle-receiver SINR below 0 dB and break it.
+            % Placing the threshold between the two boundaries (a couple dB above
+            % the -6 dB direct link, a few dB below the 0 dB chain links) makes
+            % exactly the two adjacent links {1-2, 2-3} feasible and rejects 1-3,
+            % giving the desired 1 -> 2 -> 3 line. The +3 dB CBF padding then
+            % still lands below the 0 dB chain binding, so the QP starts feasible.
+            useSinrComms     = true;
+            txPower          = [0.1, 0.1, 0.1];   % homogeneous transmit power (W)
+            pathLossExponent = 2.0;
+            ambientTemp      = 290;     % K
+            centerFreq       = 2.4e9;   % Hz
+            bandwidth        = 20e6;    % Hz
+
+            endBindingDb  = 10 * log10(0.5^pathLossExponent);  % (1,3) link SINR: (1/2)^n = -6.02 dB
+            sinrThreshold = endBindingDb + 2.0;                % ~ -4.02 dB: 2 dB above the rejected
+                                                               % 1-3 link, ~4 dB below the 0 dB chain
+
+            tc.agents{1}.txPower = txPower(1);
+            tc.agents{2}.txPower = txPower(2);
+            tc.agents{3}.txPower = txPower(3);
+
+            % Initialize the simulation in SINR comms mode
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth);
+
+            % The initial SINR topology must be exactly the 1 -> 2 -> 3 line:
+            % two links (1-2 and 2-3), with the direct 1-3 link rejected.
+            tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
+                [ 1, 1, 0; ...
+                  1, 1, 1; ...
+                  0, 1, 1;]));
+
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+        end
         function test_communications_constraint_fixed_radius(tc)
             % No obstacles
             % Fixed two agents initial conditions
