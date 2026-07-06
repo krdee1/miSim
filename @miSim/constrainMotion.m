@@ -169,11 +169,11 @@ function [obj] = constrainMotion(obj)
             end
         end
     else
-        % SINR comms: keep the SINR of each maintained link above threshold via
-        % the barrier h = SINR - gammaLin. Per the connectivity convention the
-        % lower-index agent (ii) receives the higher-index transmitter (jj). The
-        % gradient couples the receiver, transmitter, and every interferer, so
-        % the QP row is dense across all agent blocks.
+        % SINR comms: a link is feasible only if each agent receives the other
+        % above threshold, so every maintained pair is held with TWO barrier
+        % rows, h = SINR - gammaCbf, one per receiver direction. Each gradient
+        % couples the receiver, transmitter, and every interferer, so the QP
+        % rows are dense across all agent blocks.
         % Maintain SINR a margin above the connectivity threshold so that
         % discrete-time overshoot of the (convex) SINR does not transiently
         % drop a maintained link below threshold. Mirrors the fixed-radius
@@ -188,19 +188,33 @@ function [obj] = constrainMotion(obj)
         for ii = 1:(nAgents - 1)
             for jj = (ii + 1):nAgents
                 if obj.constraintAdjacencyMatrix(ii, jj)
-                    [sinr, grad] = obj.sinrLink(lastPositions, ii, jj); % receiver ii, transmitter jj
-                    hComms(ii, jj) = sinr - gammaCbf;
-
+                    % Direction 1: lower-index agent (ii) receives higher (jj).
+                    % Upper triangle of hComms stores this direction's barrier.
+                    [sinr1, grad1] = obj.sinrLink(lastPositions, ii, jj);
+                    hComms(ii, jj) = sinr1 - gammaCbf;
                     % CBF row: A = -grad(h), b = h/dt (one-step forward invariance)
                     for aa = 1:nAgents
-                        A(kk, (3 * aa - 2):(3 * aa)) = -grad(aa, :);
+                        A(kk, (3 * aa - 2):(3 * aa)) = -grad1(aa, :);
                     end
                     if norm(A(kk, :)) < 1e-9
                         b(kk) = 0;
                     else
                         b(kk) = hComms(ii, jj) / obj.timestep;
                     end
+                    kk = kk + 1;
 
+                    % Direction 2: higher-index agent (jj) receives lower (ii).
+                    % Lower triangle of hComms stores this direction's barrier.
+                    [sinr2, grad2] = obj.sinrLink(lastPositions, jj, ii);
+                    hComms(jj, ii) = sinr2 - gammaCbf;
+                    for aa = 1:nAgents
+                        A(kk, (3 * aa - 2):(3 * aa)) = -grad2(aa, :);
+                    end
+                    if norm(A(kk, :)) < 1e-9
+                        b(kk) = 0;
+                    else
+                        b(kk) = hComms(jj, ii) / obj.timestep;
+                    end
                     kk = kk + 1;
                 end
             end
@@ -208,7 +222,15 @@ function [obj] = constrainMotion(obj)
     end
 
     if coder.target('MATLAB')
-	obj.barriers(idx:(idx + length(hComms(triu(true(size(hComms)), 1))) - 1), obj.timestepIndex) = hComms(triu(true(size(hComms)), 1));
+        if obj.useSinrComms
+            % Both directions are maintained: log the upper triangle
+            % (lower-index receiver) then the lower triangle (higher-index
+            % receiver), matching the doubled comms-barrier allocation.
+            commsLog = [hComms(triu(true(size(hComms)), 1)); hComms(tril(true(size(hComms)), -1))];
+        else
+            commsLog = hComms(triu(true(size(hComms)), 1));
+        end
+        obj.barriers(idx:(idx + numel(commsLog) - 1), obj.timestepIndex) = commsLog;
     end
 
     % Double-integrator: transform QP from velocity to acceleration space.

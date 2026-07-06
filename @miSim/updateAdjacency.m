@@ -23,9 +23,11 @@ function obj = updateAdjacency(obj)
             end
         end
     else
-        % SINR model: pair (ii, jj) connected iff the lower-index agent (jj)
-        % receives the higher-index agent's (ii) signal above the SINR
-        % threshold, with interference from all other agents at the receiver.
+        % SINR model: a link between a pair is feasible only if BOTH directional
+        % SINRs clear the threshold, i.e. each agent receives the other's signal
+        % above gammaLin (with interference from all other agents at the
+        % receiver). Every ordered pair (permutation) is evaluated; a single
+        % failing direction eliminates the undirected link.
         gammaLin = 10^(obj.sinrThreshold / 10); % dB threshold -> linear
         positions = zeros(nAgents, 3);
         for kk = 1:nAgents
@@ -33,9 +35,10 @@ function obj = updateAdjacency(obj)
         end
         for ii = 2:nAgents
             for jj = 1:(ii - 1)
-                sinr = obj.sinrLink(positions, jj, ii); % receiver jj, transmitter ii
-                if sinr < gammaLin
-                    A(ii, jj) = false; % SINR below threshold
+                sinrLoRx = obj.sinrLink(positions, jj, ii); % receiver jj (lower), transmitter ii
+                sinrHiRx = obj.sinrLink(positions, ii, jj); % receiver ii (higher), transmitter jj
+                if sinrLoRx < gammaLin || sinrHiRx < gammaLin
+                    A(ii, jj) = false; % at least one direction below threshold
                     continue;
                 end
             end

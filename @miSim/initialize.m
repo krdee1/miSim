@@ -143,8 +143,13 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     % Comms barriers: size to the upper bound (full mesh) rather than the initial
     % constraint-adjacency count. Connectivity is dynamic (lesser-neighbor and,
     % especially, SINR) and can later maintain more pairs than at init; sizing to
-    % nAAPairs prevents the QP A/b matrices from overflowing mid-run.
-    nLNAPairs = nAAPairs;
+    % nAAPairs prevents the QP A/b matrices from overflowing mid-run. SINR mode
+    % enforces both directions per link, so it needs two barrier rows per pair.
+    if obj.useSinrComms
+        nLNAPairs = 2 * nAAPairs;
+    else
+        nLNAPairs = nAAPairs;
+    end
     obj.numBarriers = nAAPairs + nAOPairs + nADPairs + nLNAPairs;
 
     if coder.target('MATLAB')

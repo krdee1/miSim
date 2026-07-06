@@ -857,18 +857,19 @@ classdef test_miSim < matlab.unittest.TestCase
             % fixed-radius variant of this test (so the two agents still cannot
             % reach their objectives without breaking connectivity).
             useSinrComms     = true;
-            txPower          = 0.1;     % transmit power per agent (W)
+            txPower          = [0.01, 0.01];     % transmit power per agent (W)
             pathLossExponent = 2.0;
             ambientTemp      = 290;     % K
             centerFreq       = 2.4e9;   % Hz
             bandwidth        = 20e6;    % Hz
+
             effRange         = 4.0;     % desired effective comms range (m)
             K_pl   = (4 * pi * centerFreq / 3e8)^2;            % free-space path-loss reference
             noiseW = 1.380649e-23 * ambientTemp * bandwidth;   % thermal noise (W)
-            sinrThreshold = 10 * log10(txPower / (K_pl * effRange^pathLossExponent * noiseW)); % dB
+            sinrThreshold = 10 * log10(mean(txPower) / (K_pl * effRange^pathLossExponent * noiseW)); % dB
 
-            tc.agents{1}.txPower = txPower;
-            tc.agents{2}.txPower = txPower;
+            tc.agents{1}.txPower = txPower(1);
+            tc.agents{2}.txPower = txPower(2);
 
             % Initialize the simulation in SINR comms mode
             tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth);

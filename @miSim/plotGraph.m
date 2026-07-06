@@ -36,15 +36,19 @@ function obj = plotGraph(obj)
         for kk = 1:nAgents
             positions(kk, :) = obj.agents{kk}.pos;
         end
-        % Directional convention (matches updateAdjacency/constrainMotion):
-        % the lower-index node is the receiver, the higher-index node the
-        % transmitter, with interference from all other agents at the receiver.
-        % Labels are bare numbers (no units) so they stay compact; GraphPlot
-        % renders them horizontally, left-to-right.
+        % A link is feasible only if BOTH directions clear the threshold, so
+        % label each edge with the binding (worse) directional SINR: the min of
+        % the lower-index-receiver and higher-index-receiver links, with
+        % interference from all other agents at each receiver. Labels are bare
+        % numbers (no units) so they stay compact; GraphPlot renders them
+        % horizontally, left-to-right.
         edgeLabels = strings(size(endNodes, 1), 1);
         for ee = 1:size(endNodes, 1)
-            sinrLin = obj.sinrLink(positions, endNodes(ee, 1), endNodes(ee, 2));
-            edgeLabels(ee) = sprintf("%.1f", 10 * log10(sinrLin));
+            lo = endNodes(ee, 1);
+            hi = endNodes(ee, 2);
+            sinrLoRx = obj.sinrLink(positions, lo, hi); % receiver lo (lower index)
+            sinrHiRx = obj.sinrLink(positions, hi, lo); % receiver hi (higher index)
+            edgeLabels(ee) = sprintf("%.1f", 10 * log10(min(sinrLoRx, sinrHiRx)));
         end
         o(1).EdgeLabel = edgeLabels;
         % Threshold goes in the existing single-line title (not a subtitle) so
