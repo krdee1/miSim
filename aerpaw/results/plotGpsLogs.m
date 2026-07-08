@@ -110,6 +110,8 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     % Plot objective
     if length(params.objectivePos) > 2
         objectivePos = reshape(params.objectivePos, [2, length(params.objectivePos) / 2])';
+    else
+        objectivePos = params.objectivePos;
     end
     objectivePos = [objectivePos, zeros(size(objectivePos, 1), 1)];
     llaObj = enu2lla(objectivePos, lla0, "flat");
