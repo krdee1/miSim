@@ -147,6 +147,18 @@ else
     BANDWIDTH = 20e6;
 end
 
+% Routing topology selection (optional columns; MATLAB sim only)
+if isfield(scenario, 'useRoutingTopology')
+    USE_ROUTING_TOPOLOGY = logical(scenario.useRoutingTopology);
+else
+    USE_ROUTING_TOPOLOGY = false;
+end
+if isfield(scenario, 'routingFlowThreshold')
+    ROUTING_FLOW_THRESHOLD = scenario.routingFlowThreshold;
+else
+    ROUTING_FLOW_THRESHOLD = 0.02;
+end
+
 % ---- Build domain --------------------------------------------------------
 dom = rectangularPrism;
 dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Domain");
@@ -195,6 +207,7 @@ end
 obj = obj.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
                      MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
                      USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY, false, ...
-                     USE_SINR_COMMS, SINR_THRESHOLD, PATH_LOSS_EXPONENT, AMBIENT_TEMP, CENTER_FREQ, BANDWIDTH);
+                     USE_SINR_COMMS, SINR_THRESHOLD, PATH_LOSS_EXPONENT, AMBIENT_TEMP, CENTER_FREQ, BANDWIDTH, ...
+                     USE_ROUTING_TOPOLOGY, ROUTING_FLOW_THRESHOLD);
 
 end

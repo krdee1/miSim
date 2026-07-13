@@ -5,6 +5,15 @@ function validate(obj)
     arguments (Output)
     end
 
+    %% Mode Validators
+    if obj.useRoutingTopology && ~obj.useSinrComms
+        error("Routing topology requires SINR comms mode (useSinrComms)");
+    end
+
+    if obj.useRoutingTopology && obj.useFixedTopology
+        error("useRoutingTopology and useFixedTopology are mutually exclusive topology selectors");
+    end
+
     %% Communications Network Validators
     if max(conncomp(graph(obj.adjacency))) ~= 1
         error("Network is not connected");

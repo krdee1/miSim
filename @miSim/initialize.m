@@ -1,4 +1,4 @@
-function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth)
+function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology, routingFlowThreshold)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "miSim")};
         domain (1, 1) {mustBeGeometry};
@@ -21,6 +21,8 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         ambientTemp (1, 1) double = 290.0;
         centerFreq (1, 1) double = 2.4e9;
         bandwidth (1, 1) double = 20e6;
+        useRoutingTopology (1, 1) logical = false;
+        routingFlowThreshold (1, 1) double = 0.02;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "miSim")};
@@ -112,12 +114,24 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.centerFreq = centerFreq;
     obj.bandwidth = bandwidth;
 
-    % Compute adjacency matrix and network topology
+    % Set topology-selection algorithm and routing parameters
+    obj.useRoutingTopology = useRoutingTopology;
+    obj.routingFlowThreshold = routingFlowThreshold;
+
+    % Compute adjacency matrix and network topology. Lesser-neighbor always
+    % provides the low-level connectivity topology (basic traffic must be
+    % routable between any two drones at all times); routing mode overlays
+    % the bulk-data links on top of it. The routing LP uses linprog (no
+    % codegen support); the compiled path never sets the flag, so linprog
+    % is never compiled.
     obj = obj.updateAdjacency();
     if obj.useFixedTopology
         obj.constraintAdjacencyMatrix = obj.adjacency;
     else
         obj = obj.lesserNeighbor();
+        if coder.target('MATLAB') && obj.useRoutingTopology
+            obj = obj.routeTopology();
+        end
     end
 
     % Set up times to iterate over

@@ -105,6 +105,13 @@ classdef test_miSim < matlab.unittest.TestCase
     methods (Test)
         % Test methods
         function miSim_initialization(tc)
+            % Test flag: set true to exercise the min-max-workload LP routing
+            % overlay on this random scenario. Routing requires SINR comms, so
+            % the flag switches the whole SINR stack on (agents keep their
+            % default 0.1 W txPower); the permissive -30 dB threshold keeps
+            % random geometries fully connected.
+            useRoutingTopology = true;
+
             % randomly create obstacles
             nGeom = tc.minNumObstacles + randi(tc.maxNumObstacles - tc.minNumObstacles);
             tc.obstacles = cell(nGeom, 1);
@@ -240,7 +247,11 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+            if useRoutingTopology
+                tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing, true, -30.0, 2.0, 290, 2.4e9, 20e6, true, 0.02);
+            else
+                tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+            end
         end
         function miSim_run_rf_sensor(tc)
             % randomly create obstacles
@@ -391,6 +402,13 @@ classdef test_miSim < matlab.unittest.TestCase
             tc.testClass = tc.testClass.run();
         end
         function miSim_run(tc)
+            % Test flag: set true to exercise the min-max-workload LP routing
+            % overlay on this random scenario. Routing requires SINR comms, so
+            % the flag switches the whole SINR stack on (agents keep their
+            % default 0.1 W txPower); the permissive -30 dB threshold keeps
+            % random geometries fully connected.
+            useRoutingTopology = true;
+
             % randomly create obstacles
             nGeom = tc.minNumObstacles + randi(tc.maxNumObstacles - tc.minNumObstacles);
             tc.obstacles = cell(nGeom, 1);
@@ -527,7 +545,11 @@ classdef test_miSim < matlab.unittest.TestCase
             end
 
             % Initialize the simulation
-            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+            if useRoutingTopology
+                tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing, true, -30.0, 2.0, 290, 2.4e9, 20e6, true, 0.02);
+            else
+                tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing);
+            end
 
             % Write out initialization state
             tc.testClass.writeInits();
@@ -958,6 +980,180 @@ classdef test_miSim < matlab.unittest.TestCase
 
             % Run the simulation
             tc.testClass = tc.testClass.run();
+        end
+        function test_routing_topology_3_agents(tc)
+            % Three near-collinear agents with the routing-LP topology
+            % selector. Endpoints are agents 1 and 3 (largest odd index);
+            % agent 2 is the only relay, so only its unit of data transits
+            % the network. Agent 2 sits slightly closer to agent 1, giving
+            % the 2->1 link strictly higher capacity than 2->3. The min-max
+            % optimum is then unique: node 2's transmit workload
+            % f21/c21 + f23/c23 is always the system max (endpoint receive
+            % time is a subset of it), so ALL flow goes over the better
+            % link. No split occurs because the receive side never binds
+            % with a single relay.
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([2, 8; 8, 8]), tc.domain, tc.discretizationStep, tc.protectedRange);
+
+            % Initialize agent collision geometry. Asymmetric spacing: agent 2
+            % is 1.8 m from agent 1 and 2.2 m from agent 3 (both above the 1 m
+            % path-loss floor). The 1-3 link (4 m, with agent 2 interfering
+            % close-in) stays below the threshold in both directions.
+            tc.agents = {agent; agent; agent;};
+            tc.collisionRanges = .25 * ones(size(tc.agents));
+            dLeft  = [1.8, 0, 0];
+            dRight = [2.2, 0, 0];
+            geometry1 = spherical;
+            geometry2 = geometry1;
+            geometry3 = geometry1;
+            geometry1 = geometry1.initialize(tc.domain.center - dLeft, tc.collisionRanges(1), REGION_TYPE.COLLISION);
+            geometry2 = geometry2.initialize(tc.domain.center, tc.collisionRanges(2), REGION_TYPE.COLLISION);
+            geometry3 = geometry3.initialize(tc.domain.center + dRight, tc.collisionRanges(3), REGION_TYPE.COLLISION);
+
+            % Initialize agent sensor model
+            tc.sensor = sigmoidSensor;
+            tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 15, 3);
+
+            % Initialize obstacles
+            tc.obstacles = {};
+
+            % Initialize agents
+            tc.maxIter = 50;
+            tc.commsRanges = 4 * ones(size(tc.agents)); % unused in SINR mode
+            tc.agents{1} = tc.agents{1}.initialize(tc.domain.center - dLeft, geometry1, tc.sensor, tc.commsRanges(1), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{2} = tc.agents{2}.initialize(tc.domain.center, geometry2, tc.sensor, tc.commsRanges(2), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+            tc.agents{3} = tc.agents{3}.initialize(tc.domain.center + dRight, geometry3, tc.sensor, tc.commsRanges(3), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+
+            % SINR communications model parameters (same threshold logic as
+            % the lesser-neighbor 3-agent test: a couple dB above the
+            % rejected end-to-end link, below the chain-link binding)
+            useSinrComms     = true;
+            txPower          = [0.1, 0.1, 0.1];   % homogeneous transmit power (W)
+            pathLossExponent = 2.0;
+            ambientTemp      = 290;     % K
+            centerFreq       = 2.4e9;   % Hz
+            bandwidth        = 20e6;    % Hz
+            endBindingDb  = 10 * log10(0.5^pathLossExponent);  % ~ -6.02 dB
+            sinrThreshold = endBindingDb + 2.0;                % ~ -4.02 dB
+            useRoutingTopology   = true;
+            routingFlowThreshold = 0.02;
+
+            tc.agents{1}.txPower = txPower(1);
+            tc.agents{2}.txPower = txPower(2);
+            tc.agents{3}.txPower = txPower(3);
+
+            % Initialize the simulation with the routing-LP topology selector
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology, routingFlowThreshold);
+
+            % Feasible (threshold) links form the 1-2-3 line; the routing LP
+            % then puts all of relay 2's data on the higher-capacity 2->1
+            % link and drops 2->3 entirely
+            tc.assertEqual(tc.testClass.routingAdjacencyMatrix, logical( ...
+                [ 0, 0, 0; ...
+                  1, 0, 0; ...
+                  0, 0, 0;]));
+            tc.assertEqual(tc.testClass.routingFlows(2, 1), 1.0, "AbsTol", 1e-6);
+
+            % Endpoints never transmit; total flow equals the relay's unit
+            tc.assertEqual(sum(tc.testClass.routingFlows, "all"), 1.0, "AbsTol", 1e-6);
+
+            % The CBF maintains the low-level (lesser-neighbor) connectivity
+            % line PLUS the routed bulk link (2->1, already part of the line):
+            % the network must stay connected for basic traffic even though
+            % bulk data only flows over 2->1
+            tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
+                [ 1, 1, 0; ...
+                  1, 1, 1; ...
+                  0, 1, 1;]));
+
+            % Run the simulation
+            tc.testClass = tc.testClass.run();
+        end
+        function test_routing_topology_4_agents(tc)
+            % Four collinear agents, 2 m spacing. Endpoints are agents 1 and
+            % 3; relays are agents 2 and 4. Threshold-feasible links form the
+            % chain 1-2-3-4 (longer links are interference-limited below the
+            % threshold). Relay 4's only outlet is endpoint 3; relay 2 can
+            % reach both endpoints but 2->1 has strictly higher capacity than
+            % 2->3 (endpoint 3 is also loaded by relay 4's traffic), so the
+            % unique optimum is 2->1 and 4->3.
+            tc.minDimension = 10; % domain size
+            tc.domain = tc.domain.initialize([zeros(1, 3);tc.minDimension* ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            tc.domain.objective = tc.domain.objective.initialize(objectiveFunctionWrapper([2, 8; 8, 8]), tc.domain, tc.discretizationStep, tc.protectedRange);
+
+            % Initialize agent collision geometry: collinear at x = 2, 4, 6, 8
+            tc.agents = {agent; agent; agent; agent;};
+            tc.collisionRanges = .25 * ones(size(tc.agents));
+            d = [2.0, 0, 0];
+            positions = [tc.domain.center - 1.5 * d; ...
+                         tc.domain.center - 0.5 * d; ...
+                         tc.domain.center + 0.5 * d; ...
+                         tc.domain.center + 1.5 * d;];
+
+            % Initialize agent sensor model
+            tc.sensor = sigmoidSensor;
+            tc.sensor = tc.sensor.initialize(tc.minDimension / 2, 3, 15, 3);
+
+            % Initialize obstacles
+            tc.obstacles = {};
+
+            % Initialize agents
+            tc.maxIter = 50;
+            tc.commsRanges = 4 * ones(size(tc.agents)); % unused in SINR mode
+            for aa = 1:4
+                geometry = spherical;
+                geometry = geometry.initialize(positions(aa, :), tc.collisionRanges(aa), REGION_TYPE.COLLISION);
+                tc.agents{aa} = tc.agents{aa}.initialize(positions(aa, :), geometry, tc.sensor, tc.commsRanges(aa), tc.maxIter, tc.initialStepSize, tc.initialMaxAngleStepSize);
+                tc.agents{aa}.txPower = 0.1;
+            end
+
+            % SINR communications model parameters
+            useSinrComms     = true;
+            pathLossExponent = 2.0;
+            ambientTemp      = 290;     % K
+            centerFreq       = 2.4e9;   % Hz
+            bandwidth        = 20e6;    % Hz
+            endBindingDb  = 10 * log10(0.5^pathLossExponent);  % ~ -6.02 dB
+            sinrThreshold = endBindingDb + 2.0;                % ~ -4.02 dB
+            useRoutingTopology   = true;
+            routingFlowThreshold = 0.02;
+
+            % Initialize the simulation with the routing-LP topology selector
+            tc.testClass = tc.testClass.initialize(tc.domain, tc.agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, tc.obstacles, tc.makePlots, tc.makeVideo, tc.useDoubleIntegrator, tc.dampingCoeff, tc.useFixedTopology, tc.optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology, routingFlowThreshold);
+
+            % Unique optimum: 2->1 and 4->3
+            expectedDirected = false(4);
+            expectedDirected(2, 1) = true;
+            expectedDirected(4, 3) = true;
+            tc.assertEqual(tc.testClass.routingAdjacencyMatrix, expectedDirected);
+
+            % The CBF maintains the full lesser-neighbor chain (low-level
+            % connectivity) with the bulk links overlaid on it
+            tc.assertEqual(tc.testClass.constraintAdjacencyMatrix, logical( ...
+                [ 1, 1, 0, 0; ...
+                  1, 1, 1, 0; ...
+                  0, 1, 1, 1; ...
+                  0, 0, 1, 1;]));
+
+            % Flow conservation at every relay: out - in = 1 unit produced
+            F = tc.testClass.routingFlows;
+            endpoints = [1, 3];
+            for aa = 1:4
+                if any(aa == endpoints)
+                    continue;
+                end
+                tc.assertEqual(sum(F(aa, :)) - sum(F(:, aa)), 1.0, "AbsTol", 1e-6);
+            end
+
+            % Every surviving link carries at least the pruning threshold,
+            % and total delivered data equals the number of relays
+            tc.assertTrue(all(F(F > 0) >= tc.testClass.routingFlowThreshold));
+            tc.assertEqual(sum(F(:, endpoints), "all") - sum(F(endpoints, :), "all"), 2.0, "AbsTol", 1e-6);
         end
         function test_communications_constraint_fixed_radius(tc)
             % No obstacles

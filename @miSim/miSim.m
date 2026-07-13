@@ -30,6 +30,14 @@ classdef miSim
         ambientTemp = 290.0;      % ambient temperature (K) for thermal noise N = k_B*T*B
         centerFreq = 2.4e9;       % carrier frequency (Hz); sets path-loss offset K = (4*pi*f_c/c)^2
         bandwidth = 20e6;         % channel bandwidth (Hz) for thermal noise N = k_B*T*B
+        % Topology-selection algorithm (requires useSinrComms; MATLAB sim only).
+        % false -> lesser-neighbor; true -> min-max-workload LP routing, which
+        % picks the links that route all sensing data to the network endpoints
+        % (agents 1 and the largest odd index) with minimal peak node workload.
+        useRoutingTopology = false;
+        routingFlowThreshold = 0.02;  % prune links carrying less flow than this (units of one node's production)
+        routingAdjacencyMatrix = false(0, 0); % directed adjacency chosen by the routing LP: (i, j) = link i -> j
+        routingFlows = zeros(0, 0);   % data flow carried by each directed link (units/timestep)
         artifactName = "";
         f; % main plotting tiled layout figure
         fPerf; % performance plot figure
@@ -79,12 +87,13 @@ classdef miSim
             obj.obstacles = {rectangularPrism};
             obj.agents = {agent};
         end
-        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth);
+        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology, routingFlowThreshold);
         [obj] = initializeFromCsv(obj, csvPath);
         [obj] = initializeFromInits(obj, initsPath);
         [obj] = plotFromSimHist(obj, initsPath, histPath);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);
+        [obj] = routeTopology(obj);
         [obj] = constrainMotion(obj);
         [sinr, grad] = sinrLink(obj, positions, rxIdx, txIdx);
         [obj] = partition(obj);
