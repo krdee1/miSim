@@ -116,17 +116,12 @@ if isfield(inits, 'useRoutingTopology')
 else
     useRoutingTopology = false;
 end
-if isfield(inits, 'routingFlowThreshold')
-    routingFlowThreshold = inits.routingFlowThreshold;
-else
-    routingFlowThreshold = 0.02;
-end
 
 % ---- Initialize simulation (plots and video disabled) ------------------------
 obj = obj.initialize(dom, agentList, inits.barrierGain, inits.barrierExponent, ...
                      inits.minAlt, inits.timestep, inits.maxIter, obstacleList, ...
                      false, false, useDoubleIntegrator, dampingCoeff, useFixedTopology, false, ...
                      useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, ...
-                     useRoutingTopology, routingFlowThreshold);
+                     useRoutingTopology);
 
 end

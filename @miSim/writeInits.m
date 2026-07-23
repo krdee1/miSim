@@ -62,7 +62,7 @@ function writeInits(obj)
                     "useDoubleIntegrator", obj.useDoubleIntegrator, "dampingCoeff", obj.dampingCoeff, "useFixedTopology", obj.useFixedTopology, ...
                     "useSinrComms", obj.useSinrComms, "sinrThreshold", obj.sinrThreshold, "pathLossExponent", obj.pathLossExponent, "ambientTemp", obj.ambientTemp, ...
                     "centerFreq", obj.centerFreq, "bandwidth", obj.bandwidth, "txPower", txPower, ... % SINR comms model parameters
-                    "useRoutingTopology", obj.useRoutingTopology, "routingFlowThreshold", obj.routingFlowThreshold, ... % routing topology parameters
+                    "useRoutingTopology", obj.useRoutingTopology, ... % topology-selection algorithm (CALSN when true)
                     "tilt", tilt, "azimuth", azimuth, ... % joint sensor parameters
                     "alphaDist", alphaDist, "betaDist", betaDist, "alphaTilt", alphaTilt, "betaTilt", betaTilt, ... % sigmoid sensor parameters
                     "lossExponent", lossExponent, "P_TX", P_TX, "BW", BW, "f_c", f_c, "G_RX_dBi", G_RX_dBi, "beamwidthExponent", beamwidthExponent, ... % RF sensor parameters

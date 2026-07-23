@@ -42,12 +42,13 @@ function [obj] = run(obj)
         % plotting purposes, the real partitioning is done by the agents)
         [obj.partitioning, obj.agents] = obj.agents{1}.partition(obj.agents, obj.domain.objective);
 
-        % Determine desired communications links: lesser-neighbor gives the
-        % low-level connectivity topology; routing mode overlays bulk links
+        % Determine desired communications links: the Capacity-Aware Lesser
+        % Sink Neighbor algorithm replaces lesser-neighbor when selected
         if ~obj.useFixedTopology
-            obj = obj.lesserNeighbor();
             if coder.target('MATLAB') && obj.useRoutingTopology
-                obj = obj.routeTopology();
+                obj = obj.lesserSinkNeighbor();
+            else
+                obj = obj.lesserNeighbor();
             end
         end
 

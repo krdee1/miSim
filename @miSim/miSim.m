@@ -31,13 +31,17 @@ classdef miSim
         centerFreq = 2.4e9;       % carrier frequency (Hz); sets path-loss offset K = (4*pi*f_c/c)^2
         bandwidth = 20e6;         % channel bandwidth (Hz) for thermal noise N = k_B*T*B
         % Topology-selection algorithm (requires useSinrComms; MATLAB sim only).
-        % false -> lesser-neighbor; true -> min-max-workload LP routing, which
-        % picks the links that route all sensing data to the network endpoints
-        % (agents 1 and the largest odd index) with minimal peak node workload.
+        % false -> lesser-neighbor; true -> Capacity-Aware Lesser Sink Neighbor
+        % (CALSN, see new/new_routing_algorithm.pdf): base-station potentials
+        % replace the index-based "lesser" rule, and the maintained topology
+        % comes with a routing table (flows F, fractions R) that sends every
+        % UAV's data toward base stations 1 and N.
         useRoutingTopology = false;
-        routingFlowThreshold = 0.02;  % prune links carrying less flow than this (units of one node's production)
-        routingAdjacencyMatrix = false(0, 0); % directed adjacency chosen by the routing LP: (i, j) = link i -> j
-        routingFlows = zeros(0, 0);   % data flow carried by each directed link (units/timestep)
+        routingAdjacencyMatrix = false(0, 0); % directed flow links (i, j) = child i sends to parent j (F > 0)
+        routingFlows = zeros(0, 0);      % F: flow on each directed link (units of r = 1 per UAV per step)
+        routingFractions = zeros(0, 0);  % R = F/D: share of the sender's aggregated demand per link (0..1)
+        routingPotentials = zeros(0, 1); % phi: Bellman-Ford base-station potential per UAV
+        routingUnrouted = zeros(0, 1);   % unrouted demand per UAV (zeros when routing is feasible)
         artifactName = "";
         f; % main plotting tiled layout figure
         fPerf; % performance plot figure
@@ -87,13 +91,13 @@ classdef miSim
             obj.obstacles = {rectangularPrism};
             obj.agents = {agent};
         end
-        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology, routingFlowThreshold);
+        [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology);
         [obj] = initializeFromCsv(obj, csvPath);
         [obj] = initializeFromInits(obj, initsPath);
         [obj] = plotFromSimHist(obj, initsPath, histPath);
         [obj] = run(obj);
         [obj] = lesserNeighbor(obj);
-        [obj] = routeTopology(obj);
+        [obj] = lesserSinkNeighbor(obj);
         [obj] = constrainMotion(obj);
         [sinr, grad] = sinrLink(obj, positions, rxIdx, txIdx);
         [obj] = partition(obj);

@@ -6,11 +6,10 @@ function obj = plotGraph(obj)
         obj (1, 1) {mustBeA(obj, "miSim")};
     end
 
-    % The maintained (low-level connectivity) links are always drawn as a
-    % dotted undirected graph: basic traffic must be routable between any
-    % two drones at all times. In routing mode the bulk-data links selected
-    % by the LP are overlaid as SOLID DIRECTED edges (arrow = transmitter ->
-    % receiver) on the same node layout.
+    % The maintained links are always drawn as a dotted undirected graph.
+    % In routing (CALSN) mode the flow-carrying links are overlaid as SOLID
+    % DIRECTED edges (arrow = child -> parent, toward a base station) on
+    % the same node layout.
     G = graph(obj.constraintAdjacencyMatrix, "omitselfloops");
 
     % Resolve the target axes for the network graph tile
@@ -24,7 +23,7 @@ function obj = plotGraph(obj)
     hold(ax, "on");
     o = plot(ax, G, "LineStyle", "--", "EdgeColor", "g", "NodeColor", "k", "LineWidth", 2);
     if obj.useRoutingTopology
-        % Bulk overlay: reuse the base layout's node coordinates and hide
+        % Flow overlay: reuse the base layout's node coordinates and hide
         % the overlay's own nodes/labels so only its edges show. Sizeable
         % arrowheads so the flow direction reads at tile size.
         D = digraph(obj.routingAdjacencyMatrix);
@@ -51,11 +50,11 @@ function obj = plotGraph(obj)
             positions(kk, :) = obj.agents{kk}.pos;
         end
         % Labels are bare numbers (no units) so they stay compact; GraphPlot
-        % renders them horizontally, left-to-right. Dotted (low-level) edges
+        % renders them horizontally, left-to-right. Dotted (maintained) edges
         % are labelled with the binding (worse) directional SINR — a link is
         % feasible only if BOTH directions clear the threshold. Links that
-        % also carry a bulk overlay leave the label to the solid edge, which
-        % shows the SINR of the transmission direction.
+        % also carry flow leave the label to the solid directed edge, which
+        % shows the flow value (units of r) sent child -> parent.
         edgeLabels = strings(size(endNodes, 1), 1);
         for ee = 1:size(endNodes, 1)
             lo = endNodes(ee, 1);
@@ -70,13 +69,12 @@ function obj = plotGraph(obj)
         end
         o(1).EdgeLabel = edgeLabels;
         if obj.useRoutingTopology
-            endNodesD = D.Edges.EndNodes;   % each row [tx rx]
-            bulkLabels = strings(size(endNodesD, 1), 1);
+            endNodesD = D.Edges.EndNodes;   % each row [child parent]
+            flowLabels = strings(size(endNodesD, 1), 1);
             for ee = 1:size(endNodesD, 1)
-                sinrTx = obj.sinrLink(positions, endNodesD(ee, 2), endNodesD(ee, 1)); % rx, tx
-                bulkLabels(ee) = sprintf("%.1f", 10 * log10(sinrTx));
+                flowLabels(ee) = sprintf("%.2f", obj.routingFlows(endNodesD(ee, 1), endNodesD(ee, 2)));
             end
-            o(2).EdgeLabel = bulkLabels;
+            o(2).EdgeLabel = flowLabels;
         end
         % Threshold goes in the existing single-line title (not a subtitle) so
         % the small tile is not compressed further, and the hover toolbar is

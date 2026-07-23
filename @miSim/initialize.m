@@ -1,4 +1,4 @@
-function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology, routingFlowThreshold)
+function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology)
     arguments (Input)
         obj (1, 1) {mustBeA(obj, "miSim")};
         domain (1, 1) {mustBeGeometry};
@@ -22,7 +22,6 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
         centerFreq (1, 1) double = 2.4e9;
         bandwidth (1, 1) double = 20e6;
         useRoutingTopology (1, 1) logical = false;
-        routingFlowThreshold (1, 1) double = 0.02;
     end
     arguments (Output)
         obj (1, 1) {mustBeA(obj, "miSim")};
@@ -114,23 +113,49 @@ function [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, m
     obj.centerFreq = centerFreq;
     obj.bandwidth = bandwidth;
 
-    % Set topology-selection algorithm and routing parameters
+    % Set topology-selection algorithm; fail fast on invalid mode combinations
+    assert(~(useRoutingTopology && useFixedTopology), ...
+        "useRoutingTopology and useFixedTopology are mutually exclusive topology selectors");
+    assert(~useRoutingTopology || useSinrComms, ...
+        "useRoutingTopology requires the SINR comms model (useSinrComms)");
     obj.useRoutingTopology = useRoutingTopology;
-    obj.routingFlowThreshold = routingFlowThreshold;
 
-    % Compute adjacency matrix and network topology. Lesser-neighbor always
-    % provides the low-level connectivity topology (basic traffic must be
-    % routable between any two drones at all times); routing mode overlays
-    % the bulk-data links on top of it. The routing LP uses linprog (no
-    % codegen support); the compiled path never sets the flag, so linprog
-    % is never compiled.
+    % Compute adjacency matrix and network topology. The Capacity-Aware
+    % Lesser Sink Neighbor algorithm replaces lesser-neighbor when selected
+    % (MATLAB sim only; the compiled path never sets the flag).
     obj = obj.updateAdjacency();
     if obj.useFixedTopology
         obj.constraintAdjacencyMatrix = obj.adjacency;
+    elseif coder.target('MATLAB') && obj.useRoutingTopology
+        obj = obj.lesserSinkNeighbor();
     else
         obj = obj.lesserNeighbor();
-        if coder.target('MATLAB') && obj.useRoutingTopology
-            obj = obj.routeTopology();
+    end
+
+    % Guard against the SINR CBF deadlock band. Connectivity admits links
+    % with SINR anywhere above sinrThreshold, but constrainMotion maintains
+    % every selected link at sinrThreshold + 3 dB (paddingDb — keep in
+    % sync) in BOTH directions. A link selected inside that 3 dB band is
+    % born with a violated barrier; the QP can then go infeasible and hold
+    % positions, and since a frozen geometry re-selects the same link, the
+    % fleet deadlocks permanently. This catches the initial configuration;
+    % geometry evolution can still enter the band mid-run (fixing that
+    % requires pad-aware selection or a bounded-recovery barrier floor).
+    if coder.target('MATLAB') && obj.useSinrComms
+        gammaCbfLin = 10^((obj.sinrThreshold + 3.0) / 10);
+        posChk = zeros(size(obj.agents, 1), 3);
+        for kk = 1:size(obj.agents, 1)
+            posChk(kk, :) = obj.agents{kk}.pos;
+        end
+        for ii = 1:(size(obj.agents, 1) - 1)
+            for jj = (ii + 1):size(obj.agents, 1)
+                if obj.constraintAdjacencyMatrix(ii, jj)
+                    sinrBinding = min(obj.sinrLink(posChk, ii, jj), obj.sinrLink(posChk, jj, ii));
+                    assert(sinrBinding >= gammaCbfLin, ...
+                        "Initial topology link %d-%d has SINR %.1f dB, inside the CBF maintenance band (sinrThreshold %.1f dB + 3 dB padding): the QP starts with a violated comms barrier and can deadlock. Lower sinrThreshold or adjust the initial geometry.", ...
+                        ii, jj, 10 * log10(sinrBinding), obj.sinrThreshold);
+                end
+            end
         end
     end
 

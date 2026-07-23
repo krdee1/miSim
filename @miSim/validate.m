@@ -19,6 +19,12 @@ function validate(obj)
         error("Network is not connected");
     end
 
+    % In routing (CALSN) mode the MAINTAINED topology itself must form a
+    % single connected component (basin extension + stitch guard invariant)
+    if obj.useRoutingTopology && max(conncomp(graph(obj.constraintAdjacencyMatrix))) ~= 1
+        error("Maintained routing topology (A_control) is not connected");
+    end
+
     if any(obj.adjacency - obj.constraintAdjacencyMatrix < 0, "all")
         error("Eliminated network connections that were necessary");
     end
