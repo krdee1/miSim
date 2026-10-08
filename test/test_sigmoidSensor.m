@@ -68,11 +68,18 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
             s(1) = s(1).initialize(alphaDist(1), betaDist(1), alphaTilt(1), betaTilt(1));
             s(2) = s(2).initialize(alphaDist(2), betaDist(2), alphaTilt(2), betaTilt(2));
 
+            set(groot, 'defaultTextInterpreter',          'latex');
+            set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
+            set(groot, 'defaultLegendInterpreter',        'latex');
+            set(groot, 'defaultColorbarTickLabelInterpreter', 'latex');
+            set(groot, 'defaultAxesFontSize', 10);   % = \footnotesize in a 12pt doc
+            set(groot, 'defaultTextFontSize', 10);
+
             % Plot
             f = s(1).plotParameters;
             f = s(2).plotParameters(f);
 
-            legend(["Sensor 1"; "Sensor 2"]);
+            % f = exportThesisFig(f, "sigmoidmodel", 3/4);
         end
     end
 

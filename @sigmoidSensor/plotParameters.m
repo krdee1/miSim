@@ -8,8 +8,8 @@ function f = plotParameters(obj, f)
     end
 
     % Distance and tilt sample points
-    d = 0:(obj.alphaDist / 1000):(2*obj.alphaDist);
-    t = -90:0.1:90;
+    d = 0:(obj.alphaDist / 200):(2*obj.alphaDist);
+    t = -90:0.5:90;
 
     % Sample membership functions
     d_x = obj.distanceMembership(d);
