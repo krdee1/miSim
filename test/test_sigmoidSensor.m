@@ -57,6 +57,23 @@ classdef test_sigmoidSensor < matlab.unittest.TestCase
             % Performance at great tilt should be 0
             tc.verifyEqual(tc.testClass.sensorPerformance([0, 0, h], [5, 5, 0]), 0, "AbsTol", 1e-9);
         end
+        function test_thesis_graphic(tc)
+            s = [sigmoidSensor, sigmoidSensor];
+
+            alphaDist = [2, 8];
+            betaDist = [25, 1];
+            alphaTilt = [50, 15]; % degrees
+            betaTilt = [0.2, 3];
+
+            s(1) = s(1).initialize(alphaDist(1), betaDist(1), alphaTilt(1), betaTilt(1));
+            s(2) = s(2).initialize(alphaDist(2), betaDist(2), alphaTilt(2), betaTilt(2));
+
+            % Plot
+            f = s(1).plotParameters;
+            f = s(2).plotParameters(f);
+
+            legend(["Sensor 1"; "Sensor 2"]);
+        end
     end
 
 end
