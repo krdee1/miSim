@@ -192,9 +192,9 @@ classdef test_rfSensor < matlab.unittest.TestCase
             title("Transmitting Antenna Gain Model");
             ylabel("Transmitting Antenna Gain (dBi)");
             xlabel("Elevation Angle from Antenna Boresight $\xi$ ($^\circ$)");
-            legend("$n = " + string(n) + "$");
+            legend("$\delta = " + string(n) + "$");
 
-            exportThesisFig(f, "antennapatterns", 3/4);
+            % exportThesisFig(f, "antennapatterns", 3/4);
             % close(f);
         end
     end
