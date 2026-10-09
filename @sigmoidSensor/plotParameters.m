@@ -46,7 +46,7 @@ function f = plotParameters(obj, f)
     nexttile(2, [1,  1]);
     grid("on");
     title("Tilt Membership Sigmoid");
-    xlabel("Tilt (deg)");
+    xlabel("Tilt ($^\circ$)");
     ylabel("Membership");
     lt = legend();
     hold("on");
