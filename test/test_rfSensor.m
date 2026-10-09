@@ -172,30 +172,5 @@ classdef test_rfSensor < matlab.unittest.TestCase
             sensor2.plot(pos2(3), [pos1 - pos2; pos3 - pos2], {sensor1; sensor3});
             sensor3.plot(pos3(3), [pos1 - pos3; pos2 - pos3], {sensor1; sensor2});
         end
-        function test_thesis_antenna_patterns(tc)
-            f = figure;
-            xi = -90:0.1:90; % degrees
-            n = [1, 4, 16, 64, 256];
-            for ii = 1:length(n)
-                gain = 10 .* log10(2 * (n(ii) + 1)) + 10 .* n(ii) .* log10(max(0, cosd(xi)));
-                plot(xi, gain, "LineWidth", 2);
-                if ii == 1
-                    hold("on");
-                end
-            end
-            hold("off");
-            grid("on");
-            ylim([-100, 35]);
-            xlim([-90, 90]);
-            xticks(-90:45:90);
-            % exportThesisFig switches all text to the LaTeX interpreter
-            title("Transmitting Antenna Gain Model");
-            ylabel("Transmitting Antenna Gain (dBi)");
-            xlabel("Elevation Angle from Antenna Boresight $\xi$ ($^\circ$)");
-            legend("$\delta = " + string(n) + "$");
-
-            % exportThesisFig(f, "antennapatterns", 3/4);
-            % close(f);
-        end
     end
 end
