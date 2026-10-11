@@ -60,7 +60,7 @@ function [sinr, grad] = sinrLink(obj, positions, rxIdx, txIdx)
     S      = P_t / (K * d_t^n);
 
     % Interference I = sum of received powers from every other agent at r
-    I = 0.0;
+    I = 0;
     for k = 1:nAgents
         if k == r || k == t
             continue;

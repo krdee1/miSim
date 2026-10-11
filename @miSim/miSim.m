@@ -32,10 +32,10 @@ classdef miSim
         bandwidth = 20e6;         % channel bandwidth (Hz) for thermal noise N = k_B*T*B
         % Topology-selection algorithm (requires useSinrComms; MATLAB sim only).
         % false -> lesser-neighbor; true -> Capacity-Aware Lesser Sink Neighbor
-        % (CALSN, see new/new_routing_algorithm.pdf): base-station potentials
-        % replace the index-based "lesser" rule, and the maintained topology
-        % comes with a routing table (flows F, fractions R) that sends every
-        % UAV's data toward base stations 1 and N.
+        % (CALSN, see the algorithm description document, ADD): base-station
+        % potentials replace the index-based "lesser" rule, and the maintained
+        % topology comes with a routing table (flows F, fractions R) that sends
+        % every UAV's data toward base stations 1 and N.
         useRoutingTopology = false;
         routingAdjacencyMatrix = false(0, 0); % directed flow links (i, j) = child i sends to parent j (F > 0)
         routingFlows = zeros(0, 0);      % F: flow on each directed link (units of r = 1 per UAV per step)

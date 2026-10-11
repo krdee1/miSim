@@ -1007,7 +1007,7 @@ classdef test_miSim < matlab.unittest.TestCase
             % corner, co-altitude at z = 2. Base 1 trails the fleet and
             % base 4 leads it, with the relays staggered between: relay 3
             % starts too far from base 1 for a direct link to be worth
-            % using, so its initial basin-1 route is MULTI-HOP via relay 2
+            % using, so its initial route to base 1 is MULTI-HOP via relay 2
             % and re-parents to the base directly as the fleet contracts.
             tc.agents = {agent; agent; agent; agent;};
             tc.collisionRanges = .25 * ones(size(tc.agents));
@@ -1128,7 +1128,7 @@ classdef test_miSim < matlab.unittest.TestCase
             % corner, co-altitude at z = 2. Base 1 trails the fleet and
             % base 4 leads it, with the relays staggered between: relay 3
             % starts too far from base 1 for a direct link to be worth
-            % using, so its initial basin-1 route is MULTI-HOP via relay 2
+            % using, so its initial route to base 1 is MULTI-HOP via relay 2
             % and re-parents to the base directly as the fleet contracts.
             tc.agents = {agent; agent; agent; agent;};
             tc.collisionRanges = .25 * ones(size(tc.agents));

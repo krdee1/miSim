@@ -1,11 +1,11 @@
 function obj = lesserSinkNeighbor(obj)
 % LESSERSINKNEIGHBOR  Capacity-Aware Lesser Sink Neighbor algorithm (CALSN).
 %
-% Implements the algorithm specified in new/new_routing_algorithm.pdf as the
-% selectable alternative to lesserNeighbor. UAVs 1 and N are base stations;
-% every other UAV generates r = 1 unit of data per step, and all data must
-% reach a base station. The algorithm outputs both a sparse maintained
-% topology and a routing table.
+% Implements the algorithm given in the CALSN algorithm description document
+% (ADD; kept outside the repository) as the selectable alternative to
+% lesserNeighbor. UAVs 1 and N are base stations; every other UAV generates
+% r = 1 unit of data per step, and all data must reach a base station. The
+% algorithm outputs both a sparse maintained topology and a routing table.
 %
 % 1. Base-station potentials phi via distributed Bellman-Ford over the
 %    current communication neighborhoods (obj.adjacency), with link cost
@@ -14,29 +14,31 @@ function obj = lesserSinkNeighbor(obj)
 % 2. Lesser sink neighbors L_i replace LNA's "j < i" rule:
 %        L_i = { j in N_i : phi_j < phi_i, or phi_j == phi_i and j < i }.
 %    The equal-potential lexicographic tie-break is a documented deviation
-%    from the spec's strict inequality: at an exact potential watershed
-%    (e.g. a symmetric chain) the strict rule would split A_control into
-%    one tree per base station; the tie-break keeps the airborne graph
-%    connected, which the mission requires.
+%    from the ADD's strict inequality. It makes (phi, index) a total order,
+%    so every feasible link between two non-base UAVs has exactly one
+%    deciding endpoint (the uphill one).
 % 3. LNA-style sparsity: one parent per connected component of the
 %    L_i-induced subgraph (only links with positive capacity in at least
 %    one direction count as edges), chosen by
 %        p = argmin_{j in C} ( phi_j + 1/(C_ij + eps) ).
 %    A_control(i,p) = A_control(p,i) = 1 (diagonal = I).
-%    BASIN EXTENSION (documented deviation): with two potential minima
-%    (the two bases), one-parent-per-component alone yields a spanning
-%    forest with up to two disjoint base-rooted trees whenever a UAV's
-%    lesser sink neighbors collapse into a single component (dense usable
-%    graphs). To restore LNA's global-connectivity property, each UAV
-%    selects one representative per component AND per base-station BASIN
-%    (the base a neighbor's potential descent terminates at). Interior
-%    UAVs are unaffected (their whole neighborhood shares one basin);
-%    watershed UAVs whose neighborhoods span both basins gain a second
-%    parent, which is exactly the bridge between the two trees. A final
-%    stitch guard covers degenerate geometries: if A_control still has
-%    multiple components, the lowest-cost feasible inter-component link
-%    is added (maintained for connectivity only; carries no flow).
-% 4. Routing, children first (decreasing phi; equal phi processed in
+% 4. Connectivity bridge (documented deviation; not in the ADD). Every UAV
+%    must stay connected to the whole fleet to exchange positions for
+%    guidance, so A_control must be one connected graph. LNA's grouping
+%    argument guarantees that whenever every feasible link has a deciding
+%    endpoint. The one exception is the base-to-base link: both bases have
+%    phi = 0 and select no parents, so nobody maintains it, yet it still
+%    merges groups when other UAVs form their components. Steps 1-3
+%    therefore leave A_control either connected or split into exactly two
+%    pieces, one containing each base. In the split case one bridge is
+%    added: of all feasible links between the two pieces (base-to-base
+%    included), the one whose weaker direction has the highest SINR, i.e.
+%    the most margin under the comms barrier. A warning is issued if even
+%    that link is inside the CBF maintenance band (sinrThreshold + 3 dB).
+%    The bridge is maintained for connectivity only and carries no flow,
+%    so when present it is the one maintained link outside the ADD's
+%    invariant A_control(i,j) = 1, i ~= j, iff F(i,j) > 0 or F(j,i) > 0.
+% 5. Routing, children first (decreasing phi; equal phi processed in
 %    decreasing index order so tie-break children precede their parents):
 %    aggregate demand D_i = r + inflows, split capacity-proportionally
 %    over parents; saturated links are capped at capacity and the residual
@@ -72,13 +74,16 @@ function obj = lesserSinkNeighbor(obj)
         positions(kk, :) = obj.agents{kk}.pos;
     end
 
-    % Directed Shannon link capacities over the current communication
-    % neighborhoods: C(i, j) = capacity of sending from i to j (receiver j)
+    % Directed SINRs and Shannon link capacities over the current
+    % communication neighborhoods: S(i, j) and C(i, j) describe sending
+    % from i to j (receiver j)
+    S = zeros(nAgents);
     C = zeros(nAgents);
     for ii = 1:nAgents
         for jj = 1:nAgents
             if jj ~= ii && obj.adjacency(ii, jj)
-                C(ii, jj) = obj.bandwidth * log2(1 + obj.sinrLink(positions, jj, ii));
+                S(ii, jj) = obj.sinrLink(positions, jj, ii);
+                C(ii, jj) = obj.bandwidth * log2(1 + S(ii, jj));
             end
         end
     end
@@ -109,42 +114,7 @@ function obj = lesserSinkNeighbor(obj)
         end
     end
 
-    % ---- Base-station basins (for the basin extension) -------------------
-    % Each finite-potential UAV descends its argmin neighbor chain; phi is
-    % strictly decreasing along it, so the chain terminates at a base. The
-    % basin label records which base that is.
-    descent = zeros(nAgents, 1);
-    for ii = 1:nAgents
-        if isBase(ii) || isinf(phi(ii))
-            continue;
-        end
-        bestMetric = inf;
-        for jj = 1:nAgents
-            if jj == ii || ~obj.adjacency(ii, jj)
-                continue;
-            end
-            metric = phi(jj) + 1 / (C(ii, jj) + EPS_CAP);
-            if metric < bestMetric
-                bestMetric = metric;
-                descent(ii) = jj;
-            end
-        end
-    end
-    basin = zeros(nAgents, 1);
-    basin(1) = 1;
-    basin(nAgents) = nAgents;
-    for ii = 1:nAgents
-        if isBase(ii) || isinf(phi(ii))
-            continue;
-        end
-        kk = ii;
-        while ~isBase(kk)
-            kk = descent(kk);
-        end
-        basin(ii) = kk;
-    end
-
-    % ---- Parent selection (one per lesser-sink component and basin) ------
+    % ---- Parent selection (one per lesser-sink component) ---------------
     Acontrol = logical(eye(nAgents));
     isParent = false(nAgents); % isParent(i, p): p is a selected parent of i
     for ii = 1:nAgents
@@ -187,8 +157,7 @@ function obj = lesserSinkNeighbor(obj)
             end
         end
 
-        % One parent per connected component and per base-station basin
-        % present in it (basin extension), selected by capacity and
+        % One parent per connected component, selected by capacity and
         % potential: p = argmin( phi_j + 1/(C_ij + eps) )
         visited = false(1, lsnCount);
         for aa = 1:lsnCount
@@ -198,72 +167,58 @@ function obj = lesserSinkNeighbor(obj)
             component = bfs(subgraphAdjacency, aa);
             visited(component) = true;
 
-            for bb = [1, nAgents] % the two possible basin labels
-                bestMetric = inf;
-                bestParent = 0;
-                for cc = 1:numel(component)
-                    jj = lsn(component(cc));
-                    if basin(jj) ~= bb
-                        continue;
-                    end
-                    metric = phi(jj) + 1 / (C(ii, jj) + EPS_CAP);
-                    if metric < bestMetric
-                        bestMetric = metric;
-                        bestParent = jj;
-                    end
-                end
-                if bestParent > 0
-                    isParent(ii, bestParent) = true;
-                    Acontrol(ii, bestParent) = true;
-                    Acontrol(bestParent, ii) = true;
+            bestMetric = inf;
+            bestParent = 0;
+            for cc = 1:numel(component)
+                jj = lsn(component(cc));
+                metric = phi(jj) + 1 / (C(ii, jj) + EPS_CAP);
+                if metric < bestMetric
+                    bestMetric = metric;
+                    bestParent = jj;
                 end
             end
+            isParent(ii, bestParent) = true;
+            Acontrol(ii, bestParent) = true;
+            Acontrol(bestParent, ii) = true;
         end
     end
 
-    % ---- Connectivity stitch guard ---------------------------------------
-    % The basin extension bridges the two base-rooted trees through
-    % watershed UAVs whenever each base borders a routing basin. Degenerate
-    % geometries (e.g. a base whose only feasible neighbor is the other
-    % base) can still leave A_control split; add the lowest-cost feasible
-    % link between components until one remains. Stitched links are
-    % maintained for connectivity only and carry no routed flow. If the
-    % feasibility graph itself is disconnected no stitch exists; validate()
+    % ---- Connectivity bridge ---------------------------------------------
+    % The unmaintained base-to-base link is the only way steps 1-3 can
+    % leave A_control split, and then into exactly two pieces, one per
+    % base. Bridge them with the feasible cross link whose weaker direction
+    % has the highest SINR. If the pieces are not joined by any feasible
+    % link, the feasibility graph itself is disconnected; validate()
     % reports that case.
-    while true
-        comp = zeros(1, nAgents);
-        nComp = 0;
-        for ii = 1:nAgents
-            if comp(ii) == 0
-                nComp = nComp + 1;
-                comp(bfs(Acontrol, ii)) = nComp;
-            end
-        end
-        if nComp <= 1
-            break;
-        end
-        bestMetric = inf;
+    pieceOfBase1 = false(1, nAgents);
+    pieceOfBase1(bfs(Acontrol, 1)) = true;
+    if ~pieceOfBase1(nAgents)
+        bestSinr = -inf;
         bestU = 0;
         bestV = 0;
-        for uu = 1:nAgents
-            for vv = (uu + 1):nAgents
-                if comp(uu) ~= comp(vv) && obj.adjacency(uu, vv)
-                    % Bidirectional link cost (finite even for infinite
-                    % potentials, so isolated islands remain stitchable)
-                    metric = 1 / (C(uu, vv) + EPS_CAP) + 1 / (C(vv, uu) + EPS_CAP);
-                    if metric < bestMetric
-                        bestMetric = metric;
+        for uu = find(pieceOfBase1)
+            for vv = find(~pieceOfBase1)
+                if obj.adjacency(uu, vv)
+                    sinrBinding = min(S(uu, vv), S(vv, uu));
+                    if sinrBinding > bestSinr
+                        bestSinr = sinrBinding;
                         bestU = uu;
                         bestV = vv;
                     end
                 end
             end
         end
-        if bestU == 0
-            break; % feasibility graph disconnected: nothing to stitch with
+        if bestU > 0
+            Acontrol(bestU, bestV) = true;
+            Acontrol(bestV, bestU) = true;
+            % CBF maintenance band: constrainMotion holds maintained links
+            % at sinrThreshold + 3 dB (paddingDb; keep in sync)
+            if bestSinr < 10^((obj.sinrThreshold + 3.0) / 10)
+                warning("miSim:bridgeInCbfBand", ...
+                    "Connectivity bridge %d-%d has SINR %.1f dB, inside the CBF maintenance band (sinrThreshold %.1f dB + 3 dB)", ...
+                    bestU, bestV, 10 * log10(bestSinr), obj.sinrThreshold);
+            end
         end
-        Acontrol(bestU, bestV) = true;
-        Acontrol(bestV, bestU) = true;
     end
 
     % ---- Routing (children first: decreasing potential order) -----------
