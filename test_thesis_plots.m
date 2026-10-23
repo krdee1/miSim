@@ -1,6 +1,39 @@
 classdef test_thesis_plots < matlab.unittest.TestCase
     % test class that generates plots I use in my thesis
     methods (Test)
+        function test_single_agent_gradient_ascent(tc)
+            % make basic domain
+            sim = miSim;
+            domain = rectangularPrism;
+            domain = domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([7, 8.5]), domain, 0.1, 0, 1e-6, [7, 8.5]);
+
+            % Initialize agent collision geometry
+            agents = {agent};
+            geometry1 = spherical;
+            geometry1 = geometry1.initialize([4, 2, 6], 0, REGION_TYPE.COLLISION);
+
+            % Initialize agent sensor model with fixed parameters
+            sensor = sigmoidSensor;
+            sensor = sensor.initialize(10 / 2, 3, 20, 3);
+
+            % Initialize agents
+            agents{1} = agents{1}.initialize([4, 2, 6], geometry1, sensor, 4, 75, 0.2, 0.1);
+
+            % Initialize the simulation
+            obstacles = cell(0, 1);
+            sim = sim.initialize(domain, agents, 100, 3, 0, 0.1, 75, obstacles, true, false, false, 0, false, true);
+
+            % Run the simulation
+            sim = sim.run();
+            sim.fPerf.Children(2).Children(1).Color = sim.fPerf.Children(2).Children(2).Color;
+            delete(sim.fPerf.Children(2).Children(2));
+            f1 = exportThesisFig(sim.fPerf, "singleagentGAperf", 3/4, "Recolor", false);
+
+            f2 = exportThesisFig(sim.f, "singleagentGA", 3/4, "Recolor", false);
+        end
         function service_performance(tc)
             % TX parameters
             P_TX = 10e-3;
