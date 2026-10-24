@@ -42,7 +42,11 @@ function f = exportThesisFig(f, name, aspect, opts)
     % Text
     set(findall(f, '-property', 'Interpreter'), 'Interpreter', 'latex');
     set(findall(f, '-property', 'TickLabelInterpreter'), 'TickLabelInterpreter', 'latex');
-    set(findall(f, '-property', 'FontSize'), 'FontSize', opts.FontSize);
+    % Objects tagged 'KeepFontSize' (e.g. in-plot annotations meant to stand
+    % out from axis/tick labels) keep whatever size they were already given,
+    % instead of being forced to opts.FontSize like everything else.
+    resizable = setdiff(findall(f, '-property', 'FontSize'), findall(f, 'Tag', 'KeepFontSize'));
+    set(resizable, 'FontSize', opts.FontSize);
 
     % Axes: frame width, and palette for any series that pick their color automatically
     for ax = findall(f, 'Type', 'axes')'

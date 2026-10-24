@@ -1,6 +1,117 @@
 classdef test_thesis_plots < matlab.unittest.TestCase
     % test class that generates plots I use in my thesis
     methods (Test)
+        function test_sigmoid_sensor_partitioning(tc)
+            % make basic domain
+            sim = miSim;
+            domain = rectangularPrism;
+            domain = domain.initialize([zeros(1, 3); 100 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([70, 85]), domain, 0.1, 0, 1e-6, [70, 85]);
+
+            agents = {agent; agent; agent; agent; agent;};
+            geometry = spherical;
+            
+            sensors = {sigmoidSensor; sigmoidSensor; sigmoidSensor; sigmoidSensor; sigmoidSensor;};
+            sensors{1} = sensors{1}.initialize(70, 6, 15, 3, 0, 0);
+            sensors{2} = sensors{2}.initialize(105, 3, 20, 3, 18, 165);
+            sensors{3} = sensors{3}.initialize(96, 3, 25, 3, 0, 0);
+            sensors{4} = sensors{4}.initialize(80, 9, 30, 3, 0, 0);
+            sensors{5} = sensors{5}.initialize(90, 3, 20, 3, 15, 190);
+
+            agents{1} = agents{1}.initialize([81, 11, 30], geometry, sensors{1}, 80, 10, 2, 0.5);
+            agents{2} = agents{2}.initialize([91, 28, 97], geometry, sensors{2}, 80, 10, 2, 0.5);
+            agents{3} = agents{3}.initialize([13, 55, 96], geometry, sensors{3}, 80, 10, 2, 0.5);
+            agents{4} = agents{4}.initialize([55, 44, 40], geometry, sensors{4}, 80, 10, 2, 0.5);
+            agents{5} = agents{5}.initialize([63, 96, 80], geometry, sensors{5}, 80, 10, 2, 0.5);
+
+            obstacles = cell(0, 1);
+            sim = sim.initialize(domain, agents, 100, 3, 0, 0.1, 75, obstacles, true, false, false, 0, false, true);
+
+            delete(sim.f.Children.Children(2:end));
+            close(sim.f);
+            close(sim.fPerf);
+            x = sim.domain.objective.X(1, :);
+            y = sim.domain.objective.Y(:, 1);
+            f = figure;
+            imagesc(x, y, sim.partitioning);
+            axis("image");
+            set(gca, "YDir", "normal");
+            xlabel("X (m)");
+            ylabel("Y (m)");
+            title("Example of Domain Partitioning by Sensing");
+            hold("on");
+            labelFontSize = 24; % stands out from the 10pt body text; exempted from exportThesisFig's resize via Tag
+            text(25, 12, "$\mathcal{W}_0$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{1}.pos(1) - 5.25, agents{1}.pos(2) - 0.25, "$\mathcal{W}_1$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{2}.pos(1) - 6, agents{2}.pos(2) - 2, "$\mathcal{W}_2$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{3}.pos(1) - 4, agents{3}.pos(2) - 0.5, "$\mathcal{W}_3$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{4}.pos(1) - 4, agents{4}.pos(2) - 0.5, "$\mathcal{W}_4$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{5}.pos(1) - 7, agents{5}.pos(2) - 15, "$\mathcal{W}_5$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            hold("off");
+            
+            exportThesisFig(f, "sigmoidsensorpartitioning");
+        end
+        function test_rf_sensor_partitioning(tc)
+            % make basic domain
+            sim = miSim;
+            domain = rectangularPrism;
+            domain = domain.initialize([zeros(1, 3); 100 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+
+            % make basic sensing objective
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([70, 85]), domain, 0.1, 0, -3, [70, 85]);
+
+            agents = {agent; agent; agent; agent; agent;};
+            geometry = spherical;
+            
+            sensors = {rfSensor; rfSensor; rfSensor; rfSensor; rfSensor;};
+            power = 1; % 1 W
+            temp = 300; % 300 K
+            bw = 50*1e6; % 50 MHz
+            f_c = 2.4 * 1e9; % 2.4 GHz
+            rxGain = 3; % 3 dB receiver gain
+            nu = 2; % path loss exponent (free space)
+            sensors{1} = sensors{1}.initialize(power*2, temp, bw, f_c, rxGain, 16, 0, 0, nu);
+            sensors{2} = sensors{2}.initialize(power*0.25, temp, bw, f_c, rxGain, 10, 0, 0, nu);
+            sensors{3} = sensors{3}.initialize(power*0.1, temp, bw, f_c, rxGain, 10, 0, 0, nu);
+            sensors{4} = sensors{4}.initialize(power*0.65, temp, bw, f_c, rxGain, 16, 0, 0, nu);
+            sensors{5} = sensors{5}.initialize(power*0.8, temp, bw, f_c, rxGain, 12, 35, 25, nu);
+            agents{1} = agents{1}.initialize([81, 11, 30], geometry, sensors{1}, 80, 10, 2, 0.5);
+            agents{2} = agents{2}.initialize([91, 28, 97], geometry, sensors{2}, 80, 10, 2, 0.5);
+            agents{3} = agents{3}.initialize([13, 55, 96], geometry, sensors{3}, 80, 10, 2, 0.5);
+            agents{4} = agents{4}.initialize([55, 44, 40], geometry, sensors{4}, 80, 10, 2, 0.5);
+            agents{5} = agents{5}.initialize([63, 96, 80], geometry, sensors{5}, 80, 10, 2, 0.5);
+
+            obstacles = cell(0, 1);
+            sim = sim.initialize(domain, agents, 100, 3, 0, 0.1, 75, obstacles, true, false, false, 0, false, true);
+
+            delete(sim.f.Children.Children(2:end));
+            close(sim.f);
+            close(sim.fPerf);
+            x = sim.domain.objective.X(1, :);
+            y = sim.domain.objective.Y(:, 1);
+            f = figure;
+            imagesc(x, y, sim.partitioning);
+            axis("image");
+            set(gca, "YDir", "normal");
+            xlabel("X (m)");
+            ylabel("Y (m)");
+            title("Example of Domain Partitioning by Service");
+            hold("on");
+            labelFontSize = 24; % stands out from the 10pt body text; exempted from exportThesisFig's resize via Tag
+            text(36, 83, "$\mathcal{W}_0$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            annotation("arrow", [.5, .545], [.785, .785], Color="r", LineWidth=2);
+            annotation("ellipse", [0.505, 0.18, 0.048, 0.08], Color="r", LineWidth=2);
+            text(agents{1}.pos(1) - 5.25, agents{1}.pos(2) - 0.25, "$\mathcal{W}_1$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{2}.pos(1) - 6, agents{2}.pos(2) + 32, "$\mathcal{W}_2$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{3}.pos(1) - 4, agents{3}.pos(2) - 0.5, "$\mathcal{W}_3$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{4}.pos(1) - 6, agents{4}.pos(2) + 1, "$\mathcal{W}_4$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            text(agents{5}.pos(1) + 3, agents{5}.pos(2) - 5, "$\mathcal{W}_5$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
+            hold("off");
+            
+            exportThesisFig(f, "rfsensorpartitioning");
+        end
         function test_single_agent_gradient_ascent(tc)
             % make basic domain
             sim = miSim;
