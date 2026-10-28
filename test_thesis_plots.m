@@ -8,16 +8,16 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             domain = domain.initialize([zeros(1, 3); 100 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([70, 85]), domain, 0.1, 0, 1e-6, [70, 85]);
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([70, 85]), domain, 0.1, 0, -1, [70, 85]);
 
             agents = {agent; agent; agent; agent; agent;};
             geometry = spherical;
             
             sensors = {sigmoidSensor; sigmoidSensor; sigmoidSensor; sigmoidSensor; sigmoidSensor;};
-            sensors{1} = sensors{1}.initialize(70, 6, 15, 3, 0, 0);
-            sensors{2} = sensors{2}.initialize(105, 3, 20, 3, 18, 165);
+            sensors{1} = sensors{1}.initialize(85, 6, 15, 3, 0, 0);
+            sensors{2} = sensors{2}.initialize(95, 3, 20, 3, 18, 165);
             sensors{3} = sensors{3}.initialize(96, 3, 25, 3, 0, 0);
-            sensors{4} = sensors{4}.initialize(80, 9, 30, 3, 0, 0);
+            sensors{4} = sensors{4}.initialize(45, 9, 30, 3, 0, 0);
             sensors{5} = sensors{5}.initialize(90, 3, 20, 3, 15, 190);
 
             agents{1} = agents{1}.initialize([81, 11, 30], geometry, sensors{1}, 80, 10, 2, 0.5);
@@ -43,7 +43,6 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             title("Example of Domain Partitioning by Sensing");
             hold("on");
             labelFontSize = 24; % stands out from the 10pt body text; exempted from exportThesisFig's resize via Tag
-            text(25, 12, "$\mathcal{W}_0$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
             text(agents{1}.pos(1) - 5.25, agents{1}.pos(2) - 0.25, "$\mathcal{W}_1$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
             text(agents{2}.pos(1) - 6, agents{2}.pos(2) - 2, "$\mathcal{W}_2$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
             text(agents{3}.pos(1) - 4, agents{3}.pos(2) - 0.5, "$\mathcal{W}_3$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
@@ -60,7 +59,7 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             domain = domain.initialize([zeros(1, 3); 100 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([70, 85]), domain, 0.1, 0, -3, [70, 85]);
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([70, 85]), domain, 0.1, 0, -Inf, [70, 85]);
 
             agents = {agent; agent; agent; agent; agent;};
             geometry = spherical;
@@ -100,9 +99,6 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             title("Example of Domain Partitioning by Service");
             hold("on");
             labelFontSize = 24; % stands out from the 10pt body text; exempted from exportThesisFig's resize via Tag
-            text(36, 83, "$\mathcal{W}_0$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
-            annotation("arrow", [.5, .545], [.785, .785], Color="r", LineWidth=2);
-            annotation("ellipse", [0.505, 0.18, 0.048, 0.08], Color="r", LineWidth=2);
             text(agents{1}.pos(1) - 5.25, agents{1}.pos(2) - 0.25, "$\mathcal{W}_1$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
             text(agents{2}.pos(1) - 6, agents{2}.pos(2) + 32, "$\mathcal{W}_2$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
             text(agents{3}.pos(1) - 4, agents{3}.pos(2) - 0.5, "$\mathcal{W}_3$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
