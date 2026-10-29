@@ -137,7 +137,8 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             sim = sim.run();
             sim.fPerf.Children(2).Children(1).Color = sim.fPerf.Children(2).Children(2).Color;
             delete(sim.fPerf.Children(2).Children(2));
-            f1 = exportThesisFig(sim.fPerf, "singleagentGAperf", 3/4, "Recolor", false);
+            % Short and wide: stacked under the trajectory as Figure 3.3(b)
+            f1 = exportThesisFig(sim.fPerf, "singleagentGAperf", 1/3, "Recolor", false);
 
             f2 = exportThesisFig(sim.f, "singleagentGA", 3/4, "Recolor", false);
         end
