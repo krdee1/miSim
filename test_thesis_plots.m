@@ -115,7 +115,7 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             domain = domain.initialize([zeros(1, 3); 10 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
 
             % make basic sensing objective
-            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([7, 8.5]), domain, 0.1, 0, 1e-6, [7, 8.5]);
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper([7, 8]), domain, 0.1, 0, 2e-6, [7, 8]);
 
             % Initialize agent collision geometry
             agents = {agent};
@@ -140,7 +140,120 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             % Short and wide: stacked under the trajectory as Figure 3.3(b)
             f1 = exportThesisFig(sim.fPerf, "singleagentGAperf", 1/3, "Recolor", false);
 
-            f2 = exportThesisFig(sim.f, "singleagentGA", 3/4, "Recolor", false);
+            f = figure;
+            copyobj(sim.f.Children(1).Children(6), f);
+            f.Children.CameraPosition = [-68,-20,42];
+            
+            % Only the 3D view is copied, which has no image objects to trigger
+            % the PNG export; force it, since the objective surf shows mesh
+            % seams in a vector PDF
+            f2 = exportThesisFig(f, "singleagentGA", 3/4, "Recolor", false, "Raster", true);
+            
+        end
+        function sensing_scenario(tc)
+            % Chapter 5 sensing result: 4 UAVs with heterogeneous sigmoid
+            % sensors start in the southwest corner and must route around
+            % 3 obstacles to cover a single Gaussian objective to the northeast
+            [dt, nIter, sinrThreshold, barrierGain, barrierExponent, minAlt] = scenarioSettings();
+
+            domain = rectangularPrism;
+            domain = domain.initialize([zeros(1, 3); 100 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+            mu = [72, 70];
+            sig = reshape(250 * eye(2), [1, 2, 2]);
+            % -Inf threshold: every point of the domain is assigned to some UAV
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper(mu, sig), domain, 1, 0, -Inf, mu, sig);
+
+            obstacles = cell(3, 1);
+            obstacleBounds = {[35, 35, 0; 50, 50, 80]; ... % central tower, too tall to cross at sensing altitude
+                              [55, 12, 0; 70, 30, 55]; ... % southeast block
+                              [12, 50, 0; 28, 62, 45]};    % northwest block
+            for ii = 1:size(obstacles, 1)
+                obstacles{ii} = rectangularPrism;
+                obstacles{ii} = obstacles{ii}.initialize(obstacleBounds{ii}, REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii));
+            end
+
+            % alphaDist, betaDist, alphaTilt, betaTilt, tilt, azimuth
+            sensorParams = [80, 3, 20, 3,  0,  0;
+                            70, 4, 25, 3, 10, 45;
+                            90, 3, 15, 3,  0,  0;
+                            65, 5, 30, 3, 15, 30];
+            startPos = [12, 10, 40;
+                        22,  8, 55;
+                         8, 22, 30;
+                        18, 20, 65];
+            agents = cell(size(startPos, 1), 1);
+            for ii = 1:size(agents, 1)
+                sensor = sigmoidSensor;
+                sensor = sensor.initialize(sensorParams(ii, 1), sensorParams(ii, 2), sensorParams(ii, 3), sensorParams(ii, 4), sensorParams(ii, 5), sensorParams(ii, 6));
+                agents{ii} = makeScenarioAgent(startPos(ii, :), sensor, nIter);
+            end
+
+            sim = miSim;
+            sim = sim.initialize(domain, agents, barrierGain, barrierExponent, minAlt, dt, nIter, obstacles, true, false, false, 0, false, true, true, sinrThreshold, 2, 290, 2.4e9, 20e6, true);
+            sim = sim.run();
+
+            reportTopologyChanges(sim, "sensingscenario", dt);
+            exportScenarioFigs(sim, "sensingscenario");
+        end
+        function service_scenario(tc)
+            % Chapter 5 service result: 5 UAVs with heterogeneous transmitters
+            % start bunched over a cluster of users, where they interfere
+            % heavily with each other, and spread out between a tall wall and
+            % a second block. Each UAV's gradient neglects the interference it
+            % causes the others, so UAVs arriving from afar to users already
+            % served degrade the total; starting bunched, spreading out reduces
+            % interference and total performance increases monotonically
+            [dt, nIter, sinrThreshold, barrierGain, barrierExponent, minAlt] = scenarioSettings();
+
+            domain = rectangularPrism;
+            domain = domain.initialize([zeros(1, 3); 100 * ones(1, 3)], REGION_TYPE.DOMAIN, "Domain");
+            mu = [65, 65];
+            sig = reshape(400 * eye(2), [1, 2, 2]);
+            % -Inf threshold: every point of the domain is assigned to some UAV
+            domain.objective = domain.objective.initialize(objectiveFunctionWrapper(mu, sig), domain, 1, 0, -Inf, mu, sig);
+
+            obstacles = cell(2, 1);
+            obstacleBounds = {[42, 45, 0; 50, 75, 90]; ... % tall north-south wall west of the users
+                              [72, 72, 0; 82, 82, 60]};    % northeast block
+            for ii = 1:size(obstacles, 1)
+                obstacles{ii} = rectangularPrism;
+                obstacles{ii} = obstacles{ii}.initialize(obstacleBounds{ii}, REGION_TYPE.OBSTACLE, sprintf("Obstacle %d", ii));
+            end
+
+            % Service transmitters share the link model's physical parameters
+            temp = 290;     % K
+            bw = 20e6;      % Hz
+            f_c = 2.4e9;    % Hz
+            rxGain = 3;     % dBi
+            nu = 2;         % path loss exponent (free space)
+            % txPower (W), beamwidth exponent, tilt, azimuth
+            sensorParams = [20e-3,  8,  0,  0;
+                            10e-3, 16, 10, 90;
+                            15e-3, 12,  0,  0;
+                            25e-3, 10, 15, 45;
+                            10e-3, 20,  0,  0];
+            startPos = [58, 59, 40;
+                        67, 56, 50;
+                        55, 68, 45;
+                        64, 68, 55;
+                        73, 62, 35];
+            agents = cell(size(startPos, 1), 1);
+            for ii = 1:size(agents, 1)
+                sensor = rfSensor;
+                sensor = sensor.initialize(sensorParams(ii, 1), temp, bw, f_c, rxGain, sensorParams(ii, 2), sensorParams(ii, 3), sensorParams(ii, 4), nu);
+                % 0.5 m and 0.5 degree initial steps: larger steps overshoot
+                % near equilibrium and the total dithers downward
+                agents{ii} = makeScenarioAgent(startPos(ii, :), sensor, nIter, 0.5, 0.5);
+            end
+
+            sim = miSim;
+            sim = sim.initialize(domain, agents, barrierGain, barrierExponent, minAlt, dt, nIter, obstacles, true, false, false, 0, false, true, true, sinrThreshold, nu, temp, f_c, bw, true);
+            sim = sim.run();
+
+            % sim.performance starts with a 0 placeholder before t = 0
+            tc.verifyGreaterThan(diff(sim.performance(2:end)), 0, "Total service performance is not monotonically increasing");
+            reportTopologyChanges(sim, "servicescenario", dt);
+            exportScenarioFigs(sim, "servicescenario");
         end
         function service_performance(tc)
             % TX parameters
@@ -307,6 +420,75 @@ classdef test_thesis_plots < matlab.unittest.TestCase
     end
 
 end
+function [dt, nIter, sinrThreshold, barrierGain, barrierExponent, minAlt] = scenarioSettings()
+    % Shared settings for the chapter 5 scenarios: 100 s at 1 s per step.
+    % miSim runs nIter - 1 steps, so 101 samples span t = 0 to 100 s.
+    dt = 1;
+    nIter = 101;
+    sinrThreshold = -16; % dB
+    % alpha(h) = h: with dt = 1 s this is the one-step form h/dt, which stops
+    % a 3 m step from jumping past a boundary (gain 100, exponent 3 only
+    % activates within ~0.1 m of a boundary and is unsafe at this step size)
+    barrierGain = 1;
+    barrierExponent = 1;
+    minAlt = 25; % m
+end
+
+function a = makeScenarioAgent(pos, sensor, nIter, stepSize, angleStepSize)
+    % Agent with a 3 m spherical collision radius, a 3 m initial step
+    % (3 m/s at dt = 1 s) and a 2 degree initial gimbal step by default,
+    % both decaying to zero over the run, and the default 0.1 W link
+    % transmit power
+    arguments
+        pos (1, 3) double;
+        sensor (1, 1);
+        nIter (1, 1) double;
+        stepSize (1, 1) double = 3;
+        angleStepSize (1, 1) double = 2;
+    end
+    geometry = spherical;
+    geometry = geometry.initialize(pos, 3, REGION_TYPE.COLLISION);
+    a = agent;
+    a = a.initialize(pos, geometry, sensor, 80, nIter, stepSize, angleStepSize);
+end
+
+function reportTopologyChanges(sim, name, dt)
+    % Print every time the maintained communication topology changes
+    A = sim.constraintAdjacencyHist;
+    changed = find(squeeze(any(A(:, :, 2:end) ~= A(:, :, 1:end-1), [1, 2]))) + 1;
+    fprintf("%s: maintained topology changed %d times", name, numel(changed));
+    if ~isempty(changed)
+        fprintf(", at t = %s s", strjoin(string((changed' - 1) * dt), ", "));
+    end
+    fprintf("\n");
+end
+
+function exportScenarioFigs(sim, name)
+    % Save the three figures miSim produces for a run: the spatial view,
+    % performance over time, and barrier function values over time
+    % The barrier figure handle is private to miSim, so find it by the title
+    % of its first tile; the newest match is the one from this run
+    t = findall(groot, "Type", "text", "String", "Collision Avoidance");
+    barrierFigs = unique(arrayfun(@(x) ancestor(x, "figure"), t));
+    [~, newest] = max([barrierFigs.Number]);
+    hf = barrierFigs(newest);
+
+    % The network graph title uses TeX syntax (\geq), which the LaTeX
+    % interpreter set by exportThesisFig only accepts in math mode
+    ax = findall(sim.f, "Type", "axes");
+    for ii = 1:numel(ax)
+        titleString = string(ax(ii).Title.String);
+        if startsWith(titleString, "Network Graph")
+            ax(ii).Title.String = "Network Graph ($\geq$" + extractAfter(titleString, "geq");
+        end
+    end
+
+    exportThesisFig(sim.f, name, 3/4, "Recolor", false);
+    exportThesisFig(sim.fPerf, name + "perf", 1/2, "Recolor", false);
+    exportThesisFig(hf, name + "barriers", 1, "Recolor", false);
+    close([sim.f, sim.fPerf, hf]);
+end
+
 function f = plotSinrMap(x, y, SINR, sensors, positions, tx, cLimits)
     % Top-down SINR map for transmitting UAV tx, matching the sigmoid sensor
     % figure. Every UAV gets a marker, an arrow to the X where its boresight
