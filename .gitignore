@@ -68,3 +68,6 @@ aerpaw/codegen/*
 
 # results
 *.csv
+
+# README images (exception to the *.png rule above)
+!docs/images/*.png
