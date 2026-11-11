@@ -29,6 +29,15 @@ function [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targe
         I = I + otherSensors{ii}.rssCache;
     end
 
+    % Ground points more than 90 deg off boresight (reachable once pointing
+    % is optimized) get exactly zero gain from the cos^n pattern, so S = 0
+    % and the SINR would be -Inf dB. -Inf poisons the coverage sum and its
+    % finite-difference gradient (NaN tilt/position) and ties every agent
+    % with a -Inf partition threshold. Clamp to the smallest positive double:
+    % those points stay hugely penalized but finite, and nothing changes
+    % where S > 0.
+    S = max(S, realmin);
+
     SINR = 10*log10(S ./ (I + obj.N));
     SNR  = 10*log10(S ./ obj.N);
 end

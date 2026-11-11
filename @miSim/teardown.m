@@ -13,7 +13,7 @@ function obj = teardown(obj)
 
     % Log results into matfile
     histPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", strcat(obj.artifactName, "_miSimHist.mat"));
-    out = struct("agent", repmat(struct("pos", [], "vel", [], "perf", [], "sensor", struct("alphaDist", [], "betaDist", [], "alphaTilt", [], "betaTilt", []), "collisionRadius", [], "commsRadius", []), size(obj.agents)), "perf", [], "barriers", [], "useDoubleIntegrator", [], "dampingCoeff", [], "useFixedTopology", []);
+    out = struct("agent", repmat(struct("pos", [], "vel", [], "perf", [], "sensor", struct(), "collisionRadius", [], "commsRadius", []), size(obj.agents)), "perf", [], "barriers", [], "useDoubleIntegrator", [], "dampingCoeff", [], "useFixedTopology", []);
 
     out.perf = obj.performance(1:(end - 1));
     out.barriers = [zeros(size(obj.barriers(1:end, 1), 1), 1), obj.barriers(1:end, 1:(end - 1))];
@@ -21,14 +21,27 @@ function obj = teardown(obj)
     out.useDoubleIntegrator = obj.useDoubleIntegrator;
     out.useFixedTopology = obj.useFixedTopology;
     out.constraintAdjacency = obj.constraintAdjacencyHist(:, :, 1:(end - 1));
+
+    % CALSN routing state at the final step (empty unless useRoutingTopology)
+    out.useRoutingTopology = obj.useRoutingTopology;
+    out.routingFlows = obj.routingFlows;
+    out.routingPotentials = obj.routingPotentials;
+    out.routingUnrouted = obj.routingUnrouted;
     for ii = 1:size(obj.agents, 1)
         out.agent(ii).pos = squeeze(obj.posHist(ii, 1:(end - 1), 1:3));
         out.agent(ii).vel = squeeze(obj.velHist(ii, 1:(end - 1), 1:3));
         out.agent(ii).perf = obj.agents{ii}.performance(1:(end - 2));
-        out.agent(ii).sensor.alphaDist = obj.agents{ii}.sensorModel.alphaDist;
-        out.agent(ii).sensor.betaDist = obj.agents{ii}.sensorModel.betaDist;
-        out.agent(ii).sensor.alphaTilt = obj.agents{ii}.sensorModel.alphaTilt;
-        out.agent(ii).sensor.betaTilt = obj.agents{ii}.sensorModel.betaTilt;
+        % Sensor parameters depend on the sensor model; tilt/azimuth are the
+        % final pointing (the initial pointing is in the _miSimInits file)
+        sm = obj.agents{ii}.sensorModel;
+        if isa(sm, "sigmoidSensor")
+            out.agent(ii).sensor = struct("model", "sigmoidSensor", "alphaDist", sm.alphaDist, "betaDist", sm.betaDist, ...
+                "alphaTilt", sm.alphaTilt, "betaTilt", sm.betaTilt, "tilt", sm.tilt, "azimuth", sm.azimuth);
+        elseif isa(sm, "rfSensor")
+            out.agent(ii).sensor = struct("model", "rfSensor", "P_TX", sm.P_TX, "T_0", sm.T_0, "BW", sm.BW, "f_c", sm.f_c, ...
+                "G_RX_dBi", sm.G_RX_dBi, "beamwidthExponent", sm.beamwidthExponent, "lossExponent", sm.lossExponent, ...
+                "tilt", sm.tilt, "azimuth", sm.azimuth);
+        end
         out.agent(ii).collisionRadius = obj.agents{ii}.collisionGeometry.radius;
         out.agent(ii).commsRadius = obj.agents{ii}.commsGeometry.radius;
     end
