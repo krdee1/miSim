@@ -15,8 +15,8 @@ function R = plotPermutationResults(resultsFolder, opts)
 %   sweepcasemarginssensing, sweepcasemarginsservice
 %       Per-step minimum margin of each constraint class for the chosen case.
 %   sweepmarginsboxsensing, sweepmarginsboxservice
-%       Box plot of every margin value at every step, per class, all runs of
-%       each modality.
+%       Box plot of each UAV's HNCBF margin (min over its constituents) at
+%       every step, per class, all runs of each modality.
 %   sweepobstacles
 %       1x3 3-D views of the domain with each obstacle layout.
 %   sweepobjectives
@@ -40,9 +40,16 @@ function R = plotPermutationResults(resultsFolder, opts)
 %   (0 = link lost), maintained links only. The CBF itself holds maintained
 %   links 3 dB higher (paddingDb in @miSim/constrainMotion.m), so values
 %   between 0 and 3 dB are connected links inside that safety padding.
+% Each class is stored per UAV as its HNCBF value, the min over that UAV's
+% constituents in these physical units: geofence walls and obstacles
+% (eq:obstaclenbf), every pair it belongs to (eq:collisionnbf), and both
+% directions of each of its maintained links (eq:linknbf). The minimum is
+% taken over margins in m (or dB), not over the raw h values, which mix
+% linear and squared distances.
 %
 % Returns a table R with one row per run (parsed permutation, time vector,
-% system and per-UAV performance, and per-step margins by class).
+% system and per-UAV performance, and per-step per-UAV HNCBF margins by
+% class, each nA x steps).
     arguments
         resultsFolder (1, 1) string = newestResults();
         opts.OutDir (1, 1) string = "";
@@ -128,7 +135,8 @@ function R = plotPermutationResults(resultsFolder, opts)
         end
     end
 
-    % Plot 4: every margin value at every step, per class, one figure per modality
+    % Plot 4: every UAV's HNCBF margin at every step, per class, one figure
+    % per modality
     for mm = 1:2
         rows = R.model == models(mm);
         vals = {R.domain(rows), R.collision(rows), R.comms(rows)};
@@ -164,8 +172,8 @@ function R = plotPermutationResults(resultsFolder, opts)
         hold(ax, "off");
         xticks(ax, 1:3); xticklabels(ax, classes); xlim(ax, [0.5, 3.5]);
         grid(ax, "on"); % after boxchart, which resets the axes
-        ylabel(ax, "Margin (m; dB for comms)");
-        title(ax, sprintf("Constraint margins, all %d %s runs, every step", nnz(rows), models(mm)));
+        ylabel(ax, "Per-UAV HNCBF margin (m; dB for comms)");
+        title(ax, sprintf("HNCBF margins, every UAV and step, all %d %s runs", nnz(rows), models(mm)));
         if opts.Export
             exportThesisFig(f, "sweepmarginsbox" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
@@ -230,23 +238,51 @@ function [domain, collision, comms] = barrierMargins(B, in)
     assert(size(B, 1) == nAA + nA * nO + 6 * nA + 2 * nAA, ...
         "Barrier rows (%d) do not match the expected layout (%d)", size(B, 1), nAA + nA * nO + 6 * nA + 2 * nAA);
 
+    %
+    % Each constituent is first converted to a physical margin, then reduced
+    % to the per-UAV HNCBF value of its class (min over that UAV's
+    % constituents), so every output is nA x steps.
     [ii, jj] = find(triu(true(nA), 1)); % column-major upper triangle
     rSum = r(ii) + r(jj);
-    collision = sqrt(clampKeepNaN(B(1:nAA, :) + rSum.^2, 0)) - rSum;
+    pairOwner = (1:nA)' == ii' | (1:nA)' == jj'; % nA x nAA: UAVs in each pair
+    collisionPairs = sqrt(clampKeepNaN(B(1:nAA, :) + rSum.^2, 0)) - rSum;
+    collision = ownerMin(collisionPairs, pairOwner);
 
     idx = nAA + (1:(nA * nO));
     rObs = repmat(r, nO, 1);
     obstacle = sqrt(clampKeepNaN(B(idx, :) + rObs.^2, 0)) - rObs;
+    obstacleOwner = (1:nA)' == repmat(1:nA, 1, nO); % agent index varies fastest
 
     idx = nAA + nA * nO + (1:(6 * nA));
     geofence = B(idx, :);
-    domain = [obstacle; geofence];
+    geofenceOwner = (1:nA)' == repelem(1:nA, 6); % 6 consecutive walls per agent
+
+    % Geofencing HNCBF (eq:obstaclenbf): walls and obstacles together
+    domain = ownerMin([obstacle; geofence], [obstacleOwner, geofenceOwner]);
 
     % Recover SINR from h (gammaCbf includes paddingDb from constrainMotion),
     % then reference it to the user-specified link threshold
     gammaCbf = 10^((in.sinrThreshold + 3.0) / 10);
     idx = nAA + nA * nO + 6 * nA + (1:(2 * nAA));
-    comms = 10 * log10(clampKeepNaN(B(idx, :) + gammaCbf, realmin)) - in.sinrThreshold;
+    commsDirs = 10 * log10(clampKeepNaN(B(idx, :) + gammaCbf, realmin)) - in.sinrThreshold;
+    % The lower-triangle block is in its own column-major order, so its pairs
+    % differ from the upper block's. Both directions of a maintained link
+    % count toward both endpoints' HNCBF (eq:linknbf).
+    [iiL, jjL] = find(tril(true(nA), -1));
+    lowerOwner = (1:nA)' == iiL' | (1:nA)' == jjL';
+    comms = ownerMin(commsDirs, [pairOwner, lowerOwner]);
+end
+
+function M = ownerMin(C, owner)
+    % Per-UAV minimum over constituents. C is constituents x steps, owner is
+    % nA x constituents. Unlogged (NaN) entries are ignored; a UAV with no
+    % logged constituent at a step stays NaN.
+    M = NaN(size(owner, 1), size(C, 2));
+    for a = 1:size(owner, 1)
+        if any(owner(a, :))
+            M(a, :) = min(C(owner(a, :), :), [], 1, "omitnan");
+        end
+    end
 end
 
 function x = clampKeepNaN(x, lo)
