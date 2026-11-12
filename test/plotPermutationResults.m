@@ -7,7 +7,7 @@ function R = plotPermutationResults(resultsFolder, opts)
 %
 % Figures (vector PDFs in opts.OutDir via exportThesisFig):
 %   perm_perf_sensing / perm_perf_service
-%       System performance vs time, all runs of each modality.
+%       Normalized system performance vs time, all runs of each modality.
 %   perm_case_perf_sensing / perm_case_perf_service
 %       System and per-UAV performance vs time for one chosen case.
 %   perm_case_constraints_sensing / perm_case_constraints_service
@@ -15,16 +15,20 @@ function R = plotPermutationResults(resultsFolder, opts)
 %   perm_constraint_box
 %       Box plot of every margin value at every step across all runs, per class.
 %
-% Performance is the raw total the simulator reports, unscaled: the sum over
-% the grid of objective value times sensor performance (sigmoid quality for
-% sensing, SINR in dB for service). Runs with different objectives sit at
-% different scales. Per-UAV values sum to the system value.
+% Performance is normalized the same way as the SPAWC paper plots
+% (plots_1_2.m, plots_3_4.m): the simulator's total, sum(f .* S) over the
+% grid, divided by objectiveIntegral = sum(f), where f is the objective
+% scaled to a peak of 1. For sensing this is sensor quality averaged over the
+% objective, in [0, 1]; for service it is objective-weighted SINR in dB.
+% Per-UAV values use the same divisor and sum to the system value.
 %
 % Constraint values are physical margins, 0 at the constraint boundary:
 %   Domain (geofence walls + obstacles, incl. the min-altitude floor) and
 %   Collision: clearance in m beyond the agents' collision spheres.
-%   Communications: SINR in dB above the CBF floor (sinrThreshold + 3 dB,
-%   the paddingDb in @miSim/constrainMotion.m), maintained links only.
+%   Communications: SINR in dB above the link threshold sinrThreshold
+%   (0 = link lost), maintained links only. The CBF itself holds maintained
+%   links 3 dB higher (paddingDb in @miSim/constrainMotion.m), so values
+%   between 0 and 3 dB are connected links inside that safety padding.
 %
 % Returns a table R with one row per run (parsed permutation, time vector,
 % system and per-UAV performance, and per-step margins by class).
@@ -48,7 +52,7 @@ function R = plotPermutationResults(resultsFolder, opts)
 
     models = ["sensing", "service"];
     caseNames = [opts.SensingCase, opts.ServiceCase];
-    perfLabel = ["Sensing performance", "Service performance"];
+    perfLabel = ["Performance (normalized)", "Performance (normalized, dB)"];
     palette = okabeIto();
 
     % Plot 1: system performance vs time, all runs of each modality
@@ -126,19 +130,33 @@ function R = plotPermutationResults(resultsFolder, opts)
     end
     gc = categorical(g, classes);
     f = figure("Name", "Constraint margins, all runs");
-    ax = axes(f); hold(ax, "on"); grid(ax, "on");
-    % boxplot (Statistics and Machine Learning Toolbox): Whisker = Inf puts
-    % the whiskers at the min and max (boxchart has no whisker-length option)
-    boxplot(ax, y, gc, "Whisker", Inf, "Symbol", "", "Colors", "k", "Labels", classes);
-    means = arrayfun(@(c) mean(y(gc == c)), categorical(classes, classes));
-    hMean = plot(ax, 1:3, means, "kd", "MarkerFaceColor", "k");
-    hZero = yline(ax, 0, "k--");
-    hZero.HandleVisibility = "off";
-    legend(ax, hMean, "Mean", "Location", "best");
+    ax = axes(f);
+    % MATLAB box chart (box = quartiles, line = median) with whiskers spanning
+    % the full min-max range and no outlier markers. boxchart has no
+    % whisker-length option, so its outlier markers and 1.5 IQR whiskers are
+    % hidden and min-max whiskers are drawn with matching lines.
+    x = double(gc);
+    b = boxchart(ax, x, y, "MarkerStyle", "none");
+    whiskerColor = b.WhiskerLineColor;
+    b.WhiskerLineStyle = "none"; % drop the 1.5 IQR whiskers; min-max ones drawn below
+    hold(ax, "on");
+    capHalf = b.BoxWidth / 4;
+    for cc = 1:3
+        v = y(x == cc);
+        q = quantile(v, [0.25, 0.75]);
+        lo = min(v); hi = max(v);
+        hw = plot(ax, [cc, cc, NaN, cc, cc, NaN, cc - capHalf, cc + capHalf, NaN, cc - capHalf, cc + capHalf], ...
+                      [lo, q(1), NaN, q(2), hi, NaN, lo, lo, NaN, hi, hi], ...
+                  "Color", whiskerColor, "LineWidth", b.LineWidth);
+        hw.SeriesIndex = "none"; % keep box-chart styling through exportThesisFig
+    end
+    hold(ax, "off");
+    xticks(ax, 1:3); xticklabels(ax, classes); xlim(ax, [0.5, 3.5]);
+    grid(ax, "on"); % after boxchart, which resets the axes
     ylabel(ax, "Margin (m; dB for comms)");
     title(ax, sprintf("Constraint margins, all %d runs, every step", height(R)));
     if opts.Export
-        exportThesisFig(f, "perm_constraint_box", 3/4, "Recolor", false, "LineWidth", 1, "OutDir", opts.OutDir);
+        exportThesisFig(f, "perm_constraint_box", 3/4, "OutDir", opts.OutDir);
         fprintf("Saved figures to %s\n", opts.OutDir);
     end
 end
@@ -172,8 +190,8 @@ function R = loadResults(folder)
         % column). Element k >= 2 is measured at t = (k - 2) * timestep.
         keep = 2:numel(out.perf);
         t{k} = (keep - 2) * in.timestep;
-        perf{k} = out.perf(keep);
-        agentPerf{k} = cell2mat(arrayfun(@(a) a.perf(keep), out.agent(:), "UniformOutput", false));
+        perf{k} = out.perf(keep) / in.objectiveIntegral; % SPAWC normalization
+        agentPerf{k} = cell2mat(arrayfun(@(a) a.perf(keep), out.agent(:), "UniformOutput", false)) / in.objectiveIntegral;
         [domain{k}, collision{k}, comms{k}] = barrierMargins(out.barriers(:, keep), in);
     end
     R = table(name, nAgents, dynamics, objective, model, reach, obstacles, t, perf, agentPerf, domain, collision, comms);
@@ -207,9 +225,11 @@ function [domain, collision, comms] = barrierMargins(B, in)
     geofence = B(idx, :);
     domain = [obstacle; geofence];
 
-    gammaCbf = 10^((in.sinrThreshold + 3.0) / 10); % paddingDb in constrainMotion
+    % Recover SINR from h (gammaCbf includes paddingDb from constrainMotion),
+    % then reference it to the user-specified link threshold
+    gammaCbf = 10^((in.sinrThreshold + 3.0) / 10);
     idx = nAA + nA * nO + 6 * nA + (1:(2 * nAA));
-    comms = 10 * log10(clampKeepNaN(B(idx, :) + gammaCbf, realmin)) - 10 * log10(gammaCbf);
+    comms = 10 * log10(clampKeepNaN(B(idx, :) + gammaCbf, realmin)) - in.sinrThreshold;
 end
 
 function x = clampKeepNaN(x, lo)
