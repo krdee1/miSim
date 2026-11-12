@@ -312,9 +312,86 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             f = exportThesisFig(f, "sigmoidmodel", 3/4);
             close(f);
         end
+        function sigmoid_sensor_membership_functions_sweep(tc)
+            % Same figure as sigmoidmodel, using the short range / wide FOV
+            % and long range / narrow FOV sensors from test_permutations
+            % (read from that class, so the figure tracks the sweep)
+            p = sweepParams();
+            reach = ["shortWide", "longNarrow"];
+            s = [sigmoidSensor, sigmoidSensor];
+            for ii = 1:2
+                q = p.sigmoid.(reach(ii));
+                s(ii) = s(ii).initialize(q.alphaDist, q.betaDist, q.alphaTilt, q.betaTilt);
+            end
+
+            set(groot, 'defaultTextInterpreter',          'latex');
+            set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
+            set(groot, 'defaultLegendInterpreter',        'latex');
+            set(groot, 'defaultColorbarTickLabelInterpreter', 'latex');
+            set(groot, 'defaultAxesFontSize', 10);   % = \footnotesize in a 12pt doc
+            set(groot, 'defaultTextFontSize', 10);
+
+            f = s(1).plotParameters;
+            f = s(2).plotParameters(f);
+            % One legend (distance tile, top right is free) serves both tiles;
+            % the tilt tile's legend would cover the wide-FOV curve
+            lgds = findall(f, 'Type', 'legend');
+            set(lgds, 'String', ["Short range, wide FOV", "Long range, narrow FOV"]);
+            tiles = findall(f, 'Type', 'axes');
+            [~, iTilt] = min(arrayfun(@(a) a.Position(2), tiles)); % lower tile
+            delete(tiles(iTilt).Legend);
+            % Same text size in both tiles: exportThesisFig sets every FontSize
+            % equally, but these multipliers rescale labels/titles depending on
+            % update order
+            set(tiles, 'LabelFontSizeMultiplier', 1, 'TitleFontSizeMultiplier', 1);
+
+            f = exportThesisFig(f, "sigmoidmodelsweep", 3/4);
+            close(f);
+        end
+        function antenna_patterns_sweep(tc)
+            % Same figure as antennapatterns, using the short range / wide
+            % FOV and long range / narrow FOV transmitters from
+            % test_permutations. Range for these transmitters is set by
+            % transmit power, which this gain pattern does not include.
+            p = sweepParams();
+            reach = ["shortWide", "longNarrow"];
+            labels = ["Short range, wide FOV", "Long range, narrow FOV"];
+            f = figure;
+            xi = -90:0.1:90; % degrees
+            for ii = 1:2
+                n = p.rf.(reach(ii)).beamwidthExponent;
+                gain = 10 .* log10(2 * (n + 1)) + 10 .* n .* log10(max(0, cosd(xi)));
+                plot(xi, gain, "LineWidth", 2, "DisplayName", labels(ii) + " ($\delta = " + n + "$)");
+                if ii == 1
+                    hold("on");
+                end
+            end
+            hold("off");
+            grid("on");
+            ylim([-100, 35]);
+            xlim([-90, 90]);
+            xticks(-90:45:90);
+            % exportThesisFig switches all text to the LaTeX interpreter
+            title("Transmitting Antenna Gain Model");
+            ylabel("Transmitting Antenna Gain (dBi)");
+            xlabel("Elevation Angle from Antenna Boresight $\xi$ ($^\circ$)");
+            legend("Location", "southoutside"); % inside, it covers the narrow beam's peak
+
+            exportThesisFig(f, "antennapatternssweep", 3/4);
+            close(f);
+        end
     end
 
 end
+function p = sweepParams()
+    % Sensor and transmitter parameters of the test_permutations sweep, read
+    % from that class's property defaults so these figures stay in sync
+    mc = ?test_permutations;
+    def = @(n) mc.PropertyList(strcmp({mc.PropertyList.Name}, n)).DefaultValue;
+    p.sigmoid = def("sigmoidParams");
+    p.rf = def("rfParams");
+end
+
 function [dt, nIter, sinrThreshold, barrierGain, barrierExponent, minAlt] = scenarioSettings()
     % Shared settings for the chapter 5 scenarios: 100 s at 1 s per step.
     % miSim runs nIter - 1 steps, so 101 samples span t = 0 to 100 s.

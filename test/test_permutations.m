@@ -114,16 +114,20 @@ classdef test_permutations < matlab.unittest.TestCase
         commsRange = 50; % m; unused in SINR mode, required by agent.initialize
         commsTxPower = 0.1; % W, UAV-UAV links
 
-        % Sigmoid sensors. Agents settle roughly 40-50 m below alphaDist,
-        % where the distance falloff starts to outweigh the wider footprint.
-        % In 5-agent runs: shortWide ~65-90 m, longNarrow ~110-135 m.
-        % betas are gentle so that the gradient is nonzero (not underflowed)
-        % across the whole domain.
+        % Sigmoid sensors, per variant (alpha = 50% point, beta = steepness).
+        %   shortWide: short range with a sharp distance rolloff; wide FOV
+        %     with a gentle tilt rolloff (betaTilt 0.15 still peaks at 0.995
+        %     on boresight; much gentler and it would never reach 1).
+        %   longNarrow: long range with a gentle distance rolloff; narrow
+        %     FOV with a sharp tilt rolloff. Boresight response is
+        %     tanh(betaTilt * alphaTilt / 2): 0.6 gives >= 0.99 within
+        %     about +/-5 deg (0.2 peaked at only 0.90).
+        % Betas are capped so the response stays nonzero (not underflowed to
+        % exactly 0) out to the objectives from the start positions:
+        % betaDist 0.3 underflows only beyond ~250 m, betaTilt 0.6 beyond ~77 deg.
         sigmoidParams = struct( ...
-            "shortWide",  struct("alphaDist", 130, "alphaTilt", 40), ...
-            "longNarrow", struct("alphaDist", 160, "alphaTilt", 15));
-        betaDist = 0.2;
-        betaTilt = 0.2;
+            "shortWide",  struct("alphaDist", 130, "betaDist", 0.3, "alphaTilt", 40, "betaTilt", 0.15), ...
+            "longNarrow", struct("alphaDist", 160, "betaDist", 0.1, "alphaTilt", 15, "betaTilt", 0.6));
 
         % RF transmitters. The service objective sums SINR in dB, and for a
         % cos^n beam with path-loss exponent a the best altitude over a
@@ -259,7 +263,7 @@ classdef test_permutations < matlab.unittest.TestCase
             if model == "sensing"
                 p = tc.sigmoidParams.(reach);
                 sensor = sigmoidSensor;
-                sensor = sensor.initialize(p.alphaDist, tc.betaDist, p.alphaTilt, tc.betaTilt, 0, 0);
+                sensor = sensor.initialize(p.alphaDist, p.betaDist, p.alphaTilt, p.betaTilt, 0, 0);
             else
                 p = tc.rfParams.(reach);
                 sensor = rfSensor;

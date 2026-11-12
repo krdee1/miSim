@@ -5,15 +5,26 @@ function R = plotPermutationResults(resultsFolder, opts)
 %   R = plotPermutationResults("sandbox/perm_2026_11_11_15_12_16")
 %   R = plotPermutationResults(folder, Export=false, SensingCase="N5_...")
 %
-% Figures (vector PDFs in opts.OutDir via exportThesisFig):
-%   perm_perf_sensing / perm_perf_service
+% Figures, styled and saved by util/exportThesisFig.m in opts.OutDir as
+% vector PDFs, except sweepobjectives, which is a 400 dpi PNG. Names follow the thesis figures/ convention (lowercase, no
+% separators), ready for \includegraphics{figures/<name>}:
+%   sweepperfsensing, sweepperfservice
 %       Normalized system performance vs time, all runs of each modality.
-%   perm_case_perf_sensing / perm_case_perf_service
-%       System and per-UAV performance vs time for one chosen case.
-%   perm_case_constraints_sensing / perm_case_constraints_service
+%   sweepcaseperfsensing, sweepcaseperfservice
+%       System and per-UAV performance vs time for the chosen case.
+%   sweepcasemarginssensing, sweepcasemarginsservice
 %       Per-step minimum margin of each constraint class for the chosen case.
-%   perm_constraint_box
-%       Box plot of every margin value at every step across all runs, per class.
+%   sweepmarginsboxsensing, sweepmarginsboxservice
+%       Box plot of every margin value at every step, per class, all runs of
+%       each modality.
+%   sweepobstacles
+%       1x3 3-D views of the domain with each obstacle layout.
+%   sweepobjectives
+%       1x3 top-down views of each objective with white iso-curves (0.1, 0.5,
+%       0.9 of the peak), and the UAVs' starting positions as red circles of
+%       their collision radius. The first panel labels
+%       the starting altitudes via leader lines (the starts are identical
+%       across panels).
 %
 % Performance is normalized the same way as the SPAWC paper plots
 % (plots_1_2.m, plots_3_4.m): the simulator's total, sum(f .* S) over the
@@ -40,7 +51,7 @@ function R = plotPermutationResults(resultsFolder, opts)
         opts.Export (1, 1) logical = true;
     end
     if opts.OutDir == ""
-        opts.OutDir = fullfile(resultsFolder, "plots");
+        opts.OutDir = fullfile(resultsFolder, "figures");
     end
     if opts.Export && ~isfolder(opts.OutDir)
         mkdir(opts.OutDir);
@@ -73,7 +84,8 @@ function R = plotPermutationResults(resultsFolder, opts)
         xlabel(ax, "Time (s)"); ylabel(ax, perfLabel(mm));
         title(ax, "System performance, all " + models(mm) + " runs");
         if opts.Export
-            exportThesisFig(f, "perm_perf_" + models(mm), 3/4, "Recolor", false, "LineWidth", 0.75, "OutDir", opts.OutDir);
+            % thin lines: 36 overlaid runs per figure
+            exportThesisFig(f, "sweepperf" + models(mm), 3/4, "Recolor", false, "LineWidth", 0.75, "OutDir", opts.OutDir);
         end
     end
 
@@ -86,13 +98,13 @@ function R = plotPermutationResults(resultsFolder, opts)
         for aa = 1:nA
             plot(ax, R.t{rr}, R.agentPerf{rr}(aa, :));
         end
-        hSys = plot(ax, R.t{rr}, R.perf{rr}, "k-", "LineWidth", 2.5);
+        hSys = plot(ax, R.t{rr}, R.perf{rr}, "k-", "LineWidth", 3);
         hSys.SeriesIndex = "none"; % keep black/thick through exportThesisFig
         legend(ax, ["UAV " + (1:nA), "System"], "Location", "best");
         xlabel(ax, "Time (s)"); ylabel(ax, perfLabel(mm));
         title(ax, caseTitle(R(rr, :)));
         if opts.Export
-            exportThesisFig(f, "perm_case_perf_" + models(mm), 3/4, "LineWidth", 1.25, "OutDir", opts.OutDir);
+            exportThesisFig(f, "sweepcaseperf" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
     end
 
@@ -112,51 +124,56 @@ function R = plotPermutationResults(resultsFolder, opts)
         xlabel(ax, "Time (s)"); ylabel(ax, "Minimum margin (m; dB for comms)");
         title(ax, caseTitle(R(rr, :)));
         if opts.Export
-            exportThesisFig(f, "perm_case_constraints_" + models(mm), 3/4, "LineWidth", 1.25, "OutDir", opts.OutDir);
+            exportThesisFig(f, "sweepcasemargins" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
     end
 
-    % Plot 4: every margin value at every step, all runs, per class
-    vals = {cellfun(@(x) x(:), R.domain, "UniformOutput", false), ...
-            cellfun(@(x) x(:), R.collision, "UniformOutput", false), ...
-            cellfun(@(x) x(:), R.comms, "UniformOutput", false)};
-    y = []; g = strings(0, 1);
-    for cc = 1:3
-        v = vertcat(vals{cc}{:});
-        v = v(~isnan(v));
-        y = [y; v]; %#ok<AGROW>
-        g = [g; repmat(classes(cc), numel(v), 1)]; %#ok<AGROW>
-        fprintf("%-15s n = %7d  min %8.3f  mean %8.2f  max %8.2f\n", classes(cc), numel(v), min(v), mean(v), max(v));
+    % Plot 4: every margin value at every step, per class, one figure per modality
+    for mm = 1:2
+        rows = R.model == models(mm);
+        vals = {R.domain(rows), R.collision(rows), R.comms(rows)};
+        y = []; x = [];
+        fprintf("%s:\n", models(mm));
+        for cc = 1:3
+            v = cell2mat(cellfun(@(m) m(:), vals{cc}, "UniformOutput", false));
+            v = v(~isnan(v));
+            y = [y; v]; %#ok<AGROW>
+            x = [x; cc * ones(numel(v), 1)]; %#ok<AGROW>
+            fprintf("  %-15s n = %7d  min %8.3f  mean %8.2f  max %8.2f\n", classes(cc), numel(v), min(v), mean(v), max(v));
+        end
+        f = figure("Name", "Constraint margins, all " + models(mm) + " runs");
+        ax = axes(f);
+        % MATLAB box chart (box = quartiles, line = median) with whiskers
+        % spanning the full min-max range and no outlier markers. boxchart has
+        % no whisker-length option, so its outlier markers and 1.5 IQR
+        % whiskers are hidden and min-max whiskers are drawn with matching lines.
+        b = boxchart(ax, x, y, "MarkerStyle", "none");
+        whiskerColor = b.WhiskerLineColor;
+        b.WhiskerLineStyle = "none";
+        hold(ax, "on");
+        capHalf = b.BoxWidth / 4;
+        for cc = 1:3
+            v = y(x == cc);
+            q = quantile(v, [0.25, 0.75]);
+            lo = min(v); hi = max(v);
+            hw = plot(ax, [cc, cc, NaN, cc, cc, NaN, cc - capHalf, cc + capHalf, NaN, cc - capHalf, cc + capHalf], ...
+                          [lo, q(1), NaN, q(2), hi, NaN, lo, lo, NaN, hi, hi], ...
+                      "Color", whiskerColor, "LineWidth", b.LineWidth);
+            hw.SeriesIndex = "none"; % keep box-chart styling through exportThesisFig
+        end
+        hold(ax, "off");
+        xticks(ax, 1:3); xticklabels(ax, classes); xlim(ax, [0.5, 3.5]);
+        grid(ax, "on"); % after boxchart, which resets the axes
+        ylabel(ax, "Margin (m; dB for comms)");
+        title(ax, sprintf("Constraint margins, all %d %s runs, every step", nnz(rows), models(mm)));
+        if opts.Export
+            exportThesisFig(f, "sweepmarginsbox" + models(mm), 3/4, "OutDir", opts.OutDir);
+        end
     end
-    gc = categorical(g, classes);
-    f = figure("Name", "Constraint margins, all runs");
-    ax = axes(f);
-    % MATLAB box chart (box = quartiles, line = median) with whiskers spanning
-    % the full min-max range and no outlier markers. boxchart has no
-    % whisker-length option, so its outlier markers and 1.5 IQR whiskers are
-    % hidden and min-max whiskers are drawn with matching lines.
-    x = double(gc);
-    b = boxchart(ax, x, y, "MarkerStyle", "none");
-    whiskerColor = b.WhiskerLineColor;
-    b.WhiskerLineStyle = "none"; % drop the 1.5 IQR whiskers; min-max ones drawn below
-    hold(ax, "on");
-    capHalf = b.BoxWidth / 4;
-    for cc = 1:3
-        v = y(x == cc);
-        q = quantile(v, [0.25, 0.75]);
-        lo = min(v); hi = max(v);
-        hw = plot(ax, [cc, cc, NaN, cc, cc, NaN, cc - capHalf, cc + capHalf, NaN, cc - capHalf, cc + capHalf], ...
-                      [lo, q(1), NaN, q(2), hi, NaN, lo, lo, NaN, hi, hi], ...
-                  "Color", whiskerColor, "LineWidth", b.LineWidth);
-        hw.SeriesIndex = "none"; % keep box-chart styling through exportThesisFig
-    end
-    hold(ax, "off");
-    xticks(ax, 1:3); xticklabels(ax, classes); xlim(ax, [0.5, 3.5]);
-    grid(ax, "on"); % after boxchart, which resets the axes
-    ylabel(ax, "Margin (m; dB for comms)");
-    title(ax, sprintf("Constraint margins, all %d runs, every step", height(R)));
+    % Scenario overview: obstacle layouts (3-D) and objectives with UAV starts
+    scenarioFigures(R, resultsFolder, opts);
+
     if opts.Export
-        exportThesisFig(f, "perm_constraint_box", 3/4, "OutDir", opts.OutDir);
         fprintf("Saved figures to %s\n", opts.OutDir);
     end
 end
@@ -267,4 +284,144 @@ function s = caseTitle(row)
     rch = containers.Map(["shortWide", "longNarrow"], ["short range, wide", "long range, narrow"]);
     s = sprintf("%s: %s, %s, %s, %s", upper(extractBefore(row.model, 2)) + extractAfter(row.model, 1), ...
         dyn(row.dynamics), obj(row.objective), rch(row.reach), row.obstacles);
+end
+
+function scenarioFigures(R, folder, opts)
+    % Scenario overview figures, rebuilt from the saved _miSimInits files of
+    % one representative run per obstacle layout / objective configuration.
+    obsKeys = ["sparse2", "close2", "close4"];
+    obsTitles = ["2 sparse obstacles", "2 close obstacles", "4 close obstacles"];
+    objKeys = ["obj1", "obj2", "obj3"];
+    objTitles = ["1 objective", "2 objectives", "3 objectives"];
+    obstacleColor = [0.85, 0.1, 0.1];
+    startColor = [0.9, 0, 0];
+    leaderColor = [0.7, 0.7, 0.7]; % visible on the dark plot and the white legend
+
+    % 1x3 3-D views of the obstacle layouts
+    f = figure("Name", "Obstacle layouts");
+    tl = tiledlayout(f, 1, 3, "TileSpacing", "compact", "Padding", "compact");
+    for kk = 1:3
+        in = loadInits(R, folder, "obstacles", obsKeys(kk));
+        ax = nexttile(tl); hold(ax, "on");
+        drawBoxEdges(ax, in.domainMin, in.domainMax);
+        for oo = 1:size(in.obsMinCorners, 1)
+            drawBox(ax, in.obsMinCorners(oo, :), in.obsMaxCorners(oo, :), obstacleColor);
+        end
+        axis(ax, "equal"); grid(ax, "on"); view(ax, -37.5, 25);
+        xlim(ax, [in.domainMin(1), in.domainMax(1)]); ylim(ax, [in.domainMin(2), in.domainMax(2)]); zlim(ax, [in.domainMin(3), in.domainMax(3)]);
+        xlabel(ax, "X (m)"); ylabel(ax, "Y (m)"); zlabel(ax, "Z (m)");
+        title(ax, obsTitles(kk));
+        uniformFontScale(ax);
+    end
+    if opts.Export
+        exportThesisFig(f, "sweepobstacles", 0.36, "Recolor", false, "OutDir", opts.OutDir);
+    end
+
+    % 1x3 top-down views of the objectives with UAV starting positions
+    f = figure("Name", "Objectives and starting positions");
+    tl = tiledlayout(f, 1, 3, "TileSpacing", "compact", "Padding", "compact");
+    th = linspace(0, 2 * pi, 64);
+    for kk = 1:3
+        in = loadInits(R, folder, "objective", objKeys(kk));
+        nObj = size(in.objectivePos, 1);
+        sigma = reshape(in.objectiveSigma, [nObj, 2, 2]); % guard against singleton squeeze on load
+        [X, Y] = meshgrid(in.domainMin(1):in.discretizationStep:in.domainMax(1), in.domainMin(2):in.discretizationStep:in.domainMax(2));
+        F = objectiveFunctionWrapper(in.objectivePos, sigma);
+        Z = reshape(F(X, Y), size(X));
+        Z = Z ./ max(Z, [], "all");
+        ax = nexttile(tl); hold(ax, "on");
+        contourf(ax, X, Y, Z, 0:0.05:1, "LineStyle", "none");
+        colormap(ax, parula); clim(ax, [0, 1]);
+        contour(ax, X, Y, Z, [0.1, 0.5, 0.9], "Color", "w", "LineWidth", 0.75); % iso-curves
+
+        % Starting positions: red circle of each UAV's collision radius
+        P = in.pos;
+        for aa = 1:size(P, 1)
+            r = in.collisionRadius(aa);
+            hc = plot(ax, P(aa, 1) + r * cos(th), P(aa, 2) + r * sin(th), "-", "Color", startColor, "LineWidth", 0.75);
+            hc.SeriesIndex = "none";
+        end
+
+        % Starting altitudes, labeled in a column to the right of the start
+        % cluster (ordered by Y so the leader lines don't cross). The starts
+        % are the same in every panel, so only the first is labeled.
+        if kk == 1
+            [~, order] = sort(P(:, 2), "descend");
+            labelX = max(P(:, 1)) + 28;
+            labelY = linspace(max(P(:, 2)) + 48, min(P(:, 2)) - 2, size(P, 1));
+            for ll = 1:numel(order)
+                aa = order(ll);
+                u = [labelX, labelY(ll)] - P(aa, 1:2);
+                u = u / norm(u);
+                from = P(aa, 1:2) + in.collisionRadius(aa) * u; % leader starts on the circle
+                hl = plot(ax, [from(1), labelX - 1], [from(2), labelY(ll)], "-", "Color", leaderColor, "LineWidth", 0.75);
+                hl.SeriesIndex = "none";
+                % sans-serif, slightly larger than the 10 pt figure text;
+                % 'KeepFont' exempts it from exportThesisFig's LaTeX/size reset
+                text(ax, labelX, labelY(ll), sprintf("%.0f m", P(aa, 3)), ...
+                    "Color", "w", "HorizontalAlignment", "left", "VerticalAlignment", "middle", ...
+                    "Interpreter", "none", "FontName", "Helvetica", "FontSize", 11, "Tag", "KeepFont");
+            end
+
+            % Legend for the markers and annotations. Proxy series keep their
+            % style (SeriesIndex "none") through exportThesisFig.
+            hUav = plot(ax, NaN, NaN, "o", "Color", startColor, "MarkerSize", 6, "LineWidth", 0.75);
+            hAlt = plot(ax, NaN, NaN, "-", "Color", leaderColor, "LineWidth", 0.75);
+            [hUav.SeriesIndex, hAlt.SeriesIndex] = deal("none");
+            lgd = legend(ax, [hUav, hAlt], ["Initial UAV position", "Initial altitude"], "Orientation", "horizontal");
+            lgd.Layout.Tile = "south"; % inside a panel it would cover the objective
+        end
+        axis(ax, "equal"); box(ax, "on");
+        xlim(ax, [in.domainMin(1), in.domainMax(1)]); ylim(ax, [in.domainMin(2), in.domainMax(2)]);
+        xlabel(ax, "X (m)"); ylabel(ax, "Y (m)");
+        title(ax, objTitles(kk));
+        uniformFontScale(ax);
+    end
+    cb = colorbar(ax);
+    cb.Layout.Tile = "east";
+    cb.Label.String = "Objective (normalized)";
+    if opts.Export
+        % PNG (400 dpi): as a vector PDF, the filled-contour bands show white
+        % hairline seams between them in LaTeX-built PDFs
+        exportThesisFig(f, "sweepobjectives", 0.38, "Recolor", false, "Raster", true, "OutDir", opts.OutDir);
+    end
+end
+
+function uniformFontScale(ax)
+    % exportThesisFig sets every FontSize to the same value, but labels and
+    % titles are rescaled by these multipliers when the axes FontSize is set,
+    % and the order of those updates varies between tiles. Pinning them to 1
+    % gives every tile identical 10 pt text.
+    ax.LabelFontSizeMultiplier = 1;
+    ax.TitleFontSizeMultiplier = 1;
+end
+
+function in = loadInits(R, folder, field, key)
+    rr = find(R.(field) == key, 1);
+    assert(~isempty(rr), "No run with %s = %s", field, key);
+    in = load(fullfile(folder, R.name(rr) + "_miSimInits.mat"));
+end
+
+function h = drawBox(ax, lo, hi, color)
+    [vx, vy, vz] = ndgrid([lo(1), hi(1)], [lo(2), hi(2)], [lo(3), hi(3)]);
+    faces = [1 2 4 3; 5 6 8 7; 1 2 6 5; 3 4 8 7; 1 3 7 5; 2 4 8 6];
+    h = patch(ax, "Vertices", [vx(:), vy(:), vz(:)], "Faces", faces, ...
+        "FaceColor", color, "FaceAlpha", 0.6, "EdgeColor", 0.6 * color);
+end
+
+function drawBoxEdges(ax, lo, hi)
+    % 12 edges of the box: corner pairs that differ in exactly one coordinate
+    [ix, iy, iz] = ndgrid(1:2, 1:2, 1:2);
+    idx = [ix(:), iy(:), iz(:)];
+    c = [lo; hi];
+    for p = 1:8
+        for q = (p + 1):8
+            if nnz(idx(p, :) ~= idx(q, :)) == 1
+                p1 = [c(idx(p, 1), 1), c(idx(p, 2), 2), c(idx(p, 3), 3)];
+                p2 = [c(idx(q, 1), 1), c(idx(q, 2), 2), c(idx(q, 3), 3)];
+                h = plot3(ax, [p1(1), p2(1)], [p1(2), p2(2)], [p1(3), p2(3)], "k-", "LineWidth", 0.5);
+                h.SeriesIndex = "none"; % thin frame, untouched by exportThesisFig
+            end
+        end
+    end
 end

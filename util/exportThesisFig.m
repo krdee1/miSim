@@ -40,12 +40,14 @@ function f = exportThesisFig(f, name, aspect, opts)
     nColors = size(opts.Palette, 1);
 
     % Text
-    set(findall(f, '-property', 'Interpreter'), 'Interpreter', 'latex');
+    % Objects tagged 'KeepFont' (e.g. annotations set in a different typeface)
+    % keep their interpreter, font name and size. Objects tagged
+    % 'KeepFontSize' (e.g. in-plot annotations meant to stand out from
+    % axis/tick labels) keep their size but are still switched to LaTeX.
+    keepFont = findall(f, 'Tag', 'KeepFont');
+    set(setdiff(findall(f, '-property', 'Interpreter'), keepFont), 'Interpreter', 'latex');
     set(findall(f, '-property', 'TickLabelInterpreter'), 'TickLabelInterpreter', 'latex');
-    % Objects tagged 'KeepFontSize' (e.g. in-plot annotations meant to stand
-    % out from axis/tick labels) keep whatever size they were already given,
-    % instead of being forced to opts.FontSize like everything else.
-    resizable = setdiff(findall(f, '-property', 'FontSize'), findall(f, 'Tag', 'KeepFontSize'));
+    resizable = setdiff(findall(f, '-property', 'FontSize'), [findall(f, 'Tag', 'KeepFontSize'); keepFont]);
     set(resizable, 'FontSize', opts.FontSize);
 
     % Axes: frame width, and palette for any series that pick their color automatically
