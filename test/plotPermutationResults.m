@@ -6,7 +6,9 @@ function R = plotPermutationResults(resultsFolder, opts)
 %   R = plotPermutationResults(folder, Export=false, SensingCase="N5_...")
 %
 % Figures, styled and saved by util/exportThesisFig.m in opts.OutDir as
-% vector PDFs, except sweepobjectives, which is a 400 dpi PNG. Names follow the thesis figures/ convention (lowercase, no
+% vector PDFs, except sweepobjectives, which is a 400 dpi PNG. Figures carry
+% no title (the LaTeX caption gives that information); only the 1x3 tiled
+% overview figures keep per-panel titles, which identify each panel. Names follow the thesis figures/ convention (lowercase, no
 % separators), ready for \includegraphics{figures/<name>}:
 %   sweepperfsensing, sweepperfservice
 %       Normalized system performance vs time, all runs of each modality.
@@ -78,18 +80,20 @@ function R = plotPermutationResults(resultsFolder, opts)
         f = figure("Name", "Performance, all " + models(mm) + " runs");
         ax = axes(f); hold(ax, "on"); grid(ax, "on");
         rows = find(R.model == models(mm));
-        objKeys = ["obj1", "obj2", "obj3"];
-        hLegend = gobjects(1, 3);
+        % Color by reach, the sensor/transmitter configuration: it sets the
+        % rise time and most of the final value (the obstacle set and
+        % dynamics barely change the curves)
+        reachKeys = ["shortWide", "longNarrow"];
+        hLegend = gobjects(1, 2);
         for rr = rows'
-            k = find(objKeys == R.objective(rr));
+            k = find(reachKeys == R.reach(rr));
             h = plot(ax, R.t{rr}, R.perf{rr}, "Color", palette(k, :));
             if ~isgraphics(hLegend(k))
                 hLegend(k) = h;
             end
         end
-        legend(ax, hLegend, ["1 objective", "2 objectives", "3 objectives"], "Location", "best");
+        legend(ax, hLegend, ["Short range, wide FOV", "Long range, narrow FOV"], "Location", "best");
         xlabel(ax, "Time (s)"); ylabel(ax, perfLabel(mm));
-        title(ax, "System performance, all " + models(mm) + " runs");
         if opts.Export
             % thin lines: 36 overlaid runs per figure
             exportThesisFig(f, "sweepperf" + models(mm), 3/4, "Recolor", false, "LineWidth", 0.75, "OutDir", opts.OutDir);
@@ -109,7 +113,6 @@ function R = plotPermutationResults(resultsFolder, opts)
         hSys.SeriesIndex = "none"; % keep black/thick through exportThesisFig
         legend(ax, ["UAV " + (1:nA), "System"], "Location", "best");
         xlabel(ax, "Time (s)"); ylabel(ax, perfLabel(mm));
-        title(ax, caseTitle(R(rr, :)));
         if opts.Export
             exportThesisFig(f, "sweepcaseperf" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
@@ -129,7 +132,6 @@ function R = plotPermutationResults(resultsFolder, opts)
         hZero.HandleVisibility = "off";
         legend(ax, classes + [" (m)", " (m)", " (dB)"], "Location", "best");
         xlabel(ax, "Time (s)"); ylabel(ax, "Minimum margin (m; dB for comms)");
-        title(ax, caseTitle(R(rr, :)));
         if opts.Export
             exportThesisFig(f, "sweepcasemargins" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
@@ -171,9 +173,12 @@ function R = plotPermutationResults(resultsFolder, opts)
         end
         hold(ax, "off");
         xticks(ax, 1:3); xticklabels(ax, classes); xlim(ax, [0.5, 3.5]);
+        % Both modalities start at 0 (the constraint boundary). Round-off
+        % margins just below 0 (~-4e-5 m) otherwise push the automatic limit
+        % down a full tick to -10 on one plot only.
+        ylim(ax, [0, 10 * ceil(max(y) / 10)]); % top on a tick, above the highest whisker
         grid(ax, "on"); % after boxchart, which resets the axes
         ylabel(ax, "Per-UAV HNCBF margin (m; dB for comms)");
-        title(ax, sprintf("HNCBF margins, every UAV and step, all %d %s runs", nnz(rows), models(mm)));
         if opts.Export
             exportThesisFig(f, "sweepmarginsbox" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
@@ -312,14 +317,6 @@ end
 function rr = caseRow(R, name)
     rr = find(R.name == name, 1);
     assert(~isempty(rr), "Case %s not found in the result set", name);
-end
-
-function s = caseTitle(row)
-    dyn = containers.Map(["single", "double"], ["single integrator", "double integrator"]);
-    obj = containers.Map(["obj1", "obj2", "obj3"], ["1 objective", "2 objectives", "3 objectives"]);
-    rch = containers.Map(["shortWide", "longNarrow"], ["short range, wide", "long range, narrow"]);
-    s = sprintf("%s: %s, %s, %s, %s", upper(extractBefore(row.model, 2)) + extractAfter(row.model, 1), ...
-        dyn(row.dynamics), obj(row.objective), rch(row.reach), row.obstacles);
 end
 
 function scenarioFigures(R, folder, opts)

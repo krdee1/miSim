@@ -40,7 +40,6 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             set(gca, "YDir", "normal");
             xlabel("X (m)");
             ylabel("Y (m)");
-            title("Example of Domain Partitioning by Sensing");
             hold("on");
             labelFontSize = 24; % stands out from the 10pt body text; exempted from exportThesisFig's resize via Tag
             text(agents{1}.pos(1) - 5.25, agents{1}.pos(2) - 0.25, "$\mathcal{W}_1$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
@@ -96,7 +95,6 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             set(gca, "YDir", "normal");
             xlabel("X (m)");
             ylabel("Y (m)");
-            title("Example of Domain Partitioning by Service");
             hold("on");
             labelFontSize = 24; % stands out from the 10pt body text; exempted from exportThesisFig's resize via Tag
             text(agents{1}.pos(1) - 5.25, agents{1}.pos(2) - 0.25, "$\mathcal{W}_1$", "Interpreter", "latex", 'Color', 'r', 'FontSize', labelFontSize, 'Tag', 'KeepFontSize');
@@ -137,12 +135,14 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             sim = sim.run();
             sim.fPerf.Children(2).Children(1).Color = sim.fPerf.Children(2).Children(2).Color;
             delete(sim.fPerf.Children(2).Children(2));
+            clearTitles(sim.fPerf); % miSim's live "Sensor Performance" title
             % Short and wide: stacked under the trajectory as Figure 3.3(b)
             f1 = exportThesisFig(sim.fPerf, "singleagentGAperf", 1/3, "Recolor", false);
 
             f = figure;
             copyobj(sim.f.Children(1).Children(6), f);
             f.Children.CameraPosition = [-68,-20,42];
+            clearTitles(f); % "3D View" from miSim's tiled layout
             
             % Only the 3D view is copied, which has no image objects to trigger
             % the PNG export; force it, since the objective surf shows mesh
@@ -279,7 +279,6 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             xlim([-90, 90]);
             xticks(-90:45:90);
             % exportThesisFig switches all text to the LaTeX interpreter
-            title("Transmitting Antenna Gain Model");
             ylabel("Transmitting Antenna Gain (dBi)");
             xlabel("Elevation Angle from Antenna Boresight $\xi$ ($^\circ$)");
             legend("$\delta = " + string(n) + "$");
@@ -308,6 +307,8 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             % Plot
             f = s(1).plotParameters;
             f = s(2).plotParameters(f);
+            % Tile titles repeat the x-axis labels (Distance, Tilt)
+            clearTitles(f);
 
             f = exportThesisFig(f, "sigmoidmodel", 3/4);
             close(f);
@@ -344,6 +345,8 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             % equally, but these multipliers rescale labels/titles depending on
             % update order
             set(tiles, 'LabelFontSizeMultiplier', 1, 'TitleFontSizeMultiplier', 1);
+            % Tile titles repeat the x-axis labels (Distance, Tilt)
+            clearTitles(f);
 
             f = exportThesisFig(f, "sigmoidmodelsweep", 3/4);
             close(f);
@@ -372,7 +375,6 @@ classdef test_thesis_plots < matlab.unittest.TestCase
             xlim([-90, 90]);
             xticks(-90:45:90);
             % exportThesisFig switches all text to the LaTeX interpreter
-            title("Transmitting Antenna Gain Model");
             ylabel("Transmitting Antenna Gain (dBi)");
             xlabel("Elevation Angle from Antenna Boresight $\xi$ ($^\circ$)");
             legend("Location", "southoutside"); % inside, it covers the narrow beam's peak
@@ -383,6 +385,15 @@ classdef test_thesis_plots < matlab.unittest.TestCase
     end
 
 end
+function clearTitles(f)
+    % Thesis figures carry no titles (the LaTeX caption gives that
+    % information). Clears titles set by shared plotting code (miSim's live
+    % plots, sigmoidSensor.plotParameters) without changing that code.
+    for ax = findall(f, 'Type', 'axes')'
+        ax.Title.String = "";
+    end
+end
+
 function p = sweepParams()
     % Sensor and transmitter parameters of the test_permutations sweep, read
     % from that class's property defaults so these figures stay in sync
