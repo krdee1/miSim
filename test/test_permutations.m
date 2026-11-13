@@ -13,10 +13,14 @@ classdef test_permutations < matlab.unittest.TestCase
     % penetration), the initial CALSN state is valid, and no two agents'
     % collision spheres ever overlap. Performance is saved, not asserted.
     %
-    % Agent starting states are kept separate from the swept parameters
-    % (agentConfigs) so that specific agent-count cases can be added later
-    % as their own test method calling runScenario, without re-running the
-    % full sweep.
+    % The scalability method (120 tests) runs the double/obj2/longNarrow/
+    % close4 scenario for N = 3..8 agents, 10 trials each, for both models.
+    % Each trial starts from random positions in the L-shaped lower-left
+    % start region, rejection-sampled until the initial state is valid and
+    % connected (randomStarts); sensing and service share the starts of a
+    % trial. Outputs go to sandbox/scale_<suite start time>/, named e.g.
+    % N6_trial3_double_obj2_service_longNarrow_close4. Run it alone with
+    %   runtests("test/test_permutations.m", ProcedureName="scalability")
 
     properties (TestParameter)
         dynamics = struct( ...
@@ -73,6 +77,11 @@ classdef test_permutations < matlab.unittest.TestCase
                  98,  62, 0, 116,  80, 200; ...
                 100, 100, 0, 115, 115, 200; ...
                 140, 140, 0, 150, 150,  75]));
+
+        % Scalability study (scalability method only): agent counts and
+        % trials, each trial from its own random valid start configuration
+        agentCount = struct("N3", 3, "N4", 4, "N5", 5, "N6", 6, "N7", 7, "N8", 8);
+        trial = struct("t1", 1, "t2", 2, "t3", 3, "t4", 4, "t5", 5, "t6", 6, "t7", 7, "t8", 8, "t9", 9, "t10", 10);
     end
 
     properties (Access = private)
@@ -88,8 +97,21 @@ classdef test_permutations < matlab.unittest.TestCase
                 38, 20, 104; ...
                 44, 12, 100]));
 
-        % Output folder (under sandbox/) shared by all runs of one suite run
-        outputFolder = "";
+        % Output folders (under sandbox/), one timestamp per suite run:
+        % perm_<ts> for the sweep, scale_<ts> for the scalability study
+        suiteTimestamp = "";
+
+        % Scalability study: fixed scenario, random starts in the L-shaped
+        % lower-left region (lower-left quadrant minus the central 100 x 100
+        % square), clear of the domain walls by startWallClearance
+        scaleSettings = struct("dynamics", "double", "objective", "two", ...
+            "reach", "longNarrow", "obstacles", "close4");
+        startXYRange = [10, 100]; % m, both axes
+        startCentralMin = 50; % m; the central square starts at 50 in x and y
+        startZRange = [90, 110]; % m
+        startMinSeparation = 15; % m, 2 * collisionRadius + 5
+        startObstacleClearance = 10; % m
+        startMaxDraws = 5000;
 
         % Simulation
         maxIter = 150;
@@ -176,9 +198,8 @@ classdef test_permutations < matlab.unittest.TestCase
     end
 
     methods (TestClassSetup)
-        function createOutputFolder(tc)
-            tc.outputFolder = "perm_" + string(datetime("now", "Format", "yyyy_MM_dd_HH_mm_ss"));
-            mkdir(fullfile(matlab.project.rootProject().RootFolder, "sandbox", tc.outputFolder));
+        function setTimestamp(tc)
+            tc.suiteTimestamp = string(datetime("now", "Format", "yyyy_MM_dd_HH_mm_ss"));
         end
     end
 
@@ -190,13 +211,111 @@ classdef test_permutations < matlab.unittest.TestCase
 
     methods (Test)
         function permutation(tc, dynamics, objective, model, reach, obstacles)
-            tc.runScenario(tc.agentConfigs.five, dynamics, objective, model, reach, obstacles);
+            tc.runScenario("perm", tc.agentConfigs.five, dynamics, objective, model, reach, obstacles);
+        end
+
+        function scalability(tc, agentCount, trial, model)
+            % One trial of the scalability study: the sweep's
+            % double/obj2/longNarrow/close4 scenario with agentCount agents
+            % started from random valid positions. The starts depend only on
+            % (agentCount, trial), so sensing and service runs are paired.
+            [dynamics, objective, reach, obstacles] = tc.scaleScenario();
+            [pos, nDraws] = tc.randomStarts(agentCount, trial);
+            fprintf("N = %d, trial %d: valid start after %d draw(s)\n", agentCount, trial, nDraws);
+            agentConfig = struct("name", sprintf("N%d_trial%d", agentCount, trial), "pos", pos);
+            tc.runScenario("scale", agentConfig, dynamics, objective, model, reach, obstacles);
         end
     end
 
     methods (Access = private)
-        function runScenario(tc, agentConfig, dynamics, objective, model, reach, obstacles)
+        function [dynamics, objective, reach, obstacles] = scaleScenario(tc)
+            % The sweep's TestParameter values, read from the class defaults
+            mc = ?test_permutations;
+            def = @(n) mc.PropertyList(strcmp({mc.PropertyList.Name}, n)).DefaultValue;
+            s = tc.scaleSettings;
+            d = def("dynamics"); dynamics = d.(s.dynamics);
+            o = def("objective"); objective = o.(s.objective);
+            reach = s.reach;
+            b = def("obstacles"); obstacles = b.(s.obstacles);
+        end
+
+        function [pos, nDraws] = randomStarts(tc, n, k)
+            % Rejection-sample n starting positions in the L-shaped start
+            % region until the initial state is valid: agents well separated
+            % and clear of obstacles, every selected link at least
+            % sinrThreshold + 3 dB (asserted by miSim.initialize), and the
+            % CALSN state checked by runScenario (one connected graph, all
+            % potentials finite, nothing unrouted). The farthest-apart pair
+            % become agents 1 and n, the CALSN base stations. Seeded by
+            % (n, k) so every call for the same trial returns the same starts.
+            prevRng = rng(1000 * n + k);
+            cleanup = onCleanup(@() rng(prevRng));
+
+            [~, objective, reach, obstacles] = tc.scaleScenario();
+            domain = tc.buildDomain(objective, "sensing"); % validity is comms-only
+            sensor = tc.buildSensor("sensing", reach);
+            obs = tc.buildObstacles(obstacles);
+            corners = obstacles.corners;
+            lo = tc.startXYRange(1); hi = tc.startXYRange(2);
+
+            for nDraws = 1:tc.startMaxDraws
+                % Uniform in the L: draw from the quadrant, reject the
+                % central square's corner
+                pos = zeros(n, 3);
+                ii = 0;
+                while ii < n
+                    p = [lo + (hi - lo) * rand(1, 2), tc.startZRange(1) + diff(tc.startZRange) * rand];
+                    if p(1) >= tc.startCentralMin && p(2) >= tc.startCentralMin
+                        continue;
+                    end
+                    ii = ii + 1;
+                    pos(ii, :) = p;
+                end
+
+                D = sqrt(sum((permute(pos, [1, 3, 2]) - permute(pos, [3, 1, 2])).^2, 3));
+                if min(D(~eye(n))) < tc.startMinSeparation
+                    continue;
+                end
+                gap = inf;
+                for oo = 1:size(corners, 1)
+                    q = min(max(pos, corners(oo, 1:3)), corners(oo, 4:6)); % nearest box points
+                    gap = min(gap, min(vecnorm(pos - q, 2, 2)));
+                end
+                if gap < tc.startObstacleClearance
+                    continue;
+                end
+
+                % Farthest pair -> agents 1 and n
+                [~, idx] = max(D(:));
+                [a, b] = ind2sub([n, n], idx);
+                order = [a, setdiff(1:n, [a, b]), b];
+                pos = pos(order, :);
+
+                agents = tc.buildAgents(struct("pos", pos), sensor);
+                sim = miSim;
+                try
+                    sim = sim.initialize(domain, agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, obs, ...
+                        false, false, true, tc.dampingCoeff, false, true, ...
+                        true, tc.sinrThreshold, tc.pathLossExponent, tc.ambientTemp, tc.centerFreq, tc.bandwidth, true);
+                catch
+                    continue; % a selected link inside the CBF padding band
+                end
+                phi = sim.routingPotentials;
+                if all(phi([1, n]) == 0) && all(isfinite(phi)) && ...
+                        max(conncomp(graph(sim.constraintAdjacencyMatrix))) == 1 && all(sim.routingUnrouted == 0)
+                    return;
+                end
+            end
+            error("test_permutations:noValidStart", "No valid start for N = %d, trial %d after %d draws", n, k, tc.startMaxDraws);
+        end
+
+        function runScenario(tc, prefix, agentConfig, dynamics, objective, model, reach, obstacles)
             name = sprintf("%s_%s_%s_%s_%s_%s", agentConfig.name, dynamics.name, objective.name, model, reach, obstacles.name);
+            folder = prefix + "_" + tc.suiteTimestamp;
+            folderPath = fullfile(matlab.project.rootProject().RootFolder, "sandbox", folder);
+            if ~isfolder(folderPath)
+                mkdir(folderPath);
+            end
 
             domain = tc.buildDomain(objective, model);
             sensor = tc.buildSensor(model, reach);
@@ -207,7 +326,7 @@ classdef test_permutations < matlab.unittest.TestCase
             sim = sim.initialize(domain, agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, obs, ...
                 tc.makePlots, tc.makeVideo, dynamics.useDoubleIntegrator, tc.dampingCoeff, false, true, ...
                 true, tc.sinrThreshold, tc.pathLossExponent, tc.ambientTemp, tc.centerFreq, tc.bandwidth, true);
-            sim.artifactName = tc.outputFolder + "/" + name;
+            sim.artifactName = folder + "/" + name;
 
             % Initial CALSN state: bases at zero potential, every other
             % agent's potential finite, one connected maintained graph,

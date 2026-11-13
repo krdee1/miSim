@@ -153,25 +153,7 @@ function R = plotPermutationResults(resultsFolder, opts)
         end
         f = figure("Name", "Constraint margins, all " + models(mm) + " runs");
         ax = axes(f);
-        % MATLAB box chart (box = quartiles, line = median) with whiskers
-        % spanning the full min-max range and no outlier markers. boxchart has
-        % no whisker-length option, so its outlier markers and 1.5 IQR
-        % whiskers are hidden and min-max whiskers are drawn with matching lines.
-        b = boxchart(ax, x, y, "MarkerStyle", "none");
-        whiskerColor = b.WhiskerLineColor;
-        b.WhiskerLineStyle = "none";
-        hold(ax, "on");
-        capHalf = b.BoxWidth / 4;
-        for cc = 1:3
-            v = y(x == cc);
-            q = quantile(v, [0.25, 0.75]);
-            lo = min(v); hi = max(v);
-            hw = plot(ax, [cc, cc, NaN, cc, cc, NaN, cc - capHalf, cc + capHalf, NaN, cc - capHalf, cc + capHalf], ...
-                          [lo, q(1), NaN, q(2), hi, NaN, lo, lo, NaN, hi, hi], ...
-                      "Color", whiskerColor, "LineWidth", b.LineWidth);
-            hw.SeriesIndex = "none"; % keep box-chart styling through exportThesisFig
-        end
-        hold(ax, "off");
+        minMaxBoxchart(ax, x, y); % quartile boxes, min-max whiskers, no outlier markers
         xticks(ax, 1:3); xticklabels(ax, classes); xlim(ax, [0.5, 3.5]);
         % Both modalities start at 0 (the constraint boundary). Round-off
         % margins just below 0 (~-4e-5 m) otherwise push the automatic limit
