@@ -40,6 +40,25 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
         % partition subset so sensorPerformance can reuse them for all perturbations.
         otherSensorsPos = cell2mat(cellfun(@(x) x.pos, otherAgents, "UniformOutput", false));
         otherSensors    = cellfun(@(x) x.sensorModel, otherAgents, "UniformOutput", false);
+
+        % Full-grid received power and noise of every other agent, for the
+        % fleet coverage C* that the service gradient ascends (see below).
+        % partition() leaves full-grid caches; compute on a copy if missing so
+        % otherSensors keeps its own cache for the masking that follows.
+        fullTargets = [domain.objective.X(:), domain.objective.Y(:), zeros(numel(domain.objective.X), 1)];
+        fullWeights = domain.objective.values(:);
+        otherRssFull = zeros(numel(fullWeights), numel(otherSensors));
+        otherNoise = zeros(1, numel(otherSensors));
+        for kk = 1:numel(otherSensors)
+            otherFull = otherSensors{kk};
+            if isempty(otherFull.rssCache)
+                [~, ~, otherFull] = otherFull.sensorPerformance(otherSensorsPos(kk, :), fullTargets);
+            end
+            assert(numel(otherFull.rssCache) == numel(fullWeights), "Other agent's RSS cache does not cover the full grid");
+            otherRssFull(:, kk) = otherFull.rssCache;
+            otherNoise(kk) = otherFull.N;
+        end
+
         partitionIndices = find(partitionMask);
         for kk = 1:numel(otherSensors)
             if ~isempty(otherSensors{kk}.rssCache)
@@ -68,6 +87,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
     end
     deltaApplicator = [0, 0, 0, 0, 0; 1, 0, 0, 0, 0; -1, 0, 0, 0, 0; 0, 1, 0, 0, 0; 0, -1, 0, 0, 0; 0, 0, 1, 0, 0; 0, 0, -1, 0, 0; 0, 0, 0, 1, 0; 0, 0, 0, -1, 0; 0, 0, 0, 0, 1; 0, 0, 0, 0, -1;]; % none, +X, -X, +Y, -Y, +Z, -Z, +tilt, -tilt, +azimuth, -azimuth
     C_delta = NaN(size(deltaApplicator, 1), 1); % agent performance at delta steps in each direction
+    fullCoverage = NaN(size(deltaApplicator, 1), 1); % fleet coverage C* at delta steps (rfSensor only)
     for ii = 1:size(deltaApplicator, 1)
         if ~optimizeSensorPointing && ii > 7; break; end
         % Apply delta to position
@@ -88,6 +108,17 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
                 sensorModelForDelta = obj.sensorModel.clearRssCache;
             end
             [sensorValues, ~, ~, ~] = sensorModelForDelta.sensorPerformance(pos, [maskedX, maskedY, zeros(size(maskedX))], otherSensorsPos, otherSensors);
+
+            % Fleet coverage C* with this agent at the perturbed state (position,
+            % and tilt/azimuth set on obj.sensorModel above): every grid point
+            % served by its best-SINR agent, SINR as in rfSensor/sensorPerformance
+            ownFull = obj.sensorModel.clearRssCache;
+            [~, ~, ownFull] = ownFull.sensorPerformance(pos, fullTargets);
+            Sall = max([ownFull.rssCache, otherRssFull], realmin);
+            noise = [ownFull.N, otherNoise];
+            total = sum(Sall, 2);
+            bestSinr = max(10 * log10(Sall ./ (noise + total - Sall)), [], 2);
+            fullCoverage(ii) = sum(bestSinr .* fullWeights);
         else
             error("?");
         end
@@ -114,11 +145,28 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
         obj.performance(timestepIndex + 1) = C_delta(1);
     end
 
+    % Objective whose gradient the agent ascends. For sensing it is the
+    % agent's own-cell score C_delta: one agent's sensor quality doesn't
+    % depend on the others' positions, and the boundary terms cancel where
+    % neighbors tie, so the own-cell gradient equals the gradient of the
+    % system coverage. For service it must be the fleet coverage C*: this
+    % agent's transmitter interferes in every other agent's cell, so moving it
+    % changes their SINR too, and ascending only the own-cell score drops that
+    % interference term (agents ascend selfishly and the system total can
+    % fall). C* uses best-SINR association over the whole grid and does not
+    % apply the partition minimum. The logged performance stays C_delta(1).
+    % Fix identified by Reza Barzegaran.
+    if isa(obj.sensorModel, "rfSensor")
+        gradSource = fullCoverage;
+    else
+        gradSource = C_delta;
+    end
+
     % Compute gradient by finite central differences
-    gradC = [(C_delta(2)-C_delta(3))/(2*deltaPos), (C_delta(4)-C_delta(5))/(2*deltaPos), (C_delta(6)-C_delta(7))/(2*deltaPos)];
+    gradC = [(gradSource(2)-gradSource(3))/(2*deltaPos), (gradSource(4)-gradSource(5))/(2*deltaPos), (gradSource(6)-gradSource(7))/(2*deltaPos)];
     if optimizeSensorPointing
-        gradC(4) = (C_delta(8) -C_delta(9)) /(2*deltaAngle);
-        gradC(5) = (C_delta(10)-C_delta(11))/(2*deltaAngle);
+        gradC(4) = (gradSource(8) -gradSource(9)) /(2*deltaAngle);
+        gradC(5) = (gradSource(10)-gradSource(11))/(2*deltaAngle);
     end
 
     % Compute scaling factor
