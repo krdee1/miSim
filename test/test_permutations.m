@@ -156,20 +156,22 @@ classdef test_permutations < matlab.unittest.TestCase
         % ground point at horizontal range r is z = r * sqrt(n / a),
         % independent of power. Beam width therefore sets altitude: in
         % 5-agent runs shortWide (~17 deg) settles ~30-65 m and longNarrow
-        % (~6 deg) ~75-115 m. A genuinely wide beam would sit on the floor.
-        % Power sets the interference/noise balance instead. Fraction of the
-        % grid where interference exceeds noise, at the start / over the
-        % objective: shortWide ~53% / ~30%, longNarrow ~17% / ~24%. The
-        % narrow beam's split barely moves with power because its off-axis
-        % gain falls off so steeply.
+        % (~6 deg) ~75-115 m (with the per-agent gradient; to be rechecked
+        % with the fleet-coverage gradient). A genuinely wide beam would sit
+        % on the floor. Power sets the interference/noise balance instead.
+        % Powers were lowered (from 3e-4 / 0.1 W, with 3 dBi receive gain)
+        % toward a noise-limited regime: with the fleet-coverage gradient
+        % and strong signals, one interference-free UAV served the whole
+        % objective while the rest moved away, since every UAV always
+        % transmits co-channel.
         rfParams = struct( ...
-            "shortWide",  struct("P_TX", 3e-4, "beamwidthExponent", 16), ...  % ~17 deg half-power half-angle
-            "longNarrow", struct("P_TX", 1e-1, "beamwidthExponent", 128));    % ~6 deg
+            "shortWide",  struct("P_TX", 2.5e-4, "beamwidthExponent", 16), ... % ~17 deg half-power half-angle
+            "longNarrow", struct("P_TX", 1e-3, "beamwidthExponent", 128));     % ~6 deg
         rfTemperature = 300; % K
         rfBandwidth = 20e6; % Hz
         rfCenterFreq = 3e9; % Hz
-        rfRxGain = 3; % dBi
-        rfLossExponent = 2;
+        rfRxGain = 0; % dBi (no user receive gain)
+        rfLossExponent = 3; % service links (UAV-UAV comms use pathLossExponent); raised from 2 toward a noise-limited regime
 
         % Communications (SINR model) and CALSN. The starting cluster's
         % weakest pair (the base-to-base diagonal) is at -13.3 dB and the
