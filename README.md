@@ -35,7 +35,7 @@ This repository is the software for:
 Each simulation step runs four stages:
 
 1. **Partition.** Every point on the ground is assigned to the UAV that senses or serves it best ([`@agent/partition.m`](@agent/partition.m)).
-2. **Nominal control.** Each UAV takes a gradient-ascent step that improves coverage of its own partition ([`@agent/run.m`](@agent/run.m)).
+2. **Nominal control.** Each UAV takes a gradient-ascent step that improves coverage ([`@agent/run.m`](@agent/run.m)). For sensing, the gradient of its own partition's coverage is enough. For wireless service, each UAV's transmitter also interferes with the other UAVs' users, so the gradient is taken of the whole team's coverage.
 3. **Topology.** The simulator chooses which communication links must be kept so that the team stays connected.
 4. **Safety filter.** A quadratic program makes the smallest change to the nominal motion that satisfies every constraint: domain, minimum altitude, obstacles, collisions and communication ([`@miSim/constrainMotion.m`](@miSim/constrainMotion.m)).
 
