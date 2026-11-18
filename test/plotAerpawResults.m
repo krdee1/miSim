@@ -11,18 +11,21 @@ function R = plotAerpawResults(aerpawRoot, opts)
 % title (the LaTeX caption gives it):
 %   aerpawperf<scn>
 %       Normalized performance vs time of each UAV (labeled by its sensor)
-%       and of the system. miSim solid, AERPAW dashed.
+%       and of the system. miSim solid, AERPAW dashed; the legend lists
+%       only the series colors (the caption explains the line styles).
 %   aerpawmargins<scn>
 %       Minimum HNCBF margin over all UAVs vs time per constraint class
 %       (domain/obstacle, collision, communications), in m. miSim solid,
-%       AERPAW dashed.
+%       AERPAW dashed; the legend lists only the classes.
 %   aerpawbox<scn>
 %       Box plot of every UAV's HNCBF margin at every step, per class, one
 %       box per source (quartile boxes, min-max whiskers).
 %   aerpawsinr<scn>
-%       Flight only: SINR measured by the receiving UAV's radio (logged as
-%       "snr"; raw samples and a 1 s median) and the UAV-UAV distance from
-%       the GPS logs (right axis) vs time. Restricted to the guidance window,
+%       SINR measured by the receiving UAV's radio (logged as "snr"; raw
+%       samples and a dashed 1 s median), the SINR the miSim link model
+%       (sinrLink) predicts for the same flown positions (solid; parameters
+%       in modeledSinr), and the UAV-UAV distance from the GPS logs (right
+%       axis) vs time. Restricted to the guidance window,
 %       first to last GUIDANCE_TOGGLE in the controller log (no takeoff,
 %       flyout, return or landing), with t = 0 at guidance start.
 %
@@ -111,7 +114,7 @@ function R = plotAerpawResults(aerpawRoot, opts)
             hSys = plot(ax, t, m.perf, styles(src), "Color", colors(end, :), "LineWidth", 3, "HandleVisibility", "off");
             hSys.SeriesIndex = "none"; % keep black and thick through exportThesisFig
         end
-        legendKey(ax, colors, names, styles, sources);
+        legendKey(ax, colors, names);
         xlim(ax, t([1, end]));
         xlabel(ax, "Time (s)"); ylabel(ax, "Performance (normalized)");
         if opts.Export
@@ -130,7 +133,7 @@ function R = plotAerpawResults(aerpawRoot, opts)
         end
         hZero = yline(ax, 0, "k:", "HandleVisibility", "off");
         hZero.SeriesIndex = "none";
-        legendKey(ax, palette(1:3, :), classes, styles, sources);
+        legendKey(ax, palette(1:3, :), classes);
         xlim(ax, t([1, end]));
         xlabel(ax, "Time (s)"); ylabel(ax, "Minimum HNCBF margin (m)");
         if opts.Export
@@ -173,6 +176,9 @@ function R = plotAerpawResults(aerpawRoot, opts)
         rd = r.radio;
         fprintf("  radio: window %.1f s, %d SINR samples, SINR min/median/max %.1f/%.1f/%.1f dB, distance %.1f-%.1f m\n", ...
             rd.tEnd, numel(rd.t), min(rd.sinr), median(rd.sinr), max(rd.sinr), min(rd.dist), max(rd.dist));
+        fprintf("  radio: modeled SINR %.1f-%.1f dB (median %.1f); median of (model - measured 1 s median) %.1f dB\n", ...
+            min(rd.sinrModel), max(rd.sinrModel), median(rd.sinrModel), ...
+            median(interp1(rd.tDist, rd.sinrModel, rd.tMed) - rd.sinrMed, "omitnan"));
         for uu = 1:2
             fprintf("  radio: %s = client %d, clock offset %+.1f s (GPS vs reported position median %.2f m)\n", ...
                 rd.uav(uu), rd.client(uu), rd.clockOffset(uu), rd.matchResidual(uu));
@@ -184,7 +190,8 @@ function R = plotAerpawResults(aerpawRoot, opts)
         yyaxis(ax, "left");
         hRaw = plot(ax, rd.t, rd.sinr, ".", "Color", 0.5 * palette(1, :) + 0.5, "MarkerSize", 2);
         hRaw.SeriesIndex = "none"; % keep the dots small through exportThesisFig
-        hMed = plot(ax, rd.tMed, rd.sinrMed, "-", "Color", palette(1, :));
+        hMed = plot(ax, rd.tMed, rd.sinrMed, "--", "Color", palette(1, :)); % dashed: AERPAW data
+        hModel = plot(ax, rd.tDist, rd.sinrModel, "-", "Color", palette(1, :)); % solid: miSim model
         ylabel(ax, "SINR (dB)");
         ax.YAxis(1).Color = palette(1, :);
         yyaxis(ax, "right");
@@ -194,7 +201,7 @@ function R = plotAerpawResults(aerpawRoot, opts)
         xlim(ax, [0, rd.tEnd]);
         grid(ax, "on");
         xlabel(ax, "Time (s)");
-        legend(ax, [hRaw, hMed, hDist], ["SINR", "SINR (1 s median)", "Distance"], "Location", "best");
+        legend(ax, [hRaw, hMed, hModel, hDist], ["SINR, AERPAW", "SINR, AERPAW (1 s median)", "SINR, miSim model", "Distance"], "Location", "best");
         if opts.Export
             exportThesisFig(f, "aerpawsinr" + scn, 3/4, "Recolor", false, "OutDir", opts.OutDir);
         end
@@ -467,6 +474,10 @@ function rd = radioData(root, scn)
     distAt = @(t) vecnorm(interp1(gpsT{1}, gpsP{1}, t(:), "linear") - interp1(gpsT{2}, gpsP{2}, t(:), "linear"), 2, 2);
     rd.tDist = (0:floor(rd.tEnd))';
     rd.dist = distAt(rd.tDist);
+    % Both tracks on the same grid (for the modeled SINR), receiver index
+    rd.pos = cat(3, interp1(gpsT{1}, gpsP{1}, rd.tDist, "linear"), interp1(gpsT{2}, gpsP{2}, rd.tDist, "linear"));
+    rd.rx = find(isRx);
+    rd.sinrModel = modeledSinr(rd.pos, rd.rx);
 
     % Check: GPS distance at each in-window controller reading against the
     % distance between the positions the clients reported
@@ -478,15 +489,48 @@ function rd = radioData(root, scn)
     rd.distCheck = abs(distAt(t1(1:n)) - vecnorm(p1(1:n, :) - p2(1:n, :), 2, 2));
 end
 
-function legendKey(ax, colors, names, styles, sources)
-    % Legend of solid color entries (one per series) plus gray style keys
-    % (one per data source), drawn as NaN dummy lines
-    h = gobjects(1, size(colors, 1) + numel(styles));
+function sinrDb = modeledSinr(pos, rx)
+    % SINR (dB) the miSim link model (@miSim/sinrLink.m: isotropic antennas,
+    % free-space path loss with exponent n, thermal noise k*T*B, every other
+    % UAV an interferer) predicts at receiver rx for the other UAV's signal,
+    % at each row of pos (steps x 3 x UAVs). The link parameters are the
+    % AERPAW channel sounder's, not the miSim defaults (2.4 GHz, 20 MHz):
+    %   carrier 3.32025 GHz: 3.32 GHz tuning plus the 250 kHz digital offset
+    %       (aerpaw/radio/startchannelsounderTXGRC.sh, CSwSNRTX.py)
+    %   bandwidth 248.75 kHz: 125 ksym/s (2 MS/s, 16 samples/symbol) x
+    %       (1 + 0.99 root-raised-cosine roll-off)
+    %   transmit power -10 dBm (0.1 mW), an estimate: the sounder sets only
+    %       USRP TX gain 76 dB (13.75 dB below the 89.75 dB maximum, rated
+    %       > +10 dBm) and scales the waveform by 1/1.58 (-4 dB), which
+    %       puts the output at roughly -10 to -5 dBm
+    %   path-loss exponent 2, temperature 290 K (miSim defaults)
+    % With two UAVs there is no interferer, so this is the SNR.
+    sim = miSim;
+    sim.centerFreq = 3.32025e9;
+    sim.bandwidth = 248.75e3;
+    sim.pathLossExponent = 2;
+    sim.ambientTemp = 290;
+    nA = size(pos, 3);
+    sim.agents = cell(nA, 1);
+    for ii = 1:nA
+        sim.agents{ii} = agent;
+        sim.agents{ii}.txPower = 1e-4; % W
+    end
+    assert(nA == 2, "modeledSinr assumes one transmitter and one receiver");
+    tx = 3 - rx;
+    sinrDb = zeros(size(pos, 1), 1);
+    for k = 1:size(pos, 1)
+        sinrDb(k) = 10 * log10(sim.sinrLink(squeeze(pos(k, :, :))', rx, tx));
+    end
+end
+
+function legendKey(ax, colors, names)
+    % Legend of solid color entries, one per series, drawn as NaN dummy
+    % lines so a single entry covers both sources. The line style (miSim
+    % solid, AERPAW dashed) is explained in the figure caption, not here.
+    h = gobjects(1, size(colors, 1));
     for cc = 1:size(colors, 1)
         h(cc) = plot(ax, NaN, NaN, "-", "Color", colors(cc, :));
     end
-    for ss = 1:numel(styles)
-        h(size(colors, 1) + ss) = plot(ax, NaN, NaN, styles(ss), "Color", 0.45 * [1, 1, 1]);
-    end
-    legend(ax, h, [names, sources], "Location", "best");
+    legend(ax, h, names, "Location", "best");
 end
