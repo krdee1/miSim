@@ -20,11 +20,19 @@ classdef rfSensor
     properties (Access = public)
         tilt = NaN;     % Antenna boresight tilt (deg): 0=nadir, 90=horizon
         azimuth = NaN;  % Antenna boresight azimuth (deg): 0=+y, 90=+x, 180=-y, 270=-x
-        rssCache (:,1) double = double.empty(0,1); % linear-scale RSS to last ground targets grid
+        % Linear-scale RSS (W) to the last ground targets (column; empty when
+        % not cached). Declared variable size in the constructor for MATLAB Coder.
+        rssCache;
     end
 
     methods (Access = public)
-        [obj] = initialize(obj, txPower, temperature, bandwidth, centerFreq, rxGain, beamwidthExponent, tilt, azimuth); % initialize sensor, define parameters
+        function obj = rfSensor()
+            cache = zeros(0, 1);
+            coder.varsize('cache', [Inf, 1], [1, 0]);
+            obj.rssCache = cache;
+        end
+        [obj] = initialize(obj, txPower, temperature, bandwidth, centerFreq, rxGain, beamwidthExponent, tilt, azimuth, lossExponent); % initialize sensor, define parameters
+        [obj] = fillRssCache(obj, agentPos, targetPos); % received power (W) at targetPos into rssCache
         [SINR, SNR, obj, otherSensors] = sensorPerformance(obj, agentPos, targetPos, otherSensorsPos, otherSensors); % determine sensor performance for a given single sensor and target geometry
         [d, dx, dy, dz] = computePointToPoints(obj, agentPos, targetPos);
         [value] = halfAngle(obj); % tilt angle (deg) at which sensor performance is halved

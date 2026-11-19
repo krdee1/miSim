@@ -47,5 +47,6 @@ function obj = initialize(obj, objectiveFunction, domain, discretizationStep, pr
     end
     obj.objectiveSigma = objectiveSigma;
 
-    assert(domain.distance([obj.groundPos, ones(size(obj.groundPos, 1), 1) .* domain.center(3)]) > protectedRange, "Domain is crowding the sensing objective");
+    % Check every cluster center (distance returns one value per point). Fix from Reza Barzegaran.
+    assert(all(domain.distance([obj.groundPos, ones(size(obj.groundPos, 1), 1) .* domain.center(3)]) > protectedRange), "Domain is crowding the sensing objective");
 end

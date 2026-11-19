@@ -83,13 +83,20 @@ classdef miSim
     end
 
     methods (Access = public)
-        function obj = miSim()
+        function obj = miSim(sensorModel)
+            % miSim()            placeholder agent with a sigmoidSensor
+            % miSim(sensorModel) placeholder agent with that sensor class
+            % (needed by MATLAB Coder for rfSensor builds, see agent())
             arguments (Output)
                 obj (1, 1) miSim
             end
             obj.domain = rectangularPrism;
             obj.obstacles = {rectangularPrism};
-            obj.agents = {agent};
+            if nargin < 1
+                obj.agents = {agent};
+            else
+                obj.agents = {agent(sensorModel)};
+            end
         end
         [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology);
         [obj] = initializeFromCsv(obj, csvPath);

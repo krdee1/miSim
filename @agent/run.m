@@ -38,8 +38,14 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
         % Extract other agents' sensor models and positions once, outside the delta loop.
         % Mask the full-grid RSS caches (filled by partition()) down to this agent's
         % partition subset so sensorPerformance can reuse them for all perturbations.
-        otherSensorsPos = cell2mat(cellfun(@(x) x.pos, otherAgents, "UniformOutput", false));
-        otherSensors    = cellfun(@(x) x.sensorModel, otherAgents, "UniformOutput", false);
+        % (loops, not cellfun with anonymous functions, for MATLAB Coder)
+        nOther = numel(otherAgents);
+        otherSensorsPos = zeros(nOther, 3);
+        otherSensors = repmat({obj.sensorModel}, nOther, 1); % fully defined for MATLAB Coder; filled below
+        for kk = 1:nOther
+            otherSensorsPos(kk, :) = otherAgents{kk}.pos;
+            otherSensors{kk} = otherAgents{kk}.sensorModel;
+        end
 
         % Full-grid received power and noise of every other agent, for the
         % fleet coverage C* that the service gradient ascends (see below).
@@ -52,7 +58,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
         for kk = 1:numel(otherSensors)
             otherFull = otherSensors{kk};
             if isempty(otherFull.rssCache)
-                [~, ~, otherFull] = otherFull.sensorPerformance(otherSensorsPos(kk, :), fullTargets);
+                otherFull = otherFull.fillRssCache(otherSensorsPos(kk, :), fullTargets);
             end
             assert(numel(otherFull.rssCache) == numel(fullWeights), "Other agent's RSS cache does not cover the full grid");
             otherRssFull(:, kk) = otherFull.rssCache;
@@ -73,18 +79,14 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
         end
     end
 
-    if optimizeSensorPointing
-        % Stash actual current sensor model tilt/azimuth before messing with it
-        % in these following hypotheticals
-        tilt = obj.sensorModel.tilt;
-        azimuth = obj.sensorModel.azimuth;
-    end
+    % Stash actual current sensor model tilt/azimuth before messing with it
+    % in the following hypotheticals (always defined, for MATLAB Coder)
+    tilt = obj.sensorModel.tilt;
+    azimuth = obj.sensorModel.azimuth;
 
     % Compute agent performance at the current position and each delta position +/- X, Y, Z, tilt, azimuth
     deltaPos = domain.objective.discretizationStep; % smallest possible step size that gets different results
-    if optimizeSensorPointing
-        deltaAngle = atan2d(domain.objective.discretizationStep, obj.pos(3)); % smallest possible angle derived from smallest possible step size and current height
-    end
+    deltaAngle = atan2d(domain.objective.discretizationStep, obj.pos(3)); % smallest possible angle derived from smallest possible step size and current height (used only when pointing is optimized)
     deltaApplicator = [0, 0, 0, 0, 0; 1, 0, 0, 0, 0; -1, 0, 0, 0, 0; 0, 1, 0, 0, 0; 0, -1, 0, 0, 0; 0, 0, 1, 0, 0; 0, 0, -1, 0, 0; 0, 0, 0, 1, 0; 0, 0, 0, -1, 0; 0, 0, 0, 0, 1; 0, 0, 0, 0, -1;]; % none, +X, -X, +Y, -Y, +Z, -Z, +tilt, -tilt, +azimuth, -azimuth
     C_delta = NaN(size(deltaApplicator, 1), 1); % agent performance at delta steps in each direction
     fullCoverage = NaN(size(deltaApplicator, 1), 1); % fleet coverage C* at delta steps (rfSensor only)
@@ -112,8 +114,7 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
             % Fleet coverage C* with this agent at the perturbed state (position,
             % and tilt/azimuth set on obj.sensorModel above): every grid point
             % served by its best-SINR agent, SINR as in rfSensor/sensorPerformance
-            ownFull = obj.sensorModel.clearRssCache;
-            [~, ~, ownFull] = ownFull.sensorPerformance(pos, fullTargets);
+            ownFull = obj.sensorModel.fillRssCache(pos, fullTargets);
             Sall = max([ownFull.rssCache, otherRssFull], realmin);
             noise = [ownFull.N, otherNoise];
             total = sum(Sall, 2);
@@ -163,7 +164,10 @@ function obj = run(obj, domain, partitioning, timestepIndex, index, useDoubleInt
     end
 
     % Compute gradient by finite central differences
-    gradC = [(gradSource(2)-gradSource(3))/(2*deltaPos), (gradSource(4)-gradSource(5))/(2*deltaPos), (gradSource(6)-gradSource(7))/(2*deltaPos)];
+    % [x, y, z, tilt, azimuth]; the angle terms stay 0 unless pointing is
+    % optimized (fixed length for MATLAB Coder)
+    gradC = zeros(1, 5);
+    gradC(1:3) = [(gradSource(2)-gradSource(3))/(2*deltaPos), (gradSource(4)-gradSource(5))/(2*deltaPos), (gradSource(6)-gradSource(7))/(2*deltaPos)];
     if optimizeSensorPointing
         gradC(4) = (gradSource(8) -gradSource(9)) /(2*deltaAngle);
         gradC(5) = (gradSource(10)-gradSource(11))/(2*deltaAngle);

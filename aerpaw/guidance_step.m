@@ -27,9 +27,9 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %                         6  initialStepSize    29-32  betaTilt[1:4]
 %                         7  barrierGain        33-35  domainMin
 %                         8  barrierExponent    36-38  domainMax
-%                                               39     numObjectiveComponents
+%                                               39     numObjectiveComponents (1-3)
 %                                               40-43  objectivePos [x1,y1,x2,y2]
-%                                               44-51  objectiveVar [per component]
+%                                               44-51  objectiveVar [components 1-2]
 %                                               52     sensorPerformanceMinimum
 %                                               53     useDoubleIntegrator
 %                                               54     dampingCoeff
@@ -41,6 +41,18 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %                                               63     ambientTemp (K)
 %                                               64     centerFreq (Hz)
 %                                               65     bandwidth (Hz)
+%                                               66     sensorType (0 sigmoid, 1 rf)
+%                                               67-70  serviceTxPower[1:4] (W)
+%                                               71-74  beamwidthExponent[1:4]
+%                                               75-78  serviceTilt[1:4] (deg)
+%                                               79-82  serviceAzimuth[1:4] (deg)
+%                                               83     serviceRxGain (dBi)
+%                                               84     serviceLossExponent
+%                                               85     serviceTemp (K)
+%                                               86     serviceCenterFreq (Hz)
+%                                               87     serviceBandwidth (Hz)
+%                                               88-89  objectivePos [x3,y3]
+%                                               90-93  objectiveVar [component 3]
 %   obstacleMin       (MAX_OBSTACLES × 3) double  column-major obstacle corners (compiled path)
 %   obstacleMax       (MAX_OBSTACLES × 3) double
 %   numObstacles      (1,1) int32                 actual obstacle count
@@ -53,6 +65,8 @@ function nextPositions = guidance_step(currentPositions, isInit, ...
 %   - On MATLAB path isInit uses sim.initializeFromCsv (file I/O, not compiled).
 %   - On compiled path isInit uses scenarioParams + obstacle arrays directly.
 %   - Plotting/video are disabled (makePlots=false, makeVideo=false).
+%   - The compiled build supports one sensor class, set by buildSensorType();
+%     the MATLAB path builds whichever class the CSV's sensorType selects.
 
 coder.extrinsic('disp', 'objectiveFunctionWrapper', 'initializeFromCsv');
 
@@ -63,7 +77,7 @@ SCENARIO_CSV = 'aerpaw/config/scenario.csv';
 
 persistent sim;
 if isempty(sim)
-    sim = miSim;
+    sim = newSim();
 end
 
 % Pre-allocate output with known static size (required for codegen)
@@ -104,8 +118,8 @@ if isInit
         DOMAIN_MIN                  = scenarioParams(33:35);
         DOMAIN_MAX                  = scenarioParams(36:38);
         NUM_OBJ_COMPONENTS          = int32(scenarioParams(39));
-        OBJECTIVE_POS_FLAT          = scenarioParams(40:43); % [x1,y1,x2,y2]; zero-padded if N=1
-        OBJECTIVE_VAR_FLAT          = scenarioParams(44:51); % [v11,v12,v21,v22 per component]
+        OBJECTIVE_POS_FLAT          = [scenarioParams(40:43), scenarioParams(88:89)]; % [x1,y1,x2,y2,x3,y3]; zero-padded
+        OBJECTIVE_VAR_FLAT          = [scenarioParams(44:51), scenarioParams(90:93)]; % [v11,v12,v21,v22 per component]
         SENSOR_PERFORMANCE_MINIMUM  = scenarioParams(52);
         USE_DOUBLE_INTEGRATOR       = logical(scenarioParams(53));
         DAMPING_COEFF               = scenarioParams(54);
@@ -117,12 +131,30 @@ if isInit
         AMBIENT_TEMP                = scenarioParams(63);    % Kelvin
         CENTER_FREQ                 = scenarioParams(64);    % Hz
         BANDWIDTH                   = scenarioParams(65);    % Hz
+        SENSOR_TYPE                 = scenarioParams(66);    % 0 sigmoidSensor, 1 rfSensor
+        SERVICE_TX_POWER_VEC        = scenarioParams(67:70); % per-UAV (W)
+        BEAMWIDTH_EXPONENT_VEC      = scenarioParams(71:74); % per-UAV
+        SERVICE_TILT_VEC            = scenarioParams(75:78); % per-UAV (deg)
+        SERVICE_AZIMUTH_VEC         = scenarioParams(79:82); % per-UAV (deg)
+        SERVICE_RX_GAIN             = scenarioParams(83);    % dBi
+        SERVICE_LOSS_EXPONENT       = scenarioParams(84);
+        SERVICE_TEMP                = scenarioParams(85);    % K
+        SERVICE_CENTER_FREQ         = scenarioParams(86);    % Hz
+        SERVICE_BANDWIDTH           = scenarioParams(87);    % Hz
+
+        if SENSOR_TYPE ~= buildSensorType()
+            error('guidance_step: scenario sensorType does not match this build (see buildSensorType.m)');
+        end
 
         % --- Build domain geometry ---
         dom = rectangularPrism;
         dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Domain");
 
-        % --- Build sensing objective: sum of N bivariate Gaussians (codegen-compatible) ---
+        % --- Build sensing objective: equally weighted mixture of N bivariate
+        % Gaussian densities (codegen-compatible). Each term carries the
+        % mvnpdf normalization 1/(2*pi*sqrt(det)), so the result matches the
+        % MATLAB path (objectiveFunctionWrapper) after initializeWithValues
+        % normalizes the peak to 1. ---
         dom.objective = sensingObjective;
         xGrid = unique([DOMAIN_MIN(1):DISCRETIZATION_STEP:DOMAIN_MAX(1), DOMAIN_MAX(1)]);
         yGrid = unique([DOMAIN_MIN(2):DISCRETIZATION_STEP:DOMAIN_MAX(2), DOMAIN_MAX(2)]);
@@ -136,7 +168,7 @@ if isInit
             ov_a = var_k(1,1); ov_b = var_k(1,2);
             ov_c = var_k(2,1); ov_d = var_k(2,2);
             ov_det = ov_a * ov_d - ov_b * ov_c;
-            objValues = objValues + exp((-0.5 / ov_det) .* (ov_d .* dx.*dx - (ov_b + ov_c) .* dx.*dy + ov_a .* dy.*dy));
+            objValues = objValues + exp((-0.5 / ov_det) .* (ov_d .* dx.*dx - (ov_b + ov_c) .* dx.*dy + ov_a .* dy.*dy)) ./ (2 * pi * sqrt(ov_det));
         end
         dom.objective = dom.objective.initializeWithValues(objValues, dom, ...
             DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
@@ -146,17 +178,24 @@ if isInit
         for ii = 1:numAgents
             pos  = currentPositions(ii, :);
 
-            % Per-UAV sensor model
-            sensor = sigmoidSensor;
-            sensor = sensor.initialize(ALPHA_DIST_VEC(ii), BETA_DIST_VEC(ii), ...
-                                       ALPHA_TILT_VEC(ii), BETA_TILT_VEC(ii));
+            % Per-UAV sensor model (class fixed at build time)
+            if coder.const(buildSensorType() == 1)
+                sensor = rfSensor;
+                sensor = sensor.initialize(SERVICE_TX_POWER_VEC(ii), SERVICE_TEMP, SERVICE_BANDWIDTH, ...
+                    SERVICE_CENTER_FREQ, SERVICE_RX_GAIN, BEAMWIDTH_EXPONENT_VEC(ii), ...
+                    SERVICE_TILT_VEC(ii), SERVICE_AZIMUTH_VEC(ii), SERVICE_LOSS_EXPONENT);
+            else
+                sensor = sigmoidSensor;
+                sensor = sensor.initialize(ALPHA_DIST_VEC(ii), BETA_DIST_VEC(ii), ...
+                                           ALPHA_TILT_VEC(ii), BETA_TILT_VEC(ii));
+            end
 
             geom = spherical;
             geom = geom.initialize(pos, COLLISION_RADIUS_VEC(ii), REGION_TYPE.COLLISION, ...
                                    sprintf("UAV %d Collision", ii));
-            ag = agent;
+            ag = agent(sensor);
             ag = ag.initialize(pos, geom, sensor, COMMS_RANGE_VEC(ii), MAX_ITER, ...
-                               INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
+                               INITIAL_STEP_SIZE, 5.0, sprintf("UAV %d", ii)); % 5.0: gimbal step, unused (pointing fixed)
             ag.txPower = TX_POWER_VEC(ii); % SINR comms model transmit power (W)
             agentList{ii} = ag;
         end
@@ -172,7 +211,7 @@ if isInit
         end
 
         % --- Initialise simulation (plots and video disabled) ---
-        sim = miSim;
+        sim = newSim();
         sim = sim.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
                              MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
                              USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY, false, ...
@@ -215,14 +254,38 @@ else
         sim = sim.lesserNeighbor();
     end
 
-    % 4. Compute Voronoi partitioning
-    sim.partitioning = sim.agents{1}.partition(sim.agents, sim.domain.objective);
+    % 4. Compute Voronoi partitioning. For rfSensor, clear the received-power
+    % caches first and keep the agents partition() returns: their caches then
+    % hold the full-grid received power at the current positions, which
+    % agent.run reuses (as in @miSim/run.m).
+    if isa(sim.agents{1}.sensorModel, "rfSensor")
+        for ii = 1:size(sim.agents, 1)
+            sim.agents{ii}.sensorModel = sim.agents{ii}.sensorModel.clearRssCache;
+        end
+    end
+    [sim.partitioning, sim.agents] = sim.agents{1}.partition(sim.agents, sim.domain.objective);
 
-    % 5. Unconstrained gradient-ascent step for each agent
-    for ii = 1:size(sim.agents, 1)
+    % 5. Unconstrained gradient-ascent step for each agent. The other agents
+    % are passed so the service gradient includes the interference this
+    % agent causes in their cells (unused for sigmoidSensor).
+    % Every agent steps from the same pre-step state of the others, as in
+    % @miSim/run.m, so the snapshot is taken before any agent moves.
+    nAg = size(sim.agents, 1);
+    preStep = sim.agents;
+    for ii = 1:nAg
+        % Cell of the other agents ({} indexing only, for MATLAB Coder)
+        otherAgents = repmat({preStep{1}}, nAg - 1, 1);
+        kk = 0;
+        for jj = 1:nAg
+            if jj ~= ii
+                kk = kk + 1;
+                otherAgents{kk} = preStep{jj};
+            end
+        end
         sim.agents{ii} = sim.agents{ii}.run(sim.domain, sim.partitioning, ...
                                              sim.timestepIndex, ii, ...
-                                             sim.useDoubleIntegrator, sim.dampingCoeff, sim.timestep, sim.optimizeSensorPointing);
+                                             sim.useDoubleIntegrator, sim.dampingCoeff, sim.timestep, sim.optimizeSensorPointing, ...
+                                             otherAgents);
     end
 
     % 6. Apply CBF safety filter (collision / comms / domain constraints via QP)
@@ -235,4 +298,15 @@ else
 
 end
 
+end
+
+% -------------------------------------------------------------------------
+function sim = newSim()
+% Empty miSim whose placeholder agent carries the sensor class of this
+% build (MATLAB Coder fixes the class from the first assignment)
+if coder.const(buildSensorType() == 1)
+    sim = miSim(rfSensor);
+else
+    sim = miSim;
+end
 end

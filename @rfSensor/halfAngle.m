@@ -8,11 +8,12 @@ function value = halfAngle(obj)
     dtheta = (0:0.1:179.9)';
     gain = obj.transmitterGain(dtheta);
     target = gain(1) - 3;
-    idx = find(gain <= target, 1);
-    if isempty(idx) || idx == 1
+    found = find(gain <= target, 1);
+    if isempty(found) || found(1) == 1
         value = dtheta(end);
         return;
     end
+    idx = found(1); % scalar for MATLAB Coder (find returns a variable-size result)
     % Linear interpolation between bracketing samples
     value = dtheta(idx-1) + (target - gain(idx-1)) * ...
             (dtheta(idx) - dtheta(idx-1)) / (gain(idx) - gain(idx-1));

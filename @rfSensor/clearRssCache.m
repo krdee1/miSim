@@ -6,6 +6,8 @@ function obj = clearRssCache(obj)
         obj (1, 1) {mustBeA(obj, "rfSensor")};
     end
 
-    obj.rssCache = double.empty(0, 1);
+    cache = zeros(0, 1);
+    coder.varsize('cache', [Inf, 1], [1, 0]);
+    obj.rssCache = cache;
 
 end

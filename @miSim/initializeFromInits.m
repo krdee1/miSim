@@ -46,7 +46,7 @@ for ii = 1:numAgents
                            sprintf("UAV %d Collision", ii));
     ag = agent;
     ag = ag.initialize(pos, geom, sensor, inits.comRange(ii), inits.maxIter, ...
-                       inits.initialStepSize(ii), sprintf("UAV %d", ii));
+                       inits.initialStepSize(ii), 5.0, sprintf("UAV %d", ii)); % 5.0: gimbal step, unused (pointing fixed)
     if isfield(inits, 'txPower')
         ag.txPower = inits.txPower(ii); % SINR comms model transmit power (W)
     end

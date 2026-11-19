@@ -229,6 +229,10 @@ static int readScenarioDataRow(const char* filename, char* line, int lineSize) {
 //   52   : useDoubleIntegrator       (CSV column 23)
 //   53   : dampingCoeff              (CSV column 24)
 //   54   : useFixedTopology          (CSV column 25)
+//   55-64: SINR comms model           (CSV columns 26-32; see below)
+//   65-86: sensor model               (CSV columns 33-42; see below)
+//   87-88: objectivePos [x3,y3]       (third Gaussian component, if any)
+//   89-92: objectiveVar [component 3]
 // Returns 1 on success, 0 on failure.
 int loadScenario(const char* filename, double* params) {
     char line[4096];
@@ -238,8 +242,8 @@ int loadScenario(const char* filename, double* params) {
     strncpy(copy, line, sizeof(copy) - 1);
     copy[sizeof(copy) - 1] = '\0';
 
-    char* fields[40];
-    int nf = splitCSVRow(copy, fields, 40);
+    char* fields[64];
+    int nf = splitCSVRow(copy, fields, 64);
     if (nf < 26) {
         fprintf(stderr, "loadScenario: expected >=26 columns, got %d\n", nf);
         return 0;
@@ -306,30 +310,32 @@ int loadScenario(const char* filename, double* params) {
         }
     }
 
-    // objectivePos: column 16 — 2 values per component (up to 2 components).
+    // objectivePos: column 16 — 2 values per component (up to 3 components).
     // Infer numObjectiveComponents from the number of values parsed.
+    // Components 1-2 go to params[39:42], component 3 to params[87:88].
     {
         char tmp[256]; strncpy(tmp, fields[16], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
-        double posVals[4] = {0, 0, 0, 0};
+        double posVals[6] = {0, 0, 0, 0, 0, 0};
         int posCount = 0;
         char* tok = strtok(t, ",");
-        while (tok && posCount < 4) {
+        while (tok && posCount < 6) {
             posVals[posCount++] = atof(tok);
             tok = strtok(nullptr, ",");
         }
-        // Check for a 5th token — would mean > 2 components
+        // Check for a 7th token — would mean > 3 components
         if (tok) {
-            fprintf(stderr, "loadScenario: at most 2 objective Gaussian components supported (objectivePos has >4 values)\n");
+            fprintf(stderr, "loadScenario: at most 3 objective Gaussian components supported (objectivePos has >6 values)\n");
             return 0;
         }
         if (posCount == 0 || posCount % 2 != 0) {
-            fprintf(stderr, "loadScenario: objectivePos must have 2 or 4 values, got %d\n", posCount);
+            fprintf(stderr, "loadScenario: objectivePos must have 2, 4 or 6 values, got %d\n", posCount);
             return 0;
         }
         int nObj = posCount / 2;
         params[38] = (double)nObj;
-        for (int k = 0; k < 4; k++) params[39 + k] = posVals[k];  // zero-padded for nObj=1
+        for (int k = 0; k < 4; k++) params[39 + k] = posVals[k];      // components 1-2, zero-padded
+        for (int k = 0; k < 2; k++) params[87 + k] = posVals[4 + k];  // component 3, zero-padded
     }
 
     // objectiveVar: column 17 — 4 values per component (v11,v12,v21,v22).
@@ -337,19 +343,20 @@ int loadScenario(const char* filename, double* params) {
         char tmp[512]; strncpy(tmp, fields[17], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
         char* t = trimField(tmp);
         int nObj = (int)params[38];
-        double varVals[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        double varVals[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         int varCount = 0;
         char* tok = strtok(t, ",");
-        while (tok && varCount < 8) {
+        while (tok && varCount < 12) {
             varVals[varCount++] = atof(tok);
             tok = strtok(nullptr, ",");
         }
-        if (varCount != nObj * 4) {
-            fprintf(stderr, "loadScenario: objectiveVar has %d values but expected %d (4 per component)\n",
-                    varCount, nObj * 4);
+        if (tok || varCount != nObj * 4) {
+            fprintf(stderr, "loadScenario: objectiveVar has %d%s values but expected %d (4 per component)\n",
+                    varCount, tok ? "+" : "", nObj * 4);
             return 0;
         }
-        for (int k = 0; k < 8; k++) params[43 + k] = varVals[k];  // zero-padded for nObj=1
+        for (int k = 0; k < 8; k++) params[43 + k] = varVals[k];      // components 1-2, zero-padded
+        for (int k = 0; k < 4; k++) params[89 + k] = varVals[8 + k];  // component 3, zero-padded
     }
 
     // sensorPerformanceMinimum: column 18
@@ -437,10 +444,63 @@ int loadScenario(const char* filename, double* params) {
         params[64] = atof(trimField(tmp));
     }
 
+    // ---- Sensor model (columns 33–42; optional) ----
+    // sensorType 0 (default, sigmoidSensor sensing) or 1 (rfSensor service).
+    // The rfSensor columns default to 0 and are only used when sensorType = 1.
+    //   sensorType -> params[65]
+    //   serviceTxPower[1:4] (W) -> 66:69;  beamwidthExponent[1:4] -> 70:73
+    //   serviceTilt[1:4] (deg) -> 74:77;   serviceAzimuth[1:4] (deg) -> 78:81
+    //   serviceRxGain (dBi) -> 82;  serviceLossExponent -> 83;  serviceTemp (K) -> 84
+    //   serviceCenterFreq (Hz) -> 85;  serviceBandwidth (Hz) -> 86
+    if (nf > 33) {
+        char tmp[64]; strncpy(tmp, fields[33], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[65] = atof(trimField(tmp));
+    }
+    {
+        const int perUavCols[] = {34, 35, 36, 37};
+        const int perUavOffsets[] = {66, 70, 74, 78};
+        const char* perUavNames[] = {"serviceTxPower", "beamwidthExponent", "serviceTilt", "serviceAzimuth"};
+        for (int p = 0; p < 4; p++) {
+            if (nf <= perUavCols[p]) continue;
+            char tmp[256]; strncpy(tmp, fields[perUavCols[p]], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+            char* t = trimField(tmp);
+            double vals[4] = {0, 0, 0, 0};
+            int count = 0;
+            char* tok = strtok(t, ",");
+            while (tok && count < MAX_CLIENTS_PER_PARAM) {
+                vals[count++] = atof(tok);
+                tok = strtok(nullptr, ",");
+            }
+            if (count == 0 && params[65] != 0.0) {
+                fprintf(stderr, "loadScenario: failed to parse %s\n", perUavNames[p]);
+                return 0;
+            }
+            for (int k = 0; k < MAX_CLIENTS_PER_PARAM; k++) params[perUavOffsets[p] + k] = vals[k];
+        }
+    }
+    for (int c = 38; c <= 42; c++) {
+        if (nf <= c) break;
+        char tmp[64]; strncpy(tmp, fields[c], sizeof(tmp) - 1); tmp[sizeof(tmp)-1] = '\0';
+        params[82 + (c - 38)] = atof(trimField(tmp));
+    }
+    if (params[65] != 0.0 && nf < 43) {
+        fprintf(stderr, "loadScenario: sensorType %g needs the 10 sensor-model columns (got %d columns, expected 43)\n",
+                params[65], nf);
+        return 0;
+    }
+
     printf("Loaded scenario: domain [%g,%g,%g] to [%g,%g,%g], %d objective component(s)\n",
            params[32], params[33], params[34], params[35], params[36], params[37], (int)params[38]);
     printf("Comms model: %s (SINR threshold %g dB, path-loss exp %g, T=%g K, f_c=%g Hz, BW=%g Hz)\n",
            params[59] != 0.0 ? "SINR" : "fixed-radius", params[60], params[61], params[62], params[63], params[64]);
+    if (params[65] != 0.0) {
+        printf("Sensor model: rfSensor service (P_TX [%g,%g] W, delta [%g,%g], tilt [%g,%g] deg, "
+               "G_RX %g dBi, path-loss exp %g, T=%g K, f_c=%g Hz, BW=%g Hz)\n",
+               params[66], params[67], params[70], params[71], params[74], params[75],
+               params[82], params[83], params[84], params[85], params[86]);
+    } else {
+        printf("Sensor model: sigmoidSensor sensing\n");
+    }
     return 1;
 }
 

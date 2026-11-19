@@ -29,8 +29,7 @@ scenarioPositions = zeros(MAX_CLIENTS, 3);
 % Load experiment start positions from scenario CSV
 if coder.target('MATLAB')
     disp('Loading initial positions from scenario.csv (simulation)...');
-    tmpSim = miSim;
-    sc = tmpSim.readScenarioCsv('aerpaw/config/scenario.csv');
+    sc = readScenarioCsv('aerpaw/config/scenario.csv');
     flatPos = double(sc.initialPositions);  % 1×(3*N) flat vector
     posMatrix = reshape(flatPos, 3, [])';   % N×3
     totalLoaded = int32(size(posMatrix, 1));
@@ -50,7 +49,7 @@ else
 end
 
 % Load guidance scenario from CSV (parameters for guidance_step)
-NUM_SCENARIO_PARAMS = 65;
+NUM_SCENARIO_PARAMS = 93; % must match NUM_SCENARIO_PARAMS in impl/controller_impl.h
 MAX_OBSTACLES_CTRL  = int32(8);
 scenarioParams = zeros(1, NUM_SCENARIO_PARAMS);
 obstacleMin    = zeros(MAX_OBSTACLES_CTRL, 3);
@@ -59,10 +58,24 @@ numObstacles   = int32(0);
 if ~coder.target('MATLAB')
     coder.cinclude('controller_impl.h');
     scenarioFilename = ['config/scenario.csv', char(0)];
-    coder.ceval('loadScenario', coder.ref(scenarioFilename), coder.ref(scenarioParams));
+    scenarioOk = int32(0);
+    scenarioOk = coder.ceval('loadScenario', coder.ref(scenarioFilename), coder.ref(scenarioParams));
     numObstacles = coder.ceval('loadObstacles', coder.ref(scenarioFilename), ...
                          coder.ref(obstacleMin), coder.ref(obstacleMax), ...
                          int32(MAX_OBSTACLES_CTRL));
+    % Stop before any client connects or UAV takes off if the scenario did
+    % not load, or if its sensor class is not the one this build runs
+    % (scenarioParams(66) = sensorType; see buildSensorType.m). Standalone
+    % generated code drops error(), so print and return instead.
+    if scenarioOk == 0
+        fprintf('controller: failed to load config/scenario.csv. Exiting.\n');
+        return;
+    end
+    if scenarioParams(66) ~= buildSensorType()
+        fprintf('controller: scenario.csv sensorType %g does not match this build (%g); see buildSensorType.m. Exiting.\n', ...
+            scenarioParams(66), buildSensorType());
+        return;
+    end
 end
 % On MATLAB path, scenarioParams and obstacle arrays are left as zeros.
 % guidance_step's MATLAB path loads parameters directly from scenario.csv

@@ -87,7 +87,8 @@ The guidance algorithm runs on real UAVs at [AERPAW](https://aerpaw.org) (Aerial
 
 - **Controller.** [`aerpaw/guidance_step.m`](aerpaw/guidance_step.m) wraps miSim for one guidance step. MATLAB Coder compiles it, together with [`aerpaw/controller.m`](aerpaw/controller.m), into a C++ controller ([`aerpaw/impl`](aerpaw/impl), built by [`aerpaw/compile.sh`](aerpaw/compile.sh)).
 - **UAV clients.** The controller talks over TCP to one Python client per UAV ([`aerpaw/client/uav_runner.py`](aerpaw/client/uav_runner.py), built on aerpawlib). Each guidance step, the controller receives the UAVs' GPS positions and sends back their next waypoints.
-- **Scenarios.** Experiments are defined in [`aerpaw/config/`](aerpaw/config): `scenario_two_around_wall.csv`, `scenario_columns.csv`, `scenario_walls.csv` and `scenario_lock.csv`. The active one is `scenario.csv`.
+- **Scenarios.** Experiments are defined in [`aerpaw/config/`](aerpaw/config). The sensing experiments are `scenario_two_around_wall.csv`, `scenario_columns.csv`, `scenario_walls.csv` and `scenario_lock.csv`. The wireless-service experiments are `scenario_service_L1U1.csv`, `scenario_service_L2U2.csv` and `scenario_service_L3U3.csv`, written by [`aerpaw/scripts/makeServiceScenarios.m`](aerpaw/scripts/makeServiceScenarios.m) and simulated by [`test/test_aerpawService.m`](test/test_aerpawService.m). The active one is `scenario.csv`.
+- **Sensor class.** One compiled controller runs one sensor class, set in [`aerpaw/buildSensorType.m`](aerpaw/buildSensorType.m) (0 = sensing, 1 = wireless service) before generating code. The controller exits before any UAV connects if the scenario's `sensorType` column does not match.
 - **Radio.** [`aerpaw/radio/`](aerpaw/radio) contains a GNU Radio channel sounder that measures the link between the UAVs during flight.
 - **Analysis.** [`aerpaw/results/`](aerpaw/results) reads the GPS, radio and controller logs and replays a flight against the simulation.
 

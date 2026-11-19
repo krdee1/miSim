@@ -39,14 +39,21 @@ classdef agent
     end
 
     methods (Access = public)
-        function obj = agent()
-            arguments (Input)
-            end
+        function obj = agent(sensorModel)
+            % agent()            sensor placeholder is a sigmoidSensor
+            % agent(sensorModel) placeholder of the given sensor class
+            % MATLAB Coder fixes the class of sensorModel from its first
+            % assignment, so a compiled rfSensor build must construct its
+            % agents with an rfSensor placeholder.
             arguments (Output)
                 obj (1, 1) agent
             end
             obj.collisionGeometry = spherical;
-            obj.sensorModel = sigmoidSensor;
+            if nargin < 1
+                obj.sensorModel = sigmoidSensor;
+            else
+                obj.sensorModel = sensorModel;
+            end
             obj.fovGeometry = cone;
             obj.commsGeometry = spherical;
         end

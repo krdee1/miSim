@@ -23,13 +23,18 @@ function [partitioning, agents] = partition(obj, agents, objective)
             p = agents{aa}.sensorModel.sensorPerformance(agents{aa}.pos, ...
                 [objective.X(:), objective.Y(:), zeros(nPoints, 1)]);
         elseif isa(agents{aa}.sensorModel, "rfSensor")
-            otherSensorsIdx = [1:(aa - 1), (aa + 1):size(agents, 1)];
-            otherSensors = agents(otherSensorsIdx);
-            otherSensorsPos = cell2mat(cellfun(@(x) x.pos, otherSensors, "UniformOutput", false));
-            otherSensors = cellfun(@(x) x.sensorModel, otherSensors, "UniformOutput", false);
+            % (loops, not cellfun with anonymous functions, for MATLAB Coder)
+            otherSensorsIdx = [1:(aa - 1), (aa + 1):nAgents];
+            nOther = nAgents - 1;
+            otherSensorsPos = zeros(nOther, 3);
+            otherSensors = repmat({agents{aa}.sensorModel}, nOther, 1); % fully defined for MATLAB Coder; filled below
+            for k = 1:nOther
+                otherSensorsPos(k, :) = agents{otherSensorsIdx(k)}.pos;
+                otherSensors{k} = agents{otherSensorsIdx(k)}.sensorModel;
+            end
             [p, ~, agents{aa}.sensorModel, otherSensors] = agents{aa}.sensorModel.sensorPerformance(agents{aa}.pos, ...
                 [objective.X(:), objective.Y(:), zeros(nPoints, 1)], otherSensorsPos, otherSensors);
-            for k = 1:numel(otherSensorsIdx)
+            for k = 1:nOther
                 agents{otherSensorsIdx(k)}.sensorModel = otherSensors{k};
             end
         else

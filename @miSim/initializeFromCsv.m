@@ -22,6 +22,15 @@ function obj = initializeFromCsv(obj, csvPath)
 %   objectiveVar ("v11,v12,v21,v22"), sensorPerformanceMinimum,
 %   initialPositions (flat "x1,y1,z1, x2,y2,z2,..."),
 %   numObstacles, obstacleMin (flat), obstacleMax (flat)
+% Optional columns (in this order, after obstacleMax):
+%   useDoubleIntegrator, dampingCoeff, useFixedTopology,
+%   txPower (per-UAV, W), useSinrComms, sinrThreshold (dB),
+%   pathLossExponent, ambientTemp (K), centerFreq (Hz), bandwidth (Hz),
+%   sensorType (0 sigmoidSensor, 1 rfSensor),
+%   serviceTxPower (per-UAV, W), beamwidthExponent (per-UAV),
+%   serviceTilt (per-UAV, deg), serviceAzimuth (per-UAV, deg),
+%   serviceRxGain (dBi), serviceLossExponent, serviceTemp (K),
+%   serviceCenterFreq (Hz), serviceBandwidth (Hz)
 
 arguments (Input)
     obj     (1, 1) {mustBeA(obj, 'miSim')};
@@ -32,7 +41,7 @@ arguments (Output)
 end
 
 % ---- Parse CSV via readScenarioCsv ---------------------------------------
-scenario = obj.readScenarioCsv(csvPath);
+scenario = readScenarioCsv(csvPath);
 
 TIMESTEP            = scenario.timestep;
 MAX_ITER            = scenario.maxIter;
@@ -53,12 +62,12 @@ BETA_TILT_VEC        = scenario.betaTilt;           % 1×N
 DOMAIN_MIN                 = scenario.domainMin;                % 1×3
 DOMAIN_MAX                 = scenario.domainMax;                % 1×3
 
-% objectivePos: 2 values per Gaussian component (1 or 2 components supported)
+% objectivePos: 2 values per Gaussian component (1 to 3 components supported)
 nObjComponents = numel(scenario.objectivePos) / 2;
 assert(mod(numel(scenario.objectivePos), 2) == 0, ...
     'objectivePos must have an even number of values (2 per Gaussian component)');
-assert(nObjComponents >= 1 && nObjComponents <= 2, ...
-    'At most 2 objective Gaussian components supported; got %d', nObjComponents);
+assert(nObjComponents >= 1 && nObjComponents <= 3, ...
+    'At most 3 objective Gaussian components supported; got %d', nObjComponents);
 assert(numel(scenario.objectiveVar) == nObjComponents * 4, ...
     'objectiveVar must have %d values for %d component(s); got %d', ...
     nObjComponents * 4, nObjComponents, numel(scenario.objectiveVar));
@@ -147,6 +156,32 @@ else
     BANDWIDTH = 20e6;
 end
 
+% Sensor model (optional columns, appended after bandwidth). sensorType 0
+% (default) builds sigmoidSensor sensing; 1 builds rfSensor wireless service,
+% whose per-UAV transmit power, directivity and fixed boresight come from the
+% service* and beamwidthExponent columns. The sigmoid columns above are still
+% required by both parsers but are ignored for rfSensor.
+if isfield(scenario, 'sensorType')
+    SENSOR_TYPE = scenario.sensorType;
+else
+    SENSOR_TYPE = 0;
+end
+assert(SENSOR_TYPE == 0 || SENSOR_TYPE == 1, "sensorType must be 0 (sigmoidSensor) or 1 (rfSensor); got %g", SENSOR_TYPE);
+if SENSOR_TYPE == 1
+    rfPerUav = ["serviceTxPower", "beamwidthExponent", "serviceTilt", "serviceAzimuth"];
+    rfScalar = ["serviceRxGain", "serviceLossExponent", "serviceTemp", "serviceCenterFreq", "serviceBandwidth"];
+    for name = [rfPerUav, rfScalar]
+        assert(isfield(scenario, name), "sensorType 1 (rfSensor) requires the %s column", name);
+    end
+    for name = rfPerUav
+        assert(numel(scenario.(name)) == numAgents, ...
+            "%s has %d values but expected %d (one per UAV)", name, numel(scenario.(name)), numAgents);
+    end
+    for name = rfScalar
+        assert(isscalar(scenario.(name)), "%s must be a scalar", name);
+    end
+end
+
 % Routing topology selection (optional column; MATLAB sim only)
 if isfield(scenario, 'useRoutingTopology')
     USE_ROUTING_TOPOLOGY = logical(scenario.useRoutingTopology);
@@ -161,7 +196,8 @@ dom = dom.initialize([DOMAIN_MIN; DOMAIN_MAX], REGION_TYPE.DOMAIN, "Guidance Dom
 % ---- Build sensing objective (MATLAB path: objectiveFunctionWrapper) -----
 dom.objective = sensingObjective;
 objFcn = objectiveFunctionWrapper(OBJECTIVE_GROUND_POS, OBJECTIVE_VAR);
-dom.objective = dom.objective.initialize(objFcn, dom, DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM);
+dom.objective = dom.objective.initialize(objFcn, dom, DISCRETIZATION_STEP, PROTECTED_RANGE, SENSOR_PERFORMANCE_MINIMUM, ...
+    OBJECTIVE_GROUND_POS, OBJECTIVE_VAR);
 
 % ---- Initialise agents from scenario positions ---------------------------
 % Each agent gets its own sensor model and collision/comms radii from the
@@ -171,16 +207,23 @@ for ii = 1:numAgents
     pos  = positions(ii, :);
 
     % Per-UAV sensor model
-    sensor = sigmoidSensor;
-    sensor = sensor.initialize(ALPHA_DIST_VEC(ii), BETA_DIST_VEC(ii), ...
-                               ALPHA_TILT_VEC(ii), BETA_TILT_VEC(ii));
+    if SENSOR_TYPE == 1
+        sensor = rfSensor;
+        sensor = sensor.initialize(scenario.serviceTxPower(ii), scenario.serviceTemp, scenario.serviceBandwidth, ...
+            scenario.serviceCenterFreq, scenario.serviceRxGain, scenario.beamwidthExponent(ii), ...
+            scenario.serviceTilt(ii), scenario.serviceAzimuth(ii), scenario.serviceLossExponent);
+    else
+        sensor = sigmoidSensor;
+        sensor = sensor.initialize(ALPHA_DIST_VEC(ii), BETA_DIST_VEC(ii), ...
+                                   ALPHA_TILT_VEC(ii), BETA_TILT_VEC(ii));
+    end
 
     geom = spherical;
     geom = geom.initialize(pos, COLLISION_RADIUS_VEC(ii), REGION_TYPE.COLLISION, ...
                            sprintf("UAV %d Collision", ii));
     ag = agent;
     ag = ag.initialize(pos, geom, sensor, COMMS_RANGE_VEC(ii), MAX_ITER, ...
-                       INITIAL_STEP_SIZE, sprintf("UAV %d", ii));
+                       INITIAL_STEP_SIZE, 5.0, sprintf("UAV %d", ii)); % 5.0: gimbal step, unused (pointing fixed)
     ag.txPower = TX_POWER_VEC(ii); % SINR comms model transmit power (W)
     agentList{ii} = ag;
 end
