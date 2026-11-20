@@ -74,9 +74,22 @@ function R = plotPermutationResults(resultsFolder, opts)
     caseNames = [opts.SensingCase, opts.ServiceCase];
     perfLabel = ["Performance (normalized)", "Performance (normalized, dB)"];
     palette = okabeIto();
+    % Only the modalities present in this result set (e.g. a sensing-only
+    % sweep), and the communications margin unit: dB above the SINR
+    % threshold with SINR links, m inside the comms radius with fixed-radius
+    % links
+    present = find(arrayfun(@(m) any(R.model == m), models));
+    commsUnit = strings(1, 2);
+    for mm = present
+        if any(R.sinrComms(R.model == models(mm)))
+            commsUnit(mm) = "dB";
+        else
+            commsUnit(mm) = "m";
+        end
+    end
 
     % Plot 1: system performance vs time, all runs of each modality
-    for mm = 1:2
+    for mm = present
         f = figure("Name", "Performance, all " + models(mm) + " runs");
         ax = axes(f); hold(ax, "on"); grid(ax, "on");
         rows = find(R.model == models(mm));
@@ -101,7 +114,7 @@ function R = plotPermutationResults(resultsFolder, opts)
     end
 
     % Plot 2: system and per-UAV performance for the chosen cases
-    for mm = 1:2
+    for mm = present
         rr = caseRow(R, caseNames(mm));
         f = figure("Name", "Performance, " + caseNames(mm));
         ax = axes(f); hold(ax, "on"); grid(ax, "on");
@@ -120,7 +133,7 @@ function R = plotPermutationResults(resultsFolder, opts)
 
     % Plot 3: per-step minimum margin of each constraint class, chosen cases
     classes = ["Domain", "Collision", "Communications"];
-    for mm = 1:2
+    for mm = present
         rr = caseRow(R, caseNames(mm));
         f = figure("Name", "Constraint margins, " + caseNames(mm));
         ax = axes(f); hold(ax, "on"); grid(ax, "on");
@@ -130,8 +143,8 @@ function R = plotPermutationResults(resultsFolder, opts)
         hZero = yline(ax, 0, "k--");
         hZero.SeriesIndex = "none";
         hZero.HandleVisibility = "off";
-        legend(ax, classes + [" (m)", " (m)", " (dB)"], "Location", "best");
-        xlabel(ax, "Time (s)"); ylabel(ax, "Minimum margin (m; dB for comms)");
+        legend(ax, classes + [" (m)", " (m)", " (" + commsUnit(mm) + ")"], "Location", "best");
+        xlabel(ax, "Time (s)"); ylabel(ax, marginLabel("Minimum margin", commsUnit(mm)));
         if opts.Export
             exportThesisFig(f, "sweepcasemargins" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
@@ -139,7 +152,7 @@ function R = plotPermutationResults(resultsFolder, opts)
 
     % Plot 4: every UAV's HNCBF margin at every step, per class, one figure
     % per modality
-    for mm = 1:2
+    for mm = present
         rows = R.model == models(mm);
         vals = {R.domain(rows), R.collision(rows), R.comms(rows)};
         y = []; x = [];
@@ -160,7 +173,7 @@ function R = plotPermutationResults(resultsFolder, opts)
         % down a full tick to -10 on one plot only.
         ylim(ax, [0, 10 * ceil(max(y) / 10)]); % top on a tick, above the highest whisker
         grid(ax, "on"); % after boxchart, which resets the axes
-        ylabel(ax, "Per-UAV HNCBF margin (m; dB for comms)");
+        ylabel(ax, marginLabel("Per-UAV HNCBF margin", commsUnit(mm)));
         if opts.Export
             exportThesisFig(f, "sweepmarginsbox" + models(mm), 3/4, "OutDir", opts.OutDir);
         end
@@ -188,6 +201,7 @@ function R = loadResults(folder)
     n = numel(files);
     [name, nAgents, dynamics, objective, model, reach, obstacles] = deal(strings(n, 1));
     [t, perf, agentPerf, domain, collision, comms] = deal(cell(n, 1));
+    sinrComms = false(n, 1);
     for k = 1:n
         name(k) = erase(string(files(k).name), "_miSimHist.mat");
         tok = regexp(name(k), "^N(\d+)_(single|double)_(obj\d)_(sensing|service)_(shortWide|longNarrow)_(\w+)$", "tokens", "once");
@@ -205,8 +219,22 @@ function R = loadResults(folder)
         perf{k} = out.perf(keep) / in.objectiveIntegral; % SPAWC normalization
         agentPerf{k} = cell2mat(arrayfun(@(a) a.perf(keep), out.agent(:), "UniformOutput", false)) / in.objectiveIntegral;
         [domain{k}, collision{k}, comms{k}] = barrierMargins(out.barriers(:, keep), in);
+        sinrComms(k) = usesSinrComms(in);
     end
-    R = table(name, nAgents, dynamics, objective, model, reach, obstacles, t, perf, agentPerf, domain, collision, comms);
+    R = table(name, nAgents, dynamics, objective, model, reach, obstacles, t, perf, agentPerf, domain, collision, comms, sinrComms);
+end
+
+function tf = usesSinrComms(in)
+    % Runs saved before the useSinrComms inits field existed all used SINR links
+    tf = ~isfield(in, "useSinrComms") || logical(in.useSinrComms);
+end
+
+function s = marginLabel(prefix, commsUnit)
+    if commsUnit == "m"
+        s = prefix + " (m)";
+    else
+        s = prefix + " (m; " + commsUnit + " for comms)";
+    end
 end
 
 function [domain, collision, comms] = barrierMargins(B, in)
@@ -217,13 +245,17 @@ function [domain, collision, comms] = barrierMargins(B, in)
     %      h = d^2 - ri^2; nO includes the min-altitude floor obstacle
     %   3. geofence: 6 rows per agent (x/y/z min/max), h = clearance - ri
     %   4. comms: 2 * nAA rows (upper triangle, then lower triangle),
-    %      h = SINR - gammaCbf (linear), NaN for unmaintained links
+    %      h = SINR - gammaCbf (linear), NaN for unmaintained links. With
+    %      fixed-radius links (~in.useSinrComms), nAA rows (upper triangle
+    %      only), h = (0.9 * rComms)^2 - d^2
     nA = in.numAgents;
     nAA = nA * (nA - 1) / 2;
     nO = in.numObstacles + (in.minAlt > 0);
     r = in.collisionRadius(:);
-    assert(size(B, 1) == nAA + nA * nO + 6 * nA + 2 * nAA, ...
-        "Barrier rows (%d) do not match the expected layout (%d)", size(B, 1), nAA + nA * nO + 6 * nA + 2 * nAA);
+    sinr = usesSinrComms(in);
+    nComms = nAA * (1 + sinr);
+    assert(size(B, 1) == nAA + nA * nO + 6 * nA + nComms, ...
+        "Barrier rows (%d) do not match the expected layout (%d)", size(B, 1), nAA + nA * nO + 6 * nA + nComms);
 
     %
     % Each constituent is first converted to a physical margin, then reduced
@@ -246,6 +278,19 @@ function [domain, collision, comms] = barrierMargins(B, in)
 
     % Geofencing HNCBF (eq:obstaclenbf): walls and obstacles together
     domain = ownerMin([obstacle; geofence], [obstacleOwner, geofenceOwner]);
+
+    if ~sinr
+        % Fixed-radius links: recover the separation from h (the barrier
+        % radius includes the 0.9 paddingFactor from constrainMotion), then
+        % reference it to the link radius itself (0 = link lost), so margins
+        % between 0 and 0.1 * rComms are connected links inside the padding
+        rComms = min(in.comRange(:));
+        rBarrier = 0.9 * rComms;
+        idx = nAA + nA * nO + 6 * nA + (1:nAA);
+        commsPairs = rComms - sqrt(clampKeepNaN(rBarrier^2 - B(idx, :), 0));
+        comms = ownerMin(commsPairs, pairOwner);
+        return;
+    end
 
     % Recover SINR from h (gammaCbf includes paddingDb from constrainMotion),
     % then reference it to the user-specified link threshold

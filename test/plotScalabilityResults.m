@@ -38,6 +38,9 @@ function S = plotScalabilityResults(resultsFolder, opts)
     perfLabel = ["Final performance (normalized)", "Final performance (normalized, dB)"];
     for mm = 1:2
         rows = S(S.model == models(mm), :);
+        if isempty(rows)
+            continue; % modality not in this result set (e.g. a sensing-only study)
+        end
         Ns = unique(rows.N)';
         fprintf("%s:\n  %3s %6s %10s %10s %10s\n", models(mm), "N", "runs", "min", "median", "max");
         for n = Ns

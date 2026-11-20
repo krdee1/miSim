@@ -286,10 +286,12 @@ end
 % --------------------------------------------------------------------------
 
 % ---- Altitude-staggered flyback -------------------------------------------
-% Mirror of flyout: stage (climb) → traverse (XY) → settle (descend to pad).
-% Transit altitudes are based on post-guidance positions so the UAV that ended
-% higher stays highest, guaranteeing >= TRANSIT_SEP vertical clearance during
-% the simultaneous XY traverse.
+% Mirror of flyout: stage (change altitude) → traverse (XY) → settle (descend
+% to pad). The UAV that ended higher keeps its altitude and the lower one
+% descends to TRANSIT_SEP below it, so the traverse has >= TRANSIT_SEP vertical
+% clearance without climbing above where guidance left the UAVs (they often
+% finish on the domain ceiling). If that would take the lower UAV below
+% MIN_RETURN_TRANSIT_ALT, both are raised just enough to stay above it.
 NUM_RETURN_WP = int32(3);
 returnTargets = zeros(MAX_TARGETS, 3);
 
@@ -302,9 +304,10 @@ if ~coder.target('MATLAB')
         lowerRetIdx  = int32(1);
     end
 
+    MIN_RETURN_TRANSIT_ALT = 25.0; % m, same as the final return waypoint altitude
     returnTransitAlt = zeros(1, MAX_CLIENTS);
-    returnTransitAlt(lowerRetIdx)  = positions(lowerRetIdx, 3);
-    returnTransitAlt(higherRetIdx) = positions(lowerRetIdx, 3) + TRANSIT_SEP;
+    returnTransitAlt(lowerRetIdx)  = max(positions(higherRetIdx, 3) - TRANSIT_SEP, MIN_RETURN_TRANSIT_ALT);
+    returnTransitAlt(higherRetIdx) = returnTransitAlt(lowerRetIdx) + TRANSIT_SEP;
 
     for iUAV = 1:numClients
         retBase = double(iUAV - 1) * double(NUM_RETURN_WP);
@@ -317,16 +320,23 @@ if ~coder.target('MATLAB')
         returnTargets(retBase + 3, :) = [initialPositions(iUAV,1), initialPositions(iUAV,2), 25.0];
     end
 
-    % Staggered flyback: same higher-leads-by-one pattern as the flyout, but
-    % over the 3 return waypoints only (the UAVs are already airborne, so there
-    % is no TAKEOFF event). The higher UAV climbs/traverses/descends one event
-    % ahead of the lower, so they never share the same descent over their pads.
-    numReturnEvents = double(NUM_RETURN_WP);   % 3
-    for step = 1:(numReturnEvents + 1)
-        hEvent = step;
-        lEvent = step - 1;
-        hActive = (hEvent >= 1) && (hEvent <= numReturnEvents);
-        lActive = (lEvent >= 1) && (lEvent <= numReturnEvents);
+    % Staggered flyback over the 3 return waypoints (the UAVs are already
+    % airborne, so there is no TAKEOFF event). Waypoint events per step:
+    %   step 1: both stage (the lower descends to its transit altitude; the
+    %           higher holds, or climbs only if MIN_RETURN_TRANSIT_ALT forces it)
+    %   step 2: higher traverses while the lower holds TRANSIT_SEP below
+    %   step 3: higher descends over its pad while the lower traverses
+    %   step 4: lower descends over its pad
+    % Staging completes before anyone traverses, and from step 2 on the
+    % higher leads by one event as in the flyout, so the two never share the
+    % same descent over their pads. 0 = no event for that UAV in that step.
+    hSchedule = [1, 2, 3, 0];
+    lSchedule = [1, 0, 2, 3];
+    for step = 1:numel(hSchedule)
+        hEvent = hSchedule(step);
+        lEvent = lSchedule(step);
+        hActive = hEvent >= 1;
+        lActive = lEvent >= 1;
 
         if hActive
             hRow = (double(higherRetIdx) - 1) * double(NUM_RETURN_WP) + hEvent;

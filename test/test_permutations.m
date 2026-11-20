@@ -133,8 +133,21 @@ classdef test_permutations < matlab.unittest.TestCase
 
         % Agents
         collisionRadius = 5; % m
-        commsRange = 50; % m; unused in SINR mode, required by agent.initialize
-        commsTxPower = 0.1; % W, UAV-UAV links
+        commsTxPower = 0.1; % W, UAV-UAV links (SINR mode only)
+
+        % Communications, passed to miSim.initialize's useSinrComms.
+        %   false: fixed-radius links (d <= commsRange) with the
+        %     lesser-neighbor topology; the barrier holds links within
+        %     0.9 * commsRange (constrainMotion padding). MS thesis scope.
+        %   true: SINR links with CALSN topology control and routing
+        %     (useRoutingTopology), as in the earlier sweep
+        %     (perm_2026_11_17_*), kept for reproducibility.
+        useSinrComms = false;
+        commsRange = 35; % m; link radius when ~useSinrComms (required by agent.initialize either way)
+
+        % Sensor pointing: false keeps every sensor fixed at nadir (thesis
+        % scope); the earlier sweep optimized the gimbal (true)
+        optimizeSensorPointing = false;
 
         % Sigmoid sensors, per variant (alpha = 50% point, beta = steepness).
         %   shortWide: short range with a sharp distance rolloff; wide FOV
@@ -294,17 +307,12 @@ classdef test_permutations < matlab.unittest.TestCase
                 pos = pos(order, :);
 
                 agents = tc.buildAgents(struct("pos", pos), sensor);
-                sim = miSim;
                 try
-                    sim = sim.initialize(domain, agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, obs, ...
-                        false, false, true, tc.dampingCoeff, false, true, ...
-                        true, tc.sinrThreshold, tc.pathLossExponent, tc.ambientTemp, tc.centerFreq, tc.bandwidth, true);
+                    sim = tc.initSim(domain, agents, obs, true, false, false);
                 catch
-                    continue; % a selected link inside the CBF padding band
+                    continue; % disconnected, or a selected link inside the CBF padding band
                 end
-                phi = sim.routingPotentials;
-                if all(phi([1, n]) == 0) && all(isfinite(phi)) && ...
-                        max(conncomp(graph(sim.constraintAdjacencyMatrix))) == 1 && all(sim.routingUnrouted == 0)
+                if tc.validStart(sim)
                     return;
                 end
             end
@@ -324,21 +332,15 @@ classdef test_permutations < matlab.unittest.TestCase
             agents = tc.buildAgents(agentConfig, sensor);
             obs = tc.buildObstacles(obstacles);
 
-            sim = miSim;
-            sim = sim.initialize(domain, agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, obs, ...
-                tc.makePlots, tc.makeVideo, dynamics.useDoubleIntegrator, tc.dampingCoeff, false, true, ...
-                true, tc.sinrThreshold, tc.pathLossExponent, tc.ambientTemp, tc.centerFreq, tc.bandwidth, true);
+            sim = tc.initSim(domain, agents, obs, dynamics.useDoubleIntegrator, tc.makePlots, tc.makeVideo);
             sim.artifactName = folder + "/" + name;
 
-            % Initial CALSN state: bases at zero potential, every other
-            % agent's potential finite, one connected maintained graph,
-            % nothing unrouted
+            % Initial state: one connected maintained graph whose barriers
+            % all start non-negative; in SINR mode also the CALSN state
+            % (bases at zero potential, all potentials finite, nothing
+            % unrouted)
             n = numel(agents);
-            phi = sim.routingPotentials;
-            tc.assertEqual(phi([1, n]), [0; 0]);
-            tc.assertTrue(all(isfinite(phi)));
-            tc.assertEqual(max(conncomp(graph(sim.constraintAdjacencyMatrix))), 1);
-            tc.assertTrue(all(sim.routingUnrouted == 0));
+            tc.assertTrue(tc.validStart(sim), "Initial state is not a valid start");
 
             % Run; validate() checks connectivity and obstacle clearance at
             % every step and errors (failing the test) on a violation
@@ -357,6 +359,38 @@ classdef test_permutations < matlab.unittest.TestCase
                     tc.verifyGreaterThanOrEqual(min(d2), rSum^2 - 1e-3, ...
                         sprintf("Agents %d and %d collision spheres overlap", ii, jj));
                 end
+            end
+        end
+
+        function sim = initSim(tc, domain, agents, obs, useDoubleIntegrator, makePlots, makeVideo)
+            % miSim.initialize with this suite's settings. CALSN routing
+            % (useRoutingTopology) requires SINR links, so it follows
+            % useSinrComms; with fixed-radius links neither the fixed nor the
+            % routing topology is selected, leaving lesser-neighbor.
+            sim = miSim;
+            sim = sim.initialize(domain, agents, tc.barrierGain, tc.barrierExponent, tc.minAlt, tc.timestep, tc.maxIter, obs, ...
+                makePlots, makeVideo, useDoubleIntegrator, tc.dampingCoeff, false, tc.optimizeSensorPointing, ...
+                tc.useSinrComms, tc.sinrThreshold, tc.pathLossExponent, tc.ambientTemp, tc.centerFreq, tc.bandwidth, tc.useSinrComms);
+        end
+
+        function ok = validStart(tc, sim)
+            % One connected maintained graph whose link barriers all start
+            % non-negative. With fixed-radius links each maintained link must
+            % lie within the padded barrier radius (0.9 * commsRange, the
+            % padding in @miSim/constrainMotion.m); with SINR links
+            % miSim.initialize already asserts the padded SINR threshold, and
+            % the CALSN state is checked as well.
+            A = sim.constraintAdjacencyMatrix;
+            ok = max(conncomp(graph(A, "omitselfloops"))) == 1;
+            if tc.useSinrComms
+                n = numel(sim.agents);
+                phi = sim.routingPotentials;
+                ok = ok && all(phi([1, n]) == 0) && all(isfinite(phi)) && all(sim.routingUnrouted == 0);
+            else
+                pos = cell2mat(cellfun(@(x) x.pos, sim.agents, "UniformOutput", false));
+                D = sqrt(sum((permute(pos, [1, 3, 2]) - permute(pos, [3, 1, 2])).^2, 3));
+                maintained = A & ~eye(size(A));
+                ok = ok && all(D(maintained) <= 0.9 * tc.commsRange);
             end
         end
 

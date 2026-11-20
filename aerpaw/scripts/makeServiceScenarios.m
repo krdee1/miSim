@@ -11,6 +11,12 @@ function S = makeServiceScenarios(opts)
 %   - starts drawn once (seed 11) with the paper's rejection rule at 50-70 m
 %     altitude, clear of the obstacles of all three layouts, and shared by
 %     all three scenarios
+%   - the whole scenario shifted 35 m west of the ENU origin (geofence margin)
+%
+% Geometry and the start draw are defined in the paper's frame (domain from
+% the origin); writeScenario translates domain, densities, obstacles and
+% starts by P.shift. 35 m is a multiple of the 2.5 m grid, so the shifted
+% experiment is an exact translation of the unshifted one.
 %
 % Every parameter lives in this file. The start draw replicates
 % paperExperiments.randomStarts (same rand call order), with only the
@@ -36,6 +42,7 @@ P.barrierExponent = 1;
 P.safetyRadius = 4;          % m
 P.domainMin = [0, 0, 0];
 P.domainMax = [250, 250, 100]; % user choice: 100 m ceiling (paper: 150 m)
+P.shift = [-35, 0, 0];       % m ENU, user choice: 35 m west for geofence margin
 P.partitionMin = -Inf;
 P.useDoubleIntegrator = 0;   % single integrator
 P.dampingCoeff = 1.5;        % unused with the single integrator
@@ -107,7 +114,7 @@ scenarios = ["L1", "U1"; "L2", "U2"; "L3", "U3"];
 [pos, nDraws] = drawStarts(P, D, L, st);
 fprintf("Start draw: seed %d, accepted on draw %d\n", st.seed, nDraws);
 for ii = 1:size(pos, 1)
-    fprintf("  UAV %d: (%.3f, %.3f, %.3f)\n", ii, pos(ii, :));
+    fprintf("  UAV %d: (%.3f, %.3f, %.3f) before the shift, (%.3f, %.3f, %.3f) written\n", ii, pos(ii, :), pos(ii, :) + P.shift);
 end
 
 %% Write CSVs
@@ -225,8 +232,13 @@ sim = sim.initialize(domain, agents, P.barrierGain, P.barrierExponent, P.minAlt,
 end
 
 function writeScenario(file, P, den, corners, pos)
+% Translate everything by P.shift, then write header + one data row
 n = size(pos, 1);
-mu = den.mu;
+P.domainMin = P.domainMin + P.shift;
+P.domainMax = P.domainMax + P.shift;
+mu = den.mu + P.shift(1:2);
+corners = corners + [P.shift, P.shift];
+pos = pos + P.shift;
 c = den.cov;
 objVar = reshape([c(:, 1), c(:, 3), c(:, 3), c(:, 2)]', 1, []); % [v11, v12, v21, v22] per Gaussian
 obsMin = reshape(corners(:, 1:3)', 1, []);
