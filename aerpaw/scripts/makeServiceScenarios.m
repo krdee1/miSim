@@ -32,7 +32,9 @@ end
 
 %% Parameters (paper Table I unless noted)
 P.timestep = 1;              % s, update period
-P.maxIter = 120;             % 120 s duration
+P.maxIter = 240;             % user choice: 240 steps (paper: 120 s at 1 s per step). The
+                             % flown steps fall ~1 m short each (arrival tolerance), so the
+                             % extra steps let the flight reach where the 120-step sim ends
 P.minAlt = 30;               % m
 P.gridSpacing = 2.5;         % m
 P.protectedRange = 1;        % m, sensingObjective guard distance (paper code value)

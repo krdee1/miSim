@@ -99,7 +99,7 @@ classdef miSim
             end
         end
         [obj] = initialize(obj, domain, agents, barrierGain, barrierExponent, minAlt, timestep, maxIter, obstacles, makePlots, makeVideo, useDoubleIntegrator, dampingCoeff, useFixedTopology, optimizeSensorPointing, useSinrComms, sinrThreshold, pathLossExponent, ambientTemp, centerFreq, bandwidth, useRoutingTopology);
-        [obj] = initializeFromCsv(obj, csvPath);
+        [obj] = initializeFromCsv(obj, csvPath, makePlots, makeVideo);
         [obj] = initializeFromInits(obj, initsPath);
         [obj] = plotFromSimHist(obj, initsPath, histPath);
         [obj] = run(obj);

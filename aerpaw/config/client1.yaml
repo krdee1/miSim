@@ -34,5 +34,5 @@ environments:
       port: 14550
     # Controller runs on host machine (192.168.X.1, generally)
     controller:
-      ip: "192.168.112.1"
+      ip: "192.168.130.1"
       port: 5000

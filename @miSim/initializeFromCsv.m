@@ -1,4 +1,4 @@
-function obj = initializeFromCsv(obj, csvPath)
+function obj = initializeFromCsv(obj, csvPath, makePlots, makeVideo)
 % INITIALIZEFROMCSV  Initialize miSim from an AERPAW scenario CSV file.
 %
 % Reads all guidance parameters, domain geometry, initial UAV positions,
@@ -11,6 +11,8 @@ function obj = initializeFromCsv(obj, csvPath)
 %
 % Usage (inside guidance_step.m on MATLAB path):
 %   sim = sim.initializeFromCsv('aerpaw/config/scenario.csv');
+% With live plots and a video (e.g. aerpaw/results/resultsAnalysis.m):
+%   sim = sim.initializeFromCsv(csvPath, true, true);
 %
 % Expected CSV columns (see scenario.csv):
 %   timestep, maxIter, minAlt, discretizationStep, protectedRange,
@@ -35,6 +37,8 @@ function obj = initializeFromCsv(obj, csvPath)
 arguments (Input)
     obj     (1, 1) {mustBeA(obj, 'miSim')};
     csvPath (1, 1) string;
+    makePlots (1, 1) logical = false;
+    makeVideo (1, 1) logical = false;
 end
 arguments (Output)
     obj (1, 1) {mustBeA(obj, 'miSim')};
@@ -241,9 +245,9 @@ if numObstacles > 0
     end
 end
 
-% ---- Initialise simulation (plots and video disabled) --------------------
+% ---- Initialise simulation (plots and video off unless requested) --------
 obj = obj.initialize(dom, agentList, BARRIER_GAIN, BARRIER_EXPONENT, ...
-                     MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, false, false, ...
+                     MIN_ALT, TIMESTEP, MAX_ITER, obstacleList, makePlots, makeVideo, ...
                      USE_DOUBLE_INTEGRATOR, DAMPING_COEFF, USE_FIXED_TOPOLOGY, false, ...
                      USE_SINR_COMMS, SINR_THRESHOLD, PATH_LOSS_EXPONENT, AMBIENT_TEMP, CENTER_FREQ, BANDWIDTH, ...
                      USE_ROUTING_TOPOLOGY);

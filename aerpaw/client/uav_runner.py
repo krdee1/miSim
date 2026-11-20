@@ -47,6 +47,17 @@ class MessageType(IntEnum):
     TAKEOFF          = 9
 
 
+# Arrival tolerance (m, 3-D distance) for guidance waypoints. aerpawlib's
+# goto_coordinates returns once the UAV is this close, and the ACK follows, so
+# it sets how far the actual position can lag the commanded step. The
+# aerpawlib default (2 m) lost up to 2 m of every guidance step; transit,
+# takeoff and return waypoints keep the default.
+# Do not go much below 1 m: aerpawlib sends waypoints as MAVLink MISSION_ITEM,
+# whose float32 lat/lon round the target by up to ~0.4 m at the AERPAW site
+# (0.43 m N x 0.69 m E steps), and the arrival check is against the unrounded
+# target. With 0.5 m a UAV could settle just outside it and never ACK.
+GUIDANCE_TOLERANCE = 1.0
+
 AERPAW_DIR = Path('/root/miSim/aerpaw')
 CONFIG_FILE = Path(os.environ.get('AERPAW_CLIENT_CONFIG',
                                   AERPAW_DIR / "config" / "client.yaml"))
@@ -259,7 +270,7 @@ class UAVRunner(BasicRunner):
                         if nav_task and not nav_task.done():
                             nav_task.cancel()
                             await asyncio.gather(nav_task, return_exceptions=True)
-                        await drone.goto_coordinates(target)
+                        await drone.goto_coordinates(target, tolerance=GUIDANCE_TOLERANCE)
                         await send_message_type(writer, MessageType.ACK)
                         print("[UAV] Sent ACK (arrived at guidance target)")
                         nav_task = None

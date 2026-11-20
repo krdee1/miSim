@@ -29,29 +29,29 @@ function R = readRadioLogs(logPath)
             end
         end
 
-        fid = fopen(filepath, 'r');
-        % Skip header lines: some files have 2 tail-error lines + 1 column
-        % header ("tx_uav_id,value"), others start with data immediately.
-        % Read until a line that looks like a data record, then rewind to it.
-        dataPattern = '^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\] [-\d]';
-        linePos = ftell(fid);
-        while true
-            line = fgetl(fid);
-            if ~ischar(line)
-                break;  % EOF
-            end
-            if ~isempty(regexp(line, dataPattern, 'once'))
-                fseek(fid, linePos, 'bof');  % rewind to start of this line
-                break;
-            end
-            linePos = ftell(fid);
+        % Each log is `tail -f` of a GNU Radio output file, so it can start
+        % with tail notices ("cannot open", "has appeared", "file truncated")
+        % and the column header "tx_uav_id,value". When the file already
+        % existed, tail first replays its last 10 lines, which are stale
+        % values from the previous experiment, and the "file truncated"
+        % notice and header follow them. So data starts after the column
+        % header when there is one (else at the top), and any line that is
+        % not "[timestamp] id,value" is skipped rather than ending the read.
+        lines = readlines(filepath, "EmptyLineRule", "skip");
+        headerIdx = find(contains(lines, "tx_uav_id,value"), 1);
+        if ~isempty(headerIdx)
+            lines = lines(headerIdx + 1:end);
         end
-        data = textscan(fid, '[%26c] %d,%f');
-        fclose(fid);
+        tok = regexp(lines, '^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)\] (-?\d+),(\S+)$', 'tokens', 'once');
+        tok = tok(~cellfun(@isempty, tok));
+        tok = vertcat(tok{:});
+        if isempty(tok)
+            tok = strings(0, 3);
+        end
 
-        ts = datetime(cellstr(data{1}), 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSSSSS');
-        txId = int32(data{2});
-        val = data{3};
+        ts = datetime(tok(:, 1), 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSSSSS');
+        txId = int32(str2double(tok(:, 2)));
+        val = str2double(tok(:, 3));
 
         n = numel(ts);
         t = table(ts, txId, repmat(rxID, n, 1), NaN(n,1), NaN(n,1), NaN(n,1), NaN(n,1), NaN(n,1), ...

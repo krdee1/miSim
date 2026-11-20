@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail # stop (and do not report 'Built') if compilation fails
 # Build controller_app from codegen + impl sources
 
 AERPAW_DIR="$(cd "$(dirname "$0")" && pwd)"
