@@ -1,8 +1,9 @@
-function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
+function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight, scenarioCsv)
     arguments (Input)
         logDirs (1, 1) string;
         seaToGroundLevel (1, 1) double = 110; % measured approximately from USGS national map viewer for the AERPAW test field
         plotWholeFlight (1, 1) logical = false;
+        scenarioCsv (1, 1) string = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv"); % scenario that was flown (domain, objective, obstacles)
     end
     arguments (Output)
         f (1, 1) matlab.ui.Figure;
@@ -13,9 +14,6 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     gf = geoglobe(f);
     hold(gf, "on");
     c = ["g", "b", "m", "c"]; % plotting colors
-    
-    % paths
-    scenarioCsv = fullfile(matlab.project.rootProject().RootFolder, "aerpaw", "config", "scenario.csv");
     
     % configured data
     params = readScenarioCsv(scenarioCsv);
@@ -30,6 +28,9 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     logDirs = logDirs(3:end);
     logDirs = logDirs([logDirs.isdir] == 1);
     logDirs = logDirs(~startsWith({logDirs.name}, "controller_"));
+    % Keep only UAV folders, i.e. those holding a GPS log (skips e.g. figures/)
+    hasGps = arrayfun(@(d) ~isempty(dir(fullfile(d.folder, d.name, "*_gps_log.csv"))), logDirs);
+    logDirs = logDirs(hasGps);
 
     G = cell(size(logDirs));
     for ii = 1:size(logDirs, 1)
@@ -93,9 +94,9 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     end
     fprintf("Flight duration is %s\n", string(G{1}.Timestamp(end) - G{1}.Timestamp(1), 'mm:ss'));
     
-    % Plot domain
+    % Plot domain (corners from domainMin and domainMax, which need not be the ENU origin)
     altOffset = 1; % to avoid clipping into the ground when displayed
-    domain = [lla0; enu2lla(params.domainMax, lla0, "flat")];
+    domain = enu2lla([params.domainMin; params.domainMax], lla0, "flat");
     geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
     geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(2, 3) + altOffset, 1, 5), 'LineWidth', 3, 'Color', 'k');
     geoplot3(gf, [domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2)], domain(:, 3) + altOffset, 'LineWidth', 3, 'Color', 'k');
@@ -107,10 +108,8 @@ function [f, G] = plotGpsLogs(logDirs, seaToGroundLevel, plotWholeFlight)
     floorAlt = params.minAlt;
     geoplot3(gf, [domain(1, 1), domain(2, 1), domain(2, 1), domain(1, 1), domain(1, 1)], [domain(1, 2), domain(1, 2), domain(2, 2), domain(2, 2), domain(1, 2)], repmat(domain(1, 3) + altOffset + floorAlt, 1, 5), 'LineWidth', 3, 'Color', 'r');
     
-    % Plot objective
-    if length(params.objectivePos) > 2
-        objectivePos = reshape(params.objectivePos, [2, length(params.objectivePos) / 2])';
-    end
+    % Plot objective (one vertical line per Gaussian center)
+    objectivePos = reshape(params.objectivePos, [2, length(params.objectivePos) / 2])';
     objectivePos = [objectivePos, zeros(size(objectivePos, 1), 1)];
     llaObj = enu2lla(objectivePos, lla0, "flat");
     for ii = 1:size(llaObj, 1)

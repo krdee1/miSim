@@ -15,12 +15,16 @@ if numClients ~= int32(2)
     error('Altitude-staggered flyout/flyback requires exactly 2 UAVs');
 end
 
-% Minimum vertical separation maintained between UAVs during XY transit (metres)
-TRANSIT_SEP = 30.0;
+% Separation during scenario setup and teardown (flyout and return): one UAV
+% moves at a time, and each move is planned (planTransit.m) to stay at least
+% MIN_SEP + SEP_MARGIN from the other UAV whenever that UAV is airborne. A
+% landed UAV imposes no constraint.
+MIN_SEP     = 15.0; % m, required separation while both UAVs are airborne
+SEP_MARGIN  = 5.0;  % m, planning margin (2 m arrival tolerance, tracking error)
+TAKEOFF_ALT = 25.0; % m, takeoff and RTL altitude in uav_runner.py
 
 % Allocate targets array (MAX_TARGETS x 3)
 targets = zeros(MAX_TARGETS, 3);
-numWaypoints = int32(0); %#ok<NASGU>
 totalLoaded  = int32(0);
 
 % Experiment start positions from scenario CSV (N x 3)
@@ -34,9 +38,6 @@ if coder.target('MATLAB')
     posMatrix = reshape(flatPos, 3, [])';   % N×3
     totalLoaded = int32(size(posMatrix, 1));
     scenarioPositions(1:totalLoaded, :) = posMatrix;
-    % MATLAB path: send directly to scenario positions in one waypoint
-    targets(1:totalLoaded, :) = posMatrix;
-    numWaypoints = int32(1);
     disp(['Loaded ', num2str(double(totalLoaded)), ' initial positions']);
 else
     coder.cinclude('controller_impl.h');
@@ -45,7 +46,6 @@ else
     totalLoaded = coder.ceval('loadInitialPositions', coder.ref(filename), ...
                 coder.ref(targets), int32(MAX_TARGETS));
     scenarioPositions(1:totalLoaded, :) = targets(1:totalLoaded, :);
-    numWaypoints = int32(3);
 end
 
 % Load guidance scenario from CSV (parameters for guidance_step)
@@ -108,106 +108,59 @@ else
     initialPositions(1:totalLoaded, :) = scenarioPositions(1:totalLoaded, :);
 end
 
-% ---- Build altitude-staggered flyout waypoints --------------------------------
-% Each UAV follows three phases:
-%   WP1: Climb to transit altitude at pad XY
-%   WP2: Traverse to final XY at transit altitude  (>= TRANSIT_SEP vertical gap)
-%   WP3: Descend to final altitude at final XY
-%
-% Transit altitude assignment: the UAV with the highest final altitude keeps
-% that altitude as its transit altitude; the other UAV climbs TRANSIT_SEP above
-% it, guaranteeing >= 30 m vertical separation during the simultaneous XY
-% traverse (WP2).  Both transit altitudes are well above minAlt.
-if ~coder.target('MATLAB')
-    if scenarioPositions(1, 3) >= scenarioPositions(2, 3)
-        higherIdx = int32(1);
-        lowerIdx  = int32(2);
-    else
-        higherIdx = int32(2);
-        lowerIdx  = int32(1);
+% ---- Sequential flyout ----------------------------------------------------
+% One UAV at a time: TAKEOFF (vertical to TAKEOFF_ALT over its pad), climb or
+% descend over the pad to its transit altitude, cross at that altitude to
+% above its start position, descend or climb to the start, then hold there
+% while the other UAV does the same. The first UAV flies while the other is
+% still on the ground, so it needs no clearance check; the second UAV's
+% whole path (takeoff column included) is planned to stay MIN_SEP +
+% SEP_MARGIN from the first one's start position. Both orders are evaluated
+% and the one that meets the clearance with the least vertical travel is
+% flown. If no plan keeps MIN_SEP, the experiment stops here, before any
+% takeoff.
+if coder.target('MATLAB')
+    transitAltMax = sc.domainMax(3);
+else
+    transitAltMax = scenarioParams(38); % domainMax(3), the scenario ceiling
+end
+padGround = [initialPositions(1:2, 1:2), zeros(2, 1)];
+padTop    = [initialPositions(1:2, 1:2), TAKEOFF_ALT * ones(2, 1)];
+starts    = scenarioPositions(1:2, :);
+
+[flyOrder, flyAlt, flyClear] = chooseFlyout(padGround, padTop, starts, TAKEOFF_ALT, transitAltMax, MIN_SEP + SEP_MARGIN);
+fprintf('Flyout plan: UAV %d first (transit %.1f m), then UAV %d (transit %.1f m); clearance %.1f m (required %.1f m, planned %.1f m)\n', ...
+    int32(flyOrder(1)), flyAlt(1), int32(flyOrder(2)), flyAlt(2), flyClear, MIN_SEP, MIN_SEP + SEP_MARGIN);
+if flyClear < MIN_SEP
+    fprintf('Flyout: no sequence keeps %.1f m separation (best %.1f m). Check the start positions. Not taking off.\n', ...
+        MIN_SEP, flyClear);
+    for i = 1:numClients
+        if ~coder.target('MATLAB')
+            coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.READY));
+        end
     end
+    if ~coder.target('MATLAB')
+        coder.ceval('closeServer');
+    end
+    return;
+elseif flyClear < MIN_SEP + SEP_MARGIN
+    fprintf('Flyout: warning, planned clearance %.1f m is inside the %.1f m margin\n', flyClear, SEP_MARGIN);
+end
 
-    transitAlt = zeros(1, MAX_CLIENTS);
-    transitAlt(lowerIdx)  = scenarioPositions(lowerIdx, 3);
-    transitAlt(higherIdx) = scenarioPositions(lowerIdx, 3) + TRANSIT_SEP;
-
-    for iUAV = 1:numClients
-        base = double(iUAV - 1) * double(numWaypoints);
-        targets(base + 1, :) = [initialPositions(iUAV,1), initialPositions(iUAV,2), transitAlt(iUAV)];
-        targets(base + 2, :) = [scenarioPositions(iUAV,1), scenarioPositions(iUAV,2), transitAlt(iUAV)];
-        targets(base + 3, :) =  scenarioPositions(iUAV, :);
+for kk = 1:2
+    u = flyOrder(kk);
+    hU = flyAlt(kk);
+    flyoutPath = [padTop(u, 1:2), hU; starts(u, 1:2), hU; starts(u, :)];
+    if coder.target('MATLAB')
+        disp(['Flyout UAV ', num2str(u), ': TAKEOFF, then ', mat2str(flyoutPath, 4)]);
+    else
+        sendCommand(int32(u), int32(MESSAGE_TYPE.TAKEOFF));
+        for ww = 1:3
+            sendLeg(int32(u), flyoutPath(ww, :));
+        end
     end
 end
 % -------------------------------------------------------------------------------
-
-% Waypoint loop
-if coder.target('MATLAB')
-    % Simulation: simple lockstep (collisions are not modelled here).
-    for w = 1:numWaypoints
-        for i = 1:numClients
-            targetIdx = (i - 1) * numWaypoints + w;
-            target = targets(targetIdx, :);
-            disp(['Sending TARGET to client ', num2str(i), ' (waypoint ', num2str(w), '): ', ...
-                  num2str(target(1)), ',', num2str(target(2)), ',', num2str(target(3))]);
-        end
-        disp('Waiting for ACK from all clients...');
-        disp(['All UAVs arrived at waypoint ', num2str(w)]);
-    end
-else
-    % ---- Staggered flyout -----------------------------------------------------
-    % Separate the two UAVs in TIME so they are never doing the same vertical
-    % climb at the same moment over their ~10 m-separated pads (which can trip
-    % the proximity guard on a spurious GPS sample). The UAV that transits
-    % highest leads by exactly one event.
-    %
-    % Events per UAV: 1 = TAKEOFF (25 m), 2 = WP1 (climb at pad), 3 = WP2
-    % (traverse), 4 = WP3 (descend). At each step the higher UAV does event
-    % `step` while the lower UAV does event `step-1`; both are dispatched, then
-    % we collect ACK and then READY (arrival) from each active UAV.
-    numEvents = double(numWaypoints) + 1;   % 3 waypoints + 1 takeoff
-    for step = 1:(numEvents + 1)
-        hEvent = step;
-        lEvent = step - 1;
-        hActive = (hEvent >= 1) && (hEvent <= numEvents);
-        lActive = (lEvent >= 1) && (lEvent <= numEvents);
-
-        % --- Dispatch this step's event to each active UAV ---
-        if hActive
-            if hEvent == 1
-                coder.ceval('sendMessageType', higherIdx, int32(MESSAGE_TYPE.TAKEOFF));
-            else
-                hRow = (double(higherIdx) - 1) * double(numWaypoints) + (hEvent - 1);
-                hTarget = targets(hRow, :);
-                coder.ceval('sendTarget', higherIdx, coder.ref(hTarget));
-            end
-        end
-        if lActive
-            if lEvent == 1
-                coder.ceval('sendMessageType', lowerIdx, int32(MESSAGE_TYPE.TAKEOFF));
-            else
-                lRow = (double(lowerIdx) - 1) * double(numWaypoints) + (lEvent - 1);
-                lTarget = targets(lRow, :);
-                coder.ceval('sendTarget', lowerIdx, coder.ref(lTarget));
-            end
-        end
-
-        % --- Collect ACK (command received) from each active UAV ---
-        if hActive
-            coder.ceval('waitForClientMessageType', higherIdx, int32(MESSAGE_TYPE.ACK));
-        end
-        if lActive
-            coder.ceval('waitForClientMessageType', lowerIdx, int32(MESSAGE_TYPE.ACK));
-        end
-
-        % --- Collect READY (arrived at event) from each active UAV ---
-        if hActive
-            coder.ceval('waitForClientMessageType', higherIdx, int32(MESSAGE_TYPE.READY));
-        end
-        if lActive
-            coder.ceval('waitForClientMessageType', lowerIdx, int32(MESSAGE_TYPE.READY));
-        end
-    end
-end
 
 % ---- Phase 2: miSim guidance loop ----------------------------------------
 % Number of guidance steps comes from maxIter in scenario.csv (scenarioParams(2))
@@ -285,138 +238,71 @@ if ~coder.target('MATLAB')
 end
 % --------------------------------------------------------------------------
 
-% ---- Altitude-staggered flyback -------------------------------------------
-% Mirror of flyout: stage (change altitude) → traverse (XY) → settle (descend
-% to pad). The UAV that ended higher keeps its altitude and the lower one
-% descends to TRANSIT_SEP below it, so the traverse has >= TRANSIT_SEP vertical
-% clearance without climbing above where guidance left the UAVs (they often
-% finish on the domain ceiling). If that would take the lower UAV below
-% MIN_RETURN_TRANSIT_ALT, both are raised just enough to stay above it.
-NUM_RETURN_WP = int32(3);
-returnTargets = zeros(MAX_TARGETS, 3);
+% ---- Sequential return -----------------------------------------------------
+% One UAV at a time, while the other holds where guidance left it:
+%   1. If the UAVs are closer than MIN_SEP + SEP_MARGIN, the first UAV moves
+%      horizontally straight away from the other (the distance only grows
+%      along that move) until they are that far apart.
+%   2. If no transit altitude keeps the first UAV's return clear of the
+%      holding UAV (e.g. the holder hovers above the first UAV's pad), the
+%      holder first climbs straight up to the ceiling, itself checked
+%      against the first UAV.
+%   3. The first UAV climbs or descends to its transit altitude, crosses to
+%      above its pad, RTLs to TAKEOFF_ALT over home and LANDs, all planned
+%      to stay MIN_SEP + SEP_MARGIN from the holding UAV.
+%   4. The second UAV then returns the same way; the first has landed, so
+%      it needs no clearance check.
+% Every combination of order and holder position is evaluated (see
+% chooseReturn). The UAVs are airborne, so a plan below MIN_SEP is flown
+% anyway (the best one found) with a warning.
+finals = positions(1:2, :);
+retStart = finals;
+retMoved = false(1, 2);
+for kk = 1:2
+    [retStart(kk, :), retMoved(kk)] = separatePoint(finals(kk, :), finals(3 - kk, :), MIN_SEP + SEP_MARGIN);
+end
+[retOrder, retAlt, retClear, holdAt, holdMoved] = chooseReturn(retStart, finals, padTop, padGround, ...
+    TAKEOFF_ALT, transitAltMax, MIN_SEP + SEP_MARGIN);
+first = retOrder(1);
+second = retOrder(2);
+fprintf('Return plan: UAV %d first (transit %.1f m), then UAV %d (transit %.1f m); clearance %.1f m (required %.1f m, planned %.1f m); start separation %.1f m\n', ...
+    int32(first), retAlt(1), int32(second), retAlt(2), retClear, MIN_SEP, MIN_SEP + SEP_MARGIN, norm(finals(1, :) - finals(2, :)));
+if retMoved(first)
+    fprintf('Return: UAV %d first moves away from UAV %d to (%.1f, %.1f, %.1f)\n', int32(first), int32(second), ...
+        retStart(first, 1), retStart(first, 2), retStart(first, 3));
+end
+if holdMoved
+    fprintf('Return: UAV %d climbs to (%.1f, %.1f, %.1f) and holds there while UAV %d returns\n', int32(second), ...
+        holdAt(1), holdAt(2), holdAt(3), int32(first));
+end
+if retClear < MIN_SEP
+    fprintf('Return: warning, best plan keeps only %.1f m separation (required %.1f m)\n', retClear, MIN_SEP);
+elseif retClear < MIN_SEP + SEP_MARGIN
+    fprintf('Return: warning, planned clearance %.1f m is inside the %.1f m margin\n', retClear, SEP_MARGIN);
+end
 
-if ~coder.target('MATLAB')
-    if positions(1, 3) >= positions(2, 3)
-        higherRetIdx = int32(1);
-        lowerRetIdx  = int32(2);
-    else
-        higherRetIdx = int32(2);
-        lowerRetIdx  = int32(1);
-    end
-
-    MIN_RETURN_TRANSIT_ALT = 25.0; % m, same as the final return waypoint altitude
-    returnTransitAlt = zeros(1, MAX_CLIENTS);
-    returnTransitAlt(lowerRetIdx)  = max(positions(higherRetIdx, 3) - TRANSIT_SEP, MIN_RETURN_TRANSIT_ALT);
-    returnTransitAlt(higherRetIdx) = returnTransitAlt(lowerRetIdx) + TRANSIT_SEP;
-
-    for iUAV = 1:numClients
-        retBase = double(iUAV - 1) * double(NUM_RETURN_WP);
-        returnTargets(retBase + 1, :) = [positions(iUAV,1),         positions(iUAV,2),         returnTransitAlt(iUAV)];
-        returnTargets(retBase + 2, :) = [initialPositions(iUAV,1),  initialPositions(iUAV,2),  returnTransitAlt(iUAV)];
-        % Final return waypoint: pad XY from the pre-takeoff GPS query, but a fixed
-        % 25 m up. That query ran while the UAV was on the ground, so its ENU
-        % up-component is ~0 (often slightly negative) — using it directly commands
-        % a negative altitude. RTL/LAND perform the actual touchdown from here.
-        returnTargets(retBase + 3, :) = [initialPositions(iUAV,1), initialPositions(iUAV,2), 25.0];
-    end
-
-    % Staggered flyback over the 3 return waypoints (the UAVs are already
-    % airborne, so there is no TAKEOFF event). Waypoint events per step:
-    %   step 1: both stage (the lower descends to its transit altitude; the
-    %           higher holds, or climbs only if MIN_RETURN_TRANSIT_ALT forces it)
-    %   step 2: higher traverses while the lower holds TRANSIT_SEP below
-    %   step 3: higher descends over its pad while the lower traverses
-    %   step 4: lower descends over its pad
-    % Staging completes before anyone traverses, and from step 2 on the
-    % higher leads by one event as in the flyout, so the two never share the
-    % same descent over their pads. 0 = no event for that UAV in that step.
-    hSchedule = [1, 2, 3, 0];
-    lSchedule = [1, 0, 2, 3];
-    for step = 1:numel(hSchedule)
-        hEvent = hSchedule(step);
-        lEvent = lSchedule(step);
-        hActive = hEvent >= 1;
-        lActive = lEvent >= 1;
-
-        if hActive
-            hRow = (double(higherRetIdx) - 1) * double(NUM_RETURN_WP) + hEvent;
-            hTarget = returnTargets(hRow, :);
-            coder.ceval('sendTarget', higherRetIdx, coder.ref(hTarget));
-        end
-        if lActive
-            lRow = (double(lowerRetIdx) - 1) * double(NUM_RETURN_WP) + lEvent;
-            lTarget = returnTargets(lRow, :);
-            coder.ceval('sendTarget', lowerRetIdx, coder.ref(lTarget));
-        end
-
-        if hActive
-            coder.ceval('waitForClientMessageType', higherRetIdx, int32(MESSAGE_TYPE.ACK));
-        end
-        if lActive
-            coder.ceval('waitForClientMessageType', lowerRetIdx, int32(MESSAGE_TYPE.ACK));
-        end
-
-        if hActive
-            coder.ceval('waitForClientMessageType', higherRetIdx, int32(MESSAGE_TYPE.READY));
-        end
-        if lActive
-            coder.ceval('waitForClientMessageType', lowerRetIdx, int32(MESSAGE_TYPE.READY));
-        end
-    end
+firstPath  = [retStart(first, :); retStart(first, 1:2), retAlt(1); padTop(first, 1:2), retAlt(1)];
+secondPath = [holdAt; holdAt(1:2), retAlt(2); padTop(second, 1:2), retAlt(2)];
+if coder.target('MATLAB')
+    disp(['Return UAV ', num2str(first), ': ', mat2str(firstPath, 4), ', then RTL and LAND']);
+    disp(['Return UAV ', num2str(second), ': ', mat2str(secondPath, 4), ', then RTL and LAND']);
 else
-    disp('Altitude-staggered return (simulation): UAVs commanded back to takeoff positions.');
+    if retMoved(first)
+        sendLeg(int32(first), retStart(first, :));
+    end
+    if holdMoved
+        sendLeg(int32(second), holdAt);
+    end
+    sendLeg(int32(first), firstPath(2, :));
+    sendLeg(int32(first), firstPath(3, :));
+    sendCommand(int32(first), int32(MESSAGE_TYPE.RTL));  % to TAKEOFF_ALT over home
+    sendCommand(int32(first), int32(MESSAGE_TYPE.LAND)); % landed and disarmed on READY
+    sendLeg(int32(second), secondPath(2, :));
+    sendLeg(int32(second), secondPath(3, :));
+    sendCommand(int32(second), int32(MESSAGE_TYPE.RTL));
+    sendCommand(int32(second), int32(MESSAGE_TYPE.LAND));
 end
 % --------------------------------------------------------------------------
-
-% Send RTL command to all clients
-for i = 1:numClients
-    if coder.target('MATLAB')
-        disp(['Sending RTL to client ', num2str(i)]);
-    else
-        coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.RTL));
-    end
-end
-
-% Wait for ACK from all clients
-if coder.target('MATLAB')
-    disp('Waiting for ACK from all clients...');
-else
-    coder.ceval('waitForAllMessageType', int32(numClients), ...
-                int32(MESSAGE_TYPE.ACK));
-end
-
-% Wait for READY from all clients (returned to home)
-if coder.target('MATLAB')
-    disp('All UAVs returned to home.');
-else
-    coder.ceval('waitForAllMessageType', int32(numClients), ...
-                int32(MESSAGE_TYPE.READY));
-end
-
-% Send LAND command to all clients
-for i = 1:numClients
-    if coder.target('MATLAB')
-        disp(['Sending LAND to client ', num2str(i)]);
-    else
-        coder.ceval('sendMessageType', int32(i), int32(MESSAGE_TYPE.LAND));
-    end
-end
-
-% Wait for ACK from all clients
-if coder.target('MATLAB')
-    disp('Waiting for ACK from all clients...');
-else
-    coder.ceval('waitForAllMessageType', int32(numClients), ...
-                int32(MESSAGE_TYPE.ACK));
-end
-
-% Wait for READY from all clients (landed and disarmed)
-if coder.target('MATLAB')
-    disp('All UAVs landed and disarmed.');
-else
-    coder.ceval('waitForAllMessageType', int32(numClients), ...
-                int32(MESSAGE_TYPE.READY));
-end
 
 % Send READY to all clients to signal mission complete
 for i = 1:numClients
@@ -434,4 +320,123 @@ end
 
 disp('Experiment complete.');
 
+end
+
+% -------------------------------------------------------------------------
+function [order, alt, clr] = chooseFlyout(padGround, padTop, starts, hMin, hMax, required)
+% Order and transit altitudes for the sequential flyout. UAV u takes off
+% from padGround(u) to padTop(u), then flies padTop(u) -> [pad xy, h] ->
+% [start xy, h] -> starts(u). The first UAV flies while the other is on the
+% ground (no constraint); the second must clear the first one's start. The
+% order that meets `required` with the least vertical travel wins, else the
+% one with the largest clearance.
+order = [1, 2];
+alt = [hMin, hMin];
+clr = -Inf;
+bestTravel = Inf;
+for oo = 1:2
+    a = oo;
+    b = 3 - oo;
+    [hA, ~, tA] = planTransit(padGround(a, :), padTop(a, :), starts(a, :), zeros(0, 3), NaN(1, 3), hMin, hMax, required);
+    [hB, cB, tB] = planTransit(padGround(b, :), padTop(b, :), starts(b, :), zeros(0, 3), starts(a, :), hMin, hMax, required);
+    if isBetter(cB, tA + tB, clr, bestTravel, required)
+        order = [a, b];
+        alt = [hA, hB];
+        clr = cB;
+        bestTravel = tA + tB;
+    end
+end
+end
+
+function [order, alt, clr, holdAt, holdMoved] = chooseReturn(retStart, finals, padTop, padGround, hMin, hMax, required)
+% Order, transit altitudes and holding position for the sequential return.
+% The first UAV a flies retStart(a) (its final position, or after moving
+% away) -> [xy, h] -> [pad xy, h] -> padTop(a) (RTL) -> padGround(a) (LAND)
+% while the other UAV b holds at holdAt. holdAt is finals(b), or finals(b)
+% raised to hMax when that is needed to clear a's path (the climb itself must
+% clear a, which waits at retStart(a)). b then returns from holdAt after a
+% has landed (no constraint). Every order/holding combination is evaluated;
+% the one meeting `required` with the least vertical travel wins, else the
+% one with the largest clearance.
+order = [1, 2];
+alt = [hMin, hMin];
+clr = -Inf;
+holdAt = finals(2, :);
+holdMoved = false;
+bestTravel = Inf;
+for oo = 1:2
+    a = oo;
+    b = 3 - oo;
+    for hh = 1:2
+        cand = finals(b, :);
+        climb = 0;
+        cClimb = Inf;
+        if hh == 2
+            if finals(b, 3) >= hMax
+                continue;
+            end
+            cand(3) = hMax;
+            climb = hMax - finals(b, 3);
+            [~, cClimb, ~] = planTransit(zeros(0, 3), finals(b, :), cand, zeros(0, 3), retStart(a, :), cand(3), cand(3), required);
+        end
+        [hA, cA, tA] = planTransit(zeros(0, 3), retStart(a, :), padTop(a, :), padGround(a, :), cand, hMin, hMax, required);
+        [hB, ~, tB] = planTransit(zeros(0, 3), cand, padTop(b, :), padGround(b, :), NaN(1, 3), hMin, hMax, required);
+        c = min(cA, cClimb);
+        t = tA + tB + climb;
+        if isBetter(c, t, clr, bestTravel, required)
+            order = [a, b];
+            alt = [hA, hB];
+            clr = c;
+            holdAt = cand;
+            holdMoved = hh == 2;
+            bestTravel = t;
+        end
+    end
+end
+end
+
+function tf = isBetter(c, t, cBest, tBest, required)
+% A plan meeting `required` beats one that does not; among plans that meet
+% it, less vertical travel wins; among plans that do not, more clearance.
+okNew = c >= required;
+okOld = cBest >= required;
+tf = (okNew && (~okOld || t < tBest)) || (~okNew && ~okOld && c > cBest);
+end
+
+function [p, moved] = separatePoint(p, q, dist)
+% Move p horizontally straight away from q until |p - q| = dist + 1 m (no
+% change if already at least dist). The distance grows monotonically along
+% the move; the extra metre keeps the result clear of dist after rounding.
+moved = false;
+dv = p(3) - q(3);
+if norm(p - q) >= dist || abs(dv) >= dist
+    return;
+end
+dist = dist + 1;
+dxy = p(1:2) - q(1:2);
+r = norm(dxy);
+if r < 1e-6
+    dxy = [1, 0];
+    r = 1;
+end
+rNeed = sqrt(dist ^ 2 - dv ^ 2);
+p(1:2) = q(1:2) + dxy / r * rNeed;
+moved = true;
+end
+
+function sendLeg(clientId, target)
+% Sequential-mode waypoint: TARGET, then ACK (received) and READY (arrived)
+coder.cinclude('controller_impl.h');
+t = target;
+coder.ceval('sendTarget', clientId, coder.ref(t));
+coder.ceval('waitForClientMessageType', clientId, int32(MESSAGE_TYPE.ACK));
+coder.ceval('waitForClientMessageType', clientId, int32(MESSAGE_TYPE.READY));
+end
+
+function sendCommand(clientId, msgType)
+% TAKEOFF / RTL / LAND to one client, then ACK and READY (completed)
+coder.cinclude('controller_impl.h');
+coder.ceval('sendMessageType', clientId, msgType);
+coder.ceval('waitForClientMessageType', clientId, int32(MESSAGE_TYPE.ACK));
+coder.ceval('waitForClientMessageType', clientId, int32(MESSAGE_TYPE.READY));
 end
